@@ -19,7 +19,8 @@
     "postinstall": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "creer-gerant": "tsx scripts/creer-gerant.ts",
-    "reinitialiser": "tsx scripts/reinitialiser.ts"
+    "reinitialiser": "tsx scripts/reinitialiser.ts",
+    "env:vercel": "tsx scripts/env-production.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

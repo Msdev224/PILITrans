@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -131,25 +132,42 @@ export function DialogueUtilisateur({
                 <p className="aide-role">{DESCRIPTION_ROLE[role as keyof typeof DESCRIPTION_ROLE]}</p>
               </div>
 
+              {/* Un compte chauffeur est l'accès d'une personne à SA fiche :
+                  celle qui porte son permis, son mode de rémunération et ses
+                  missions. La fiche existe donc d'abord, le compte ensuite. */}
               {role === "CHAUFFEUR" ? (
                 <div className="full">
-                  <Champ
-                    label="Fiche chauffeur rattachée"
-                    erreur={err("chauffeurId")}
-                    aide="Le compte ne verra que les missions de cette fiche."
-                  >
-                    <select
-                      name="chauffeurId"
-                      defaultValue={val("chauffeurId", utilisateur?.chauffeurId ?? "")}
+                  {chauffeurs.length === 0 ? (
+                    <div className="lg-error">
+                      Aucune fiche chauffeur disponible. Créez d&apos;abord la fiche depuis{" "}
+                      <Link href="/chauffeurs" className="lien-fiche">
+                        <b>Chauffeurs</b>
+                      </Link>{" "}
+                      — elle porte le permis, la rémunération et les missions. Vous pourrez
+                      ensuite lui ouvrir un compte ici.
+                      <div className="t-sub mt-1">
+                        Cette liste ne montre que les fiches qui n&apos;ont pas encore de compte.
+                      </div>
+                    </div>
+                  ) : (
+                    <Champ
+                      label="Fiche chauffeur rattachée"
+                      erreur={err("chauffeurId")}
+                      aide="Le compte ne verra que les missions de cette fiche."
                     >
-                      <option value="">— Choisir —</option>
-                      {chauffeurs.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nom}
-                        </option>
-                      ))}
-                    </select>
-                  </Champ>
+                      <select
+                        name="chauffeurId"
+                        defaultValue={val("chauffeurId", utilisateur?.chauffeurId ?? "")}
+                      >
+                        <option value="">— Choisir —</option>
+                        {chauffeurs.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nom}
+                          </option>
+                        ))}
+                      </select>
+                    </Champ>
+                  )}
                 </div>
               ) : null}
 
@@ -189,7 +207,9 @@ export function DialogueUtilisateur({
             <button type="button" className="btn ghost" onClick={() => setOuvert(false)}>
               Annuler
             </button>
-            <BoutonEnvoyer edition={edition} />
+            {/* Sans fiche à rattacher, l'envoi ne peut que rater : mieux vaut
+                bloquer le bouton que laisser buter sur un message d'erreur. */}
+            <BoutonEnvoyer edition={edition} bloque={role === "CHAUFFEUR" && chauffeurs.length === 0} />
           </footer>
         </form>
       </DialogContent>
@@ -218,10 +238,15 @@ function Champ({
   );
 }
 
-function BoutonEnvoyer({ edition }: { edition: boolean }) {
+function BoutonEnvoyer({ edition, bloque }: { edition: boolean; bloque: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="btn primary" disabled={pending}>
+    <button
+      type="submit"
+      className="btn primary"
+      disabled={pending || bloque}
+      title={bloque ? "Créez d'abord la fiche chauffeur" : undefined}
+    >
       {pending ? "Enregistrement…" : edition ? "Enregistrer" : "Créer le compte"}
     </button>
   );

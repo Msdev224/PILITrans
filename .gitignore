@@ -1,6 +1,6 @@
-.env
-.env.example
-.env*.local
+# Toute variante de .env reste locale — y compris .env.vercel, qui contient
+# les secrets de production préparés pour le collage dans Vercel.
+.env*
 # Consignes de build, internes — non publiées
 CLAUDE.md
 node_modules
