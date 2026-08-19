@@ -1,0 +1,15 @@
+{
+  "name": "PILITrans — Espace chauffeur",
+  "short_name": "PILITrans",
+  "description": "Saisie de mission depuis le téléphone de bord : départ, arrêts, carburant, chargement et livraison.",
+  "start_url": "/chauffeur",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C242D",
+  "theme_color": "#0C242D",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,339 @@
+import type { Camion, Chauffeur, Depense, EtapeVoyage, Facture, Voyage } from "@prisma/client";
+
+import { consoTroncon, joursEntre, tauxAVide } from "@/lib/calculs";
+import {
+  INCLURE_LIGNES,
+  lignesEnEcart,
+  resumeChargement,
+  vueLignes,
+  type LigneVue,
+} from "@/lib/donnees/marchandises";
+import { kmVoyage, remunerationDuVoyage } from "@/lib/donnees/camions";
+import { dansPeriode, type Periode } from "@/lib/periode";
+import { prisma } from "@/lib/prisma";
+import { debutDeJour, n } from "@/lib/utils";
+
+/** Un voyage est « en route » tant qu'il n'est ni terminé ni annulé. */
+export const STATUTS_EN_ROUTE = [
+  "EN_ATTENTE_CHARGEMENT",
+  "EN_COURS",
+  "ARRIVE_DESTINATION",
+  "EN_DECHARGEMENT",
+] as const;
+
+export interface LigneVoyage {
+  voyage: VoyageComplet;
+
+  /** Marchandises transportées, chacune avec son unité. */
+  marchandises: LigneVue[];
+  /** Résumé lisible du chargement, aussi utilisé par la recherche. */
+  chargement: string;
+
+  /** Produits & charges directement imputables à la mission (GNF). */
+  recetteGnf: number;
+  fraisGnf: number;
+  remunerationGnf: number;
+  /** Recette − frais de voyage − rémunération. Sans amortissement : il se
+   *  répartit sur le mois du camion, pas sur une mission isolée. */
+  margeGnf: number;
+
+  km: number;
+  international: boolean;
+  /** Jours passés sur le point de chargement (0 si non concerné). */
+  joursAttente: number;
+  enRoute: boolean;
+  termine: boolean;
+  facture: boolean;
+  postes: Depense[];
+}
+
+export interface StatsVoyages {
+  enCours: number;
+  terminesMois: number;
+  recetteMoisGnf: number;
+  tauxAVidePct: number;
+}
+
+export type FiltreVoyage =
+  | "tous"
+  | "en-cours"
+  | "termines"
+  | "en-attente"
+  | "internationaux"
+  | "a-vide";
+
+export const FILTRES: { cle: FiltreVoyage; libelle: string }[] = [
+  { cle: "tous", libelle: "Tous" },
+  { cle: "en-cours", libelle: "En cours" },
+  { cle: "termines", libelle: "Terminés" },
+  { cle: "en-attente", libelle: "En attente" },
+  { cle: "internationaux", libelle: "Internationaux" },
+  { cle: "a-vide", libelle: "À vide" },
+];
+
+export function estFiltreVoyage(valeur: string | undefined): valeur is FiltreVoyage {
+  return FILTRES.some((f) => f.cle === valeur);
+}
+
+/** Voyage tel que chargé partout ici : avec son camion, son équipage et ses marchandises. */
+export type VoyageComplet = Voyage & {
+  camion: Camion;
+  chauffeur: Chauffeur;
+  factures: Facture[];
+  lignes: Parameters<typeof vueLignes>[0];
+};
+
+function construireLigne(
+  voyage: VoyageComplet,
+  depenses: Depense[],
+  aujourdhui: Date,
+): LigneVoyage {
+  const postes = depenses.filter((d) => d.voyageId === voyage.id);
+  const recetteGnf = n(voyage.recetteGnf);
+  const fraisGnf = postes.reduce((total, d) => total + n(d.montantGnf), 0);
+  const remunerationGnf = remunerationDuVoyage(voyage);
+
+  const joursAttente = voyage.dateArriveeChargement
+    ? joursEntre(voyage.dateArriveeChargement, voyage.dateChargement ?? debutDeJour(aujourdhui))
+    : 0;
+
+  const marchandises = vueLignes(voyage.lignes);
+
+  return {
+    voyage,
+    marchandises,
+    chargement: resumeChargement(marchandises),
+    recetteGnf,
+    fraisGnf,
+    remunerationGnf,
+    margeGnf: recetteGnf - fraisGnf - remunerationGnf,
+    km: kmVoyage(voyage),
+    international: voyage.paysDepart !== voyage.paysArrivee,
+    joursAttente,
+    enRoute: (STATUTS_EN_ROUTE as readonly string[]).includes(voyage.statut),
+    termine: voyage.statut === "TERMINE",
+    facture: voyage.factures.length > 0,
+    postes,
+  };
+}
+
+function appliquerFiltre(lignes: LigneVoyage[], filtre: FiltreVoyage): LigneVoyage[] {
+  switch (filtre) {
+    case "en-cours":
+      return lignes.filter((l) => l.enRoute && l.voyage.statut !== "EN_ATTENTE_CHARGEMENT");
+    case "termines":
+      return lignes.filter((l) => l.termine);
+    case "en-attente":
+      return lignes.filter(
+        (l) => l.voyage.statut === "EN_ATTENTE_CHARGEMENT" || l.voyage.statut === "PLANIFIE",
+      );
+    case "internationaux":
+      return lignes.filter((l) => l.international);
+    case "a-vide":
+      return lignes.filter((l) => l.voyage.aVide);
+    default:
+      return lignes;
+  }
+}
+
+/**
+ * Normalise pour la recherche : minuscules et accents retirés, afin que
+ * « labe » trouve « Labé » et « boke » trouve « Boké ».
+ */
+const normaliser = (texte: string) =>
+  texte
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+
+/** Recherche plein texte sur trajet, client, marchandise, camion, chauffeur, référence. */
+function appliquerRecherche(lignes: LigneVoyage[], recherche: string): LigneVoyage[] {
+  const terme = normaliser(recherche.trim());
+  if (!terme) return lignes;
+
+  return lignes.filter((l) =>
+    [
+      l.voyage.villeDepart,
+      l.voyage.villeArrivee,
+      l.voyage.client,
+      l.chargement,
+      l.voyage.reference,
+      l.voyage.camion.nom,
+      l.voyage.camion.immatTracteur,
+      l.voyage.chauffeur.nom,
+    ]
+      .filter((champ): champ is string => Boolean(champ))
+      .some((champ) => normaliser(champ).includes(terme)),
+  );
+}
+
+export interface VueVoyages {
+  lignes: LigneVoyage[];
+  stats: StatsVoyages;
+  total: number;
+}
+
+/**
+ * Liste des voyages, filtrée et enrichie du P&L de chaque mission.
+ * Les statistiques du bandeau portent toujours sur l'ensemble du mois,
+ * indépendamment du filtre affiché.
+ */
+export async function vueVoyages(
+  periode: Periode,
+  options: { filtre?: FiltreVoyage; recherche?: string; aujourdhui?: Date } = {},
+): Promise<VueVoyages> {
+  const { filtre = "tous", recherche = "", aujourdhui = new Date() } = options;
+
+  const [voyages, depenses] = await Promise.all([
+    prisma.voyage.findMany({
+      where: { statut: { not: "ANNULE" } },
+      include: { camion: true, chauffeur: true, factures: true, lignes: INCLURE_LIGNES },
+      orderBy: { dateDepart: "desc" },
+    }),
+    prisma.depense.findMany({ where: { voyageId: { not: null } } }),
+  ]);
+
+  const toutes = voyages.map((v) => construireLigne(v, depenses, aujourdhui));
+  const duMois = toutes.filter((l) => dansPeriode(l.voyage.dateDepart, periode));
+
+  const km = duMois.reduce((total, l) => total + l.km, 0);
+  const kmAVide = duMois.filter((l) => l.voyage.aVide).reduce((total, l) => total + l.km, 0);
+
+  const stats: StatsVoyages = {
+    enCours: toutes.filter((l) => l.enRoute).length,
+    terminesMois: duMois.filter((l) => l.termine).length,
+    recetteMoisGnf: duMois.reduce((total, l) => total + l.recetteGnf, 0),
+    tauxAVidePct: tauxAVide(kmAVide, km),
+  };
+
+  return {
+    lignes: appliquerRecherche(appliquerFiltre(toutes, filtre), recherche),
+    stats,
+    total: toutes.length,
+  };
+}
+
+
+// ------------------------------------------------------------
+//  Fiche d'un voyage : tronçons, carburant, quantités
+// ------------------------------------------------------------
+
+export interface TronconVue {
+  etape: EtapeVoyage & { ravitaillements: Depense[] };
+  /** `null` tant que le tronçon n'est pas exploitable (relevés incomplets). */
+  distance: number | null;
+  pleinsL: number;
+  litresConsommes: number | null;
+  litresPer100km: number | null;
+  termine: boolean;
+}
+
+export interface FicheVoyage extends LigneVoyage {
+  troncons: TronconVue[];
+  /** Consommation moyenne du voyage, pondérée par la distance. */
+  consoMoyenneL100: number | null;
+  /**
+   * Marchandises transportées, chacune avec son unité et son propre suivi
+   * chargé → reçu → livré. Un voyage en porte souvent plusieurs, parfois pour
+   * des destinataires différents.
+   */
+  lignes: LigneVue[];
+  /**
+   * Manquants inexpliqués, marchandise par marchandise, prélèvements de douane
+   * déduits. Il n'y a délibérément pas d'écart global : additionner des tonnes
+   * et des sacs ne veut rien dire, et un total masquerait la marchandise
+   * réellement en cause.
+   */
+  lignesEnEcart: LigneVue[];
+  /** Contrepartie en argent des retenues de douane, tous articles confondus. */
+  prelevementGnf: number;
+}
+
+export interface PrelevementVue {
+  id: string;
+  quantiteTonnes: number;
+  lieu: string;
+  pays: string;
+  motif: string | null;
+  montantGnf: number | null;
+  reference: string | null;
+  date: string;
+}
+
+function construireTroncon(etape: EtapeVoyage & { ravitaillements: Depense[] }): TronconVue {
+  const pleins = etape.ravitaillements.map((r) => n(r.litres)).filter((l) => l > 0);
+  const pleinsL = pleins.reduce((total, l) => total + l, 0);
+
+  const exploitable =
+    etape.kmDepart != null &&
+    etape.kmArrivee != null &&
+    etape.carburantRestantDepart != null &&
+    etape.carburantRestantArrivee != null;
+
+  if (!exploitable) {
+    return {
+      etape,
+      distance: etape.kmDepart != null && etape.kmArrivee != null ? etape.kmArrivee - etape.kmDepart : null,
+      pleinsL,
+      litresConsommes: null,
+      litresPer100km: null,
+      termine: etape.arriveeLe != null,
+    };
+  }
+
+  const resultat = consoTroncon({
+    kmDepart: etape.kmDepart!,
+    kmArrivee: etape.kmArrivee!,
+    carburantRestantDepart: n(etape.carburantRestantDepart),
+    carburantRestantArrivee: n(etape.carburantRestantArrivee),
+    pleins,
+  });
+
+  return {
+    etape,
+    distance: resultat.distance,
+    pleinsL,
+    litresConsommes: resultat.litresConsommes,
+    litresPer100km: resultat.litresPer100km,
+    termine: etape.arriveeLe != null,
+  };
+}
+
+export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Promise<FicheVoyage | null> {
+  const voyage = await prisma.voyage.findUnique({
+    where: { id },
+    include: { camion: true, chauffeur: true, factures: true, lignes: INCLURE_LIGNES },
+  });
+  if (!voyage) return null;
+
+  const [depenses, etapes] = await Promise.all([
+    prisma.depense.findMany({ where: { voyageId: id }, orderBy: { date: "asc" } }),
+    prisma.etapeVoyage.findMany({
+      where: { voyageId: id },
+      include: { ravitaillements: true },
+      orderBy: { ordre: "asc" },
+    }),
+  ]);
+
+  const ligne = construireLigne(voyage, depenses, aujourdhui);
+  const troncons = etapes.map(construireTroncon);
+
+  const exploitables = troncons.filter((t) => t.distance != null && t.distance > 0 && t.litresConsommes != null);
+  const distance = exploitables.reduce((total, t) => total + (t.distance ?? 0), 0);
+  const litres = exploitables.reduce((total, t) => total + (t.litresConsommes ?? 0), 0);
+
+  // Distance de la mission : le relevé au niveau du voyage prime, sinon on
+  // somme les tronçons — sans quoi une mission suivie étape par étape
+  // afficherait « — » alors que les kilomètres sont connus.
+  const kmTroncons = troncons.reduce((total, t) => total + (t.distance ?? 0), 0);
+
+  return {
+    ...ligne,
+    km: ligne.km > 0 ? ligne.km : kmTroncons,
+    troncons,
+    consoMoyenneL100: distance > 0 ? Math.round((litres / distance) * 1000) / 10 : null,
+    lignes: ligne.marchandises,
+    lignesEnEcart: lignesEnEcart(ligne.marchandises),
+    prelevementGnf: ligne.marchandises.reduce((t, l) => t + l.prelevementGnf, 0),
+  };
+}

@@ -1,0 +1,425 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
+
+import { enregistrerParametres, type EtatParametres } from "@/actions/parametres";
+import { ChampTelephone } from "@/components/champ-telephone";
+import { ACCUEIL_DEFAUT } from "@/lib/accueil-defaut";
+
+export interface ParametresEditables {
+  raisonSociale: string;
+  adresse: string | null;
+  telephone: string | null;
+  email: string | null;
+  rccm: string | null;
+  nif: string | null;
+  logoUrl: string | null;
+  orangeMoney: string | null;
+  banque: string | null;
+  compteBancaire: string | null;
+  prefixeFacture: string;
+  tvaTaux: number;
+  delaiPaiementJours: number;
+  conditionsPaiement: string | null;
+  deviseBase: string;
+  tauxReferenceXof: number | null;
+  consigneFroidDefaut: number | null;
+  toleranceFroid: number | null;
+  rappelEcheanceJours: number;
+  seuilConsoAnormale: number | null;
+  smsActif: boolean;
+  whatsappActif: boolean;
+  accueilSurtitre: string | null;
+  accueilTitre: string | null;
+  accueilTexte: string | null;
+  accueilMention: string | null;
+  connexionSousTitre: string | null;
+  accueilAfficherDemo: boolean;
+  smsExpediteur: string | null;
+  urlApplication: string | null;
+  smsChauffeurAffectation: boolean;
+  smsClientDepart: boolean;
+  smsClientArrivee: boolean;
+  smsClientLivraison: boolean;
+  smsClientFacture: boolean;
+  smsClientRelance: boolean;
+}
+
+export function FormulaireParametres({
+  parametres,
+  identifiantsPresents,
+  historique,
+}: {
+  parametres: ParametresEditables;
+  /** Historique des taux observés, rendu côté serveur. */
+  historique?: React.ReactNode;
+  /** Les clés API vivent dans l'environnement, pas en base. */
+  identifiantsPresents: boolean;
+}) {
+  const [etat, envoyer] = useActionState<EtatParametres, FormData>(enregistrerParametres, {});
+  const [smsActif, setSmsActif] = useState(parametres.smsActif);
+
+  const err = (champ: string) => etat.champs?.[champ];
+  const val = (champ: string, origine: string | number | null) =>
+    etat.valeurs?.[champ] ?? (origine != null ? String(origine) : "");
+
+  return (
+    <form action={envoyer}>
+      {etat.erreur ? <div className="lg-error">{etat.erreur}</div> : null}
+      {etat.ok ? (
+        <div className="note mb-4">
+          <span>Paramètres enregistrés. Ils s&apos;appliquent immédiatement aux factures et aux alertes.</span>
+        </div>
+      ) : null}
+
+      <Section
+        titre="Identité de l'entreprise"
+        aide="Ces informations apparaissent en en-tête et en pied de chaque facture."
+      >
+        <div className="full">
+          <Champ label="Raison sociale" erreur={err("raisonSociale")}>
+            <input name="raisonSociale" required defaultValue={val("raisonSociale", parametres.raisonSociale)} />
+          </Champ>
+        </div>
+        <div className="full">
+          <Champ label="Adresse">
+            <input name="adresse" defaultValue={val("adresse", parametres.adresse)} />
+          </Champ>
+        </div>
+        <Champ label="Téléphone">
+          <ChampTelephone nom="telephone" valeur={val("telephone", parametres.telephone)} />
+        </Champ>
+        <Champ label="E-mail" erreur={err("email")}>
+          <input name="email" type="email" defaultValue={val("email", parametres.email)} />
+        </Champ>
+        <Champ label="RCCM">
+          <input name="rccm" defaultValue={val("rccm", parametres.rccm)} />
+        </Champ>
+        <Champ label="NIF">
+          <input name="nif" defaultValue={val("nif", parametres.nif)} />
+        </Champ>
+        <div className="full">
+          <Champ label="URL du logo" aide="Optionnel — image affichée sur les documents.">
+            <input name="logoUrl" defaultValue={val("logoUrl", parametres.logoUrl)} />
+          </Champ>
+        </div>
+      </Section>
+
+      <Section titre="Coordonnées de paiement" aide="Reprises dans le bloc « Modalités de paiement » des factures.">
+        <Champ label="Orange Money">
+          <input name="orangeMoney" defaultValue={val("orangeMoney", parametres.orangeMoney)} />
+        </Champ>
+        <Champ label="Banque">
+          <input name="banque" defaultValue={val("banque", parametres.banque)} />
+        </Champ>
+        <div className="full">
+          <Champ label="Numéro de compte">
+            <input name="compteBancaire" defaultValue={val("compteBancaire", parametres.compteBancaire)} />
+          </Champ>
+        </div>
+      </Section>
+
+      <Section titre="Facturation">
+        <Champ label="Préfixe des numéros" erreur={err("prefixeFacture")} aide="Ex. « FAC » → FAC-2026-001.">
+          <input name="prefixeFacture" required defaultValue={val("prefixeFacture", parametres.prefixeFacture)} />
+        </Champ>
+        <Champ label="TVA (%)" erreur={err("tvaTaux")} aide="0 = exonéré (transport international).">
+          <input name="tvaTaux" inputMode="decimal" defaultValue={val("tvaTaux", parametres.tvaTaux)} />
+        </Champ>
+        <Champ
+          label="Délai de paiement (jours)"
+          erreur={err("delaiPaiementJours")}
+          aide="Échéance proposée à la création d'une facture."
+        >
+          <input name="delaiPaiementJours" inputMode="numeric" defaultValue={val("delaiPaiementJours", parametres.delaiPaiementJours)} />
+        </Champ>
+        <div className="full">
+          <Champ label="Conditions de paiement">
+            <input name="conditionsPaiement" defaultValue={val("conditionsPaiement", parametres.conditionsPaiement)} />
+          </Champ>
+        </div>
+      </Section>
+
+      <Section
+        titre="Devises"
+        aide="Le taux GNF ⇄ CFA varie. Celui-ci ne sert qu'à pré-remplir les saisies : chaque transaction fige son propre équivalent en GNF."
+      >
+        <Champ label="Devise de base">
+          <select name="deviseBase" defaultValue={val("deviseBase", parametres.deviseBase)}>
+            <option value="GNF">GNF — franc guinéen</option>
+            <option value="XOF">XOF — franc CFA</option>
+          </select>
+        </Champ>
+        <Champ label="Taux de référence (GNF pour 1 CFA)">
+          <input name="tauxReferenceXof" inputMode="decimal" defaultValue={val("tauxReferenceXof", parametres.tauxReferenceXof)} />
+        </Champ>
+        {/* Rendu côté serveur et passé en enfant : ce formulaire est un
+            composant client, il ne peut pas interroger la base lui-même. */}
+        <div className="full">{historique}</div>
+      </Section>
+
+      <Section titre="Chaîne du froid & seuils d'alerte">
+        <Champ label="Consigne de froid par défaut (°C)" aide="Peut être négative — ex. −18 pour du surgelé.">
+          <input name="consigneFroidDefaut" inputMode="text" defaultValue={val("consigneFroidDefaut", parametres.consigneFroidDefaut)} />
+        </Champ>
+        <Champ label="Tolérance (°C)" aide="Au-delà : alerte, puis rupture au double de l'écart.">
+          <input name="toleranceFroid" inputMode="decimal" defaultValue={val("toleranceFroid", parametres.toleranceFroid)} />
+        </Champ>
+        <Champ
+          label="Rappel d'échéance (jours)"
+          erreur={err("rappelEcheanceJours")}
+          aide="Délai avant expiration d'un document pour déclencher l'alerte."
+        >
+          <input name="rappelEcheanceJours" inputMode="numeric" defaultValue={val("rappelEcheanceJours", parametres.rappelEcheanceJours)} />
+        </Champ>
+        <Champ label="Seuil de conso anormale (L/100 km)" aide="Au-delà, une alerte carburant est levée.">
+          <input name="seuilConsoAnormale" inputMode="decimal" defaultValue={val("seuilConsoAnormale", parametres.seuilConsoAnormale)} />
+        </Champ>
+      </Section>
+
+      <Section
+        titre="Notifications SMS"
+        aide="Le chauffeur est prévenu de ses missions, le client suit sa marchandise étape par étape et reçoit le lien de sa facture. Envoi assuré par Nimba SMS."
+      >
+        <div className="full">
+          {/* Sans identifiants, rien ne part : les messages restent en file. */}
+          {!identifiantsPresents ? (
+            <div className="note mb-3">
+              <span>
+                <b>Identifiants Nimba absents.</b> Les notifications sont préparées et mises en
+                file d&apos;attente, mais aucune n&apos;est envoyée. Renseigne{" "}
+                <code className="mono">NIMBA_SMS_SERVICE_ID</code> et{" "}
+                <code className="mono">NIMBA_SMS_SECRET_TOKEN</code> dans le fichier{" "}
+                <code className="mono">.env</code>, puis vide la file depuis le suivi ci-dessous.
+              </span>
+            </div>
+          ) : null}
+
+          <label className="mb-3 flex cursor-pointer items-center gap-2 text-[12.5px]">
+            <input
+              type="checkbox"
+              name="smsActif"
+              value="true"
+              checked={smsActif}
+              onChange={(e) => setSmsActif(e.target.checked)}
+            />
+            <b>Activer les notifications SMS</b>
+          </label>
+        </div>
+
+        <Champ label="Nom d'expéditeur" aide="Sensible à la casse, tel que déclaré chez Nimba.">
+          <input name="smsExpediteur" defaultValue={val("smsExpediteur", parametres.smsExpediteur)} placeholder="PILITrans" disabled={!smsActif} />
+        </Champ>
+
+        <Champ
+          label="URL publique de l'application"
+          aide="Sert à composer le lien de facture envoyé au client."
+        >
+          <input name="urlApplication" defaultValue={val("urlApplication", parametres.urlApplication)} placeholder="https://pilitrans.gn" disabled={!smsActif} />
+        </Champ>
+
+        <div className="full mt-1 border-t border-[var(--line-soft)] pt-3">
+          <p className="mb-2.5 text-[11.5px] text-[var(--muted)]">
+            <b>Événements notifiés</b> — chacun s&apos;active séparément.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Bascule nom="smsChauffeurAffectation" actif={smsActif} defaut={parametres.smsChauffeurAffectation} etat={etat}>
+              <b>Chauffeur</b> — nouvelle mission attribuée
+            </Bascule>
+            <Bascule nom="smsClientDepart" actif={smsActif} defaut={parametres.smsClientDepart} etat={etat}>
+              <b>Client</b> — marchandise chargée, transport en cours
+            </Bascule>
+            <Bascule nom="smsClientArrivee" actif={smsActif} defaut={parametres.smsClientArrivee} etat={etat}>
+              <b>Client</b> — arrivée à destination
+            </Bascule>
+            <Bascule nom="smsClientLivraison" actif={smsActif} defaut={parametres.smsClientLivraison} etat={etat}>
+              <b>Client</b> — livraison effectuée
+            </Bascule>
+            <Bascule nom="smsClientFacture" actif={smsActif} defaut={parametres.smsClientFacture} etat={etat}>
+              <b>Client</b> — facture émise, avec son lien
+            </Bascule>
+            <Bascule nom="smsClientRelance" actif={smsActif} defaut={parametres.smsClientRelance} etat={etat}>
+              <b>Client</b> — relance d&apos;une facture échue{" "}
+              <span className="text-[var(--muted-2)]">(déclenchée à la main)</span>
+            </Bascule>
+          </div>
+
+          <div className="full mt-3 border-t border-[var(--line-soft)] pt-3">
+            <label className={`case ${smsActif ? "" : "opacity-50"}`}>
+              <input
+                type="checkbox"
+                name="whatsappActif"
+                value="true"
+                disabled={!smsActif}
+                defaultChecked={
+                  etat.valeurs ? etat.valeurs.whatsappActif === "true" : parametres.whatsappActif
+                }
+              />
+              <span>Privilégier WhatsApp quand le destinataire y est joignable</span>
+            </label>
+            <p className="aide-role">
+              Le message part sur WhatsApp si la fiche du client ou du chauffeur l&apos;indique, avec
+              repli automatique sur SMS en cas d&apos;échec. Ce canal exige des gabarits validés par
+              Meta, déclarés depuis votre tableau de bord Nimba : tant qu&apos;ils ne le sont pas,
+              les messages restent en file avec ce motif.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        titre="Écran d'accueil"
+        aide="Textes affichés sur la page de connexion. Laissés vides, les libellés d'origine s'affichent."
+      >
+        <div className="form-grid">
+          <div className="full">
+            <Champ label="Surtitre" erreur={err("accueilSurtitre")}>
+              <input
+                name="accueilSurtitre"
+                defaultValue={val("accueilSurtitre", parametres.accueilSurtitre)}
+                placeholder={ACCUEIL_DEFAUT.surtitre}
+              />
+            </Champ>
+          </div>
+
+          <div className="full">
+            <Champ label="Accroche" erreur={err("accueilTitre")}>
+              <input
+                name="accueilTitre"
+                defaultValue={val("accueilTitre", parametres.accueilTitre)}
+                placeholder={ACCUEIL_DEFAUT.titre}
+              />
+            </Champ>
+          </div>
+
+          <div className="full">
+            <Champ label="Texte de présentation" erreur={err("accueilTexte")}>
+              <textarea
+                name="accueilTexte"
+                rows={3}
+                defaultValue={val("accueilTexte", parametres.accueilTexte)}
+                placeholder={ACCUEIL_DEFAUT.texte}
+              />
+            </Champ>
+          </div>
+
+          <Champ label="Mention (corridor desservi)" erreur={err("accueilMention")}>
+            <input
+              name="accueilMention"
+              defaultValue={val("accueilMention", parametres.accueilMention)}
+              placeholder={ACCUEIL_DEFAUT.mention}
+            />
+          </Champ>
+
+          <Champ label="Sous-titre du formulaire" erreur={err("connexionSousTitre")}>
+            <input
+              name="connexionSousTitre"
+              defaultValue={val("connexionSousTitre", parametres.connexionSousTitre)}
+              placeholder={ACCUEIL_DEFAUT.sousTitre}
+            />
+          </Champ>
+
+          <div className="full">
+            <label className="case">
+              <input
+                type="checkbox"
+                name="accueilAfficherDemo"
+                value="true"
+                defaultChecked={
+                  etat.valeurs
+                    ? etat.valeurs.accueilAfficherDemo === "true"
+                    : parametres.accueilAfficherDemo
+                }
+              />
+              <span>Afficher les identifiants de démonstration sur la page de connexion</span>
+            </label>
+            <p className="aide-role">
+              À laisser décoché en exploitation réelle : cette page est accessible sans être
+              connecté, et y publier des identifiants valides revient à laisser la porte ouverte.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      <div className="flex justify-end">
+        <BoutonEnregistrer />
+      </div>
+    </form>
+  );
+}
+
+function Bascule({
+  nom,
+  actif,
+  defaut,
+  etat,
+  children,
+}: {
+  nom: string;
+  actif: boolean;
+  defaut: boolean;
+  etat: EtatParametres;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className={`flex cursor-pointer items-center gap-2 text-[12.5px] ${actif ? "" : "opacity-50"}`}>
+      <input
+        type="checkbox"
+        name={nom}
+        value="true"
+        defaultChecked={etat.valeurs ? etat.valeurs[nom] === "true" : defaut}
+        disabled={!actif}
+      />
+      {children}
+    </label>
+  );
+}
+
+function Section({
+  titre,
+  aide,
+  children,
+}: {
+  titre: string;
+  aide?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="card panel">
+      <h3>{titre}</h3>
+      {aide ? <p className="mb-3.5 text-[11.5px] leading-relaxed text-[var(--muted)]">{aide}</p> : null}
+      <div className="form-grid">{children}</div>
+    </div>
+  );
+}
+
+function Champ({
+  label,
+  erreur,
+  aide,
+  children,
+}: {
+  label: string;
+  erreur?: string;
+  aide?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="field">
+      <label>{label}</label>
+      {children}
+      {aide ? <span className="text-[11px] text-[var(--muted-2)]">{aide}</span> : null}
+      {erreur ? <span className="text-[11.5px] text-[var(--neg)]">{erreur}</span> : null}
+    </div>
+  );
+}
+
+function BoutonEnregistrer() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn primary" disabled={pending}>
+      {pending ? "Enregistrement…" : "Enregistrer les paramètres"}
+    </button>
+  );
+}
