@@ -1,6 +1,5 @@
 import { sessionRequise } from "@/auth";
 import { BoutonDeconnexion } from "@/components/chauffeur/bouton-deconnexion";
-import { MonMotDePasse } from "@/components/mon-mot-de-passe";
 import { EnregistrementServiceWorker } from "@/components/chauffeur/enregistrement-sw";
 import { EtatReseau } from "@/components/chauffeur/etat-reseau";
 import {
@@ -57,14 +56,7 @@ export default async function EspaceChauffeurPage() {
               demande au gérant de rattacher ta fiche.
             </p>
           </div>
-          {/* Le téléphone de bord passe de main en main : le chauffeur doit
-            pouvoir changer son mot de passe lui-même, sans attendre le gérant. */}
-        <div className="ph-card">
-          <div className="lab">Mon mot de passe</div>
-          <MonMotDePasse compact />
-        </div>
-
-        <BoutonDeconnexion />
+          <BoutonDeconnexion />
         </div>
       </div>
     );
@@ -302,13 +294,6 @@ export default async function EspaceChauffeurPage() {
             </p>
           </div>
         )}
-
-        {/* Le téléphone de bord passe de main en main : le chauffeur doit
-            pouvoir changer son mot de passe lui-même, sans attendre le gérant. */}
-        <div className="ph-card">
-          <div className="lab">Mon mot de passe</div>
-          <MonMotDePasse compact />
-        </div>
 
         <BoutonDeconnexion />
       </div>

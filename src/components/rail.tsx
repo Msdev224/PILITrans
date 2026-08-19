@@ -178,17 +178,6 @@ export function Rail({
           <br />
           Créances : <b>{formatMillions(resume.encours)} M GNF</b>
         </div>
-        {/* Accessible à tous : chacun gère son propre mot de passe sans
-            passer par le gérant. */}
-        <Link
-          href="/mon-compte"
-          className={`rail-compte${chemin.startsWith("/mon-compte") ? " on" : ""}`}
-          title="Mon compte"
-        >
-          <IconeChauffeur width={15} height={15} />
-          <span className="nav-libelle">Mon compte</span>
-        </Link>
-
         <form action={seDeconnecter}>
           <button type="submit" className="logout" title="Déconnexion">
             <IconeDeconnexion width={16} height={16} />

@@ -5,9 +5,9 @@ import { hacherMotDePasse, verifierMotDePasse } from "@/lib/mots-de-passe";
 /**
  * Mots de passe.
  *
- * Deux chemins existent : le gérant remplace celui d'un compte depuis
- * l'écran Comptes, et chacun change le sien depuis Mon compte. Les deux
- * s'appuient sur les fonctions vérifiées ici.
+ * Le gérant est seul à les changer, depuis l'écran Comptes. Ces tests
+ * verrouillent les fonctions sur lesquelles ce remplacement s'appuie : une
+ * régression y ouvrirait tous les comptes à la fois.
  */
 
 describe("empreinte", () => {
