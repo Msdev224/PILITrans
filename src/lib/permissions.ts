@@ -165,6 +165,8 @@ export function pageAccueil(role: Role): string {
  * masquage n'est pas une protection.
  */
 export function permissionDeRoute(chemin: string): Permission | null {
+  // `/mon-compte` n'apparaît pas ici : chacun accède au sien, quel que soit
+  // son rôle. Une permission l'en empêcherait sans raison.
   const table: [string, Permission][] = [
     ["/voyages", "voyages.lire"],
     ["/camions", "flotte.lire"],

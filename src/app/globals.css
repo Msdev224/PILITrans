@@ -2015,6 +2015,22 @@
     font-family: var(--police-mono), "IBM Plex Mono", monospace;
     flex: 0 0 auto;
   }
+  /* Lien « Mon compte », au pied du rail. */
+  .rail-compte {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 9px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    color: var(--rail-texte, #9fb4bb);
+  }
+  .rail-compte:hover,
+  .rail-compte.on {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+  }
+
   /* Taux observés, sous le champ de référence. */
   .taux-hist {
     margin-top: 10px;
