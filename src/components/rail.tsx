@@ -77,6 +77,7 @@ export function Rail({
         { libelle: "Voyages", href: "/voyages", icone: <IconeVoyages />, droit: "voyages.lire" },
         { libelle: "Dossiers", href: "/dossiers", icone: <IconeDossier />, droit: "flotte.lire" },
         { libelle: "Dépenses", href: "/depenses", icone: <IconeDepense />, droit: "depenses.lire" },
+        { libelle: "Caisse", href: "/caisse", icone: <IconeCle />, droit: "depenses.lire" },
       ],
     },
     {

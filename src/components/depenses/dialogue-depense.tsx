@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { formatDecimal, LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
+import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
 
 const TYPES_GASOIL = ["GASOIL_TRACTEUR", "GASOIL_GROUPE_FROID"];
 
@@ -34,6 +35,8 @@ export interface DepenseEditable {
   litres: number | null;
   releveCompteur: number | null;
   description: string | null;
+  moyen: string;
+  reference: string | null;
   date: string;
   voyageId: string | null;
   camionId: string | null;
@@ -197,6 +200,24 @@ export function DialogueDepense({
                     </option>
                   ))}
                 </select>
+              </Champ>
+
+              <Champ label="Moyen de paiement">
+                <select name="moyen" defaultValue={val("moyen", depense?.moyen ?? "ESPECES")}>
+                  {Object.keys(LIBELLE_MOYEN_PAIEMENT).map((m) => (
+                    <option key={m} value={m}>
+                      {LIBELLE_MOYEN_PAIEMENT[m]}
+                    </option>
+                  ))}
+                </select>
+              </Champ>
+
+              <Champ label="Référence" aide="N° de transfert, de reçu…">
+                <input
+                  name="reference"
+                  key={val("reference", depense?.reference ?? "")}
+                  defaultValue={val("reference", depense?.reference ?? "")}
+                />
               </Champ>
 
               <div className="full">

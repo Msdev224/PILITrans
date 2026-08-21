@@ -1,6 +1,6 @@
 "use server";
 
-import { Devise, TypeMouvement } from "@prisma/client";
+import { Devise, MoyenPaiement, TypeMouvement } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -51,6 +51,14 @@ const schemaMouvement = z
      * trésorerie, ni ce qu'il reste à justifier dessus.
      */
     voyageId: texteOptionnel,
+    moyen: z.nativeEnum(MoyenPaiement),
+    reference: texteOptionnel,
+    /**
+     * Commission prélevée par l'opérateur sur l'envoi.
+     * Comptée à part : elle n'est pas remise au chauffeur et ne lui sera
+     * jamais réclamée, mais elle sort bien de la caisse.
+     */
+    fraisGnf: nombreOptionnel,
     date: dateOptionnelle,
   })
   .refine((m) => m.devise === "GNF" || (m.montantGnf ?? 0) > 0, {
@@ -86,12 +94,16 @@ export async function enregistrerMouvementCaisse(
       montantGnf,
       motif: saisie.data.motif ?? null,
       voyageId: saisie.data.voyageId || null,
+      moyen: saisie.data.moyen,
+      reference: saisie.data.reference ?? null,
+      fraisGnf: saisie.data.fraisGnf ?? null,
       date: saisie.data.date ?? new Date(),
     },
   });
 
   revalidatePath("/chauffeurs");
   revalidatePath("/voyages");
+  revalidatePath("/caisse");
   revalidatePath("/chauffeur");
   revalidatePath("/alertes");
   revalidatePath("/");
@@ -118,6 +130,7 @@ export async function supprimerMouvementCaisse(id: string) {
   await prisma.mouvementCaisse.delete({ where: { id } });
   revalidatePath("/chauffeurs");
   revalidatePath("/voyages");
+  revalidatePath("/caisse");
   revalidatePath("/chauffeur");
   revalidatePath("/");
 }

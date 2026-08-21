@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { formatDecimal, formatNombre } from "@/lib/utils";
+import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
 
 /**
  * Mouvement de caisse. Jusqu'ici seules les dépenses du terrain existaient :
@@ -169,6 +170,33 @@ export function DialogueCaisse({
               <div className="field">
                 <label>Motif</label>
                 <input name="motif" placeholder="Avance mission Dakar…" />
+              </div>
+
+              <div className="field">
+                <label>Moyen</label>
+                <select name="moyen" defaultValue="ESPECES">
+                  {Object.keys(LIBELLE_MOYEN_PAIEMENT).map((m) => (
+                    <option key={m} value={m}>
+                      {LIBELLE_MOYEN_PAIEMENT[m]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label>Référence</label>
+                <input name="reference" placeholder="N° de transfert…" />
+              </div>
+
+              {/* Envoyer 2 000 000 par Orange Money n'en coûte pas 2 000 000 :
+                  la commission est un vrai coût, comptée à part de ce que le
+                  chauffeur devra justifier. */}
+              <div className="field">
+                <label>Frais d&apos;envoi (GNF)</label>
+                <input name="fraisGnf" inputMode="numeric" placeholder="0" />
+                <span className="text-[11px] text-[var(--muted-2)]">
+                  Commission de l&apos;opérateur. Sort de la caisse sans être remise au chauffeur.
+                </span>
               </div>
 
               {/* Rattacher l'avance à la mission qu'elle finance : sans cela,

@@ -1,6 +1,6 @@
 "use server";
 
-import { Devise, TypeDepense } from "@prisma/client";
+import { Devise, MoyenPaiement, TypeDepense } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -36,6 +36,9 @@ const schemaDepense = z
      * camion, et qu'elle n'y est comptée qu'une fois.
      */
     surCaisseChauffeurId: texteOptionnel,
+    /** Comment la dépense a été réglée : à retrouver dans un relevé. */
+    moyen: z.nativeEnum(MoyenPaiement),
+    reference: texteOptionnel,
   })
   .refine((d) => d.devise === "GNF" || (d.montantGnf ?? 0) > 0, {
     message: "Saisir l'équivalent en GNF du montant en CFA",
@@ -85,11 +88,14 @@ async function donneesDepense(saisie: z.infer<typeof schemaDepense>) {
     date: saisie.date,
     voyageId: saisie.voyageId || null,
     camionId,
+    moyen: saisie.moyen,
+    reference: saisie.reference || null,
   };
 }
 
 function rafraichir(camionId?: string | null, voyageId?: string | null) {
   revalidatePath("/depenses");
+  revalidatePath("/caisse");
   revalidatePath("/camions");
   revalidatePath("/voyages");
   revalidatePath("/");

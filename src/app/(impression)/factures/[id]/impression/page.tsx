@@ -10,6 +10,7 @@ import { formatDecimal, formatNombre, n, nOuNull } from "@/lib/utils";
 import { BoutonImprimer } from "./bouton-imprimer";
 import { vueLignes } from "@/lib/donnees/marchandises";
 import { formatQuantite } from "@/lib/donnees/unites";
+import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -291,6 +292,21 @@ export default async function ImpressionFacturePage({
                 ) : null}
                 <b>Référence à rappeler :</b> {facture.numero}
               </div>
+
+              {/* Règlements déjà reçus, avec leur moyen : le client doit
+                  pouvoir rapprocher la facture de ses propres relevés. */}
+              {facture.paiements && facture.paiements.length > 0 ? (
+                <div className="fac-reglements">
+                  <b>Règlements reçus</b>
+                  {facture.paiements.map((p) => (
+                    <div key={p.id} className="line">
+                      {jjmmaaaa(p.date)} — {formatNombre(n(p.montantGnf))} GNF ·{" "}
+                      {LIBELLE_MOYEN_PAIEMENT[p.moyen] ?? p.moyen}
+                      {p.reference ? ` · réf. ${p.reference}` : ""}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               <h4 className="fac-conditions">Conditions</h4>
               <div className="line">

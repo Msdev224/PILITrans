@@ -281,6 +281,8 @@ function aplatir(ligne: LigneDepense): DepenseEditable {
     litres: ligne.litres,
     releveCompteur: depense.releveCompteur,
     description: depense.description,
+    moyen: depense.moyen,
+    reference: depense.reference,
     date: depense.date.toISOString().slice(0, 10),
     voyageId: depense.voyageId,
     camionId: depense.camionId,

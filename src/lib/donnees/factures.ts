@@ -172,6 +172,8 @@ export async function vueFactures(
 /** Facture enrichie du camion : l'impression a besoin du groupe froid. */
 export type FactureImprimable = Facture & {
   client: Client;
+  /** Règlements reçus, repris sur le document avec leur moyen. */
+  paiements: Paiement[];
   voyage:
     | (Voyage & {
         camion: Camion;

@@ -41,6 +41,10 @@ export default async function ParametresPage() {
     delaiPaiementJours: parametres?.delaiPaiementJours ?? 14,
     conditionsPaiement: parametres?.conditionsPaiement ?? null,
     deviseBase: parametres?.deviseBase ?? "GNF",
+    soldeCaisseInitial: nOuNull(parametres?.soldeCaisseInitial) ?? null,
+    dateSoldeInitial: parametres?.dateSoldeInitial
+      ? parametres.dateSoldeInitial.toISOString().slice(0, 10)
+      : null,
     tauxReferenceXof: nOuNull(parametres?.tauxReferenceXof) ?? null,
     consigneFroidDefaut: nOuNull(parametres?.consigneFroidDefaut) ?? null,
     toleranceFroid: nOuNull(parametres?.toleranceFroid) ?? null,

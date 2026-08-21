@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
-import { caseACocher, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
+import { caseACocher, dateOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -39,6 +39,10 @@ const schemaParametres = z.object({
   tvaTaux: nombreOptionnel.pipe(z.number().max(100, "Taux impossible").optional()),
   delaiPaiementJours: nombreOptionnel.pipe(z.number().int().positive("Délai requis").optional()),
   conditionsPaiement: texteOptionnel,
+
+  // Caisse
+  soldeCaisseInitial: nombreOptionnel,
+  dateSoldeInitial: dateOptionnelle,
 
   // Devises
   deviseBase: z.nativeEnum(Devise),
@@ -103,6 +107,8 @@ export async function enregistrerParametres(
     tvaTaux: d.tvaTaux ?? 0,
     delaiPaiementJours: d.delaiPaiementJours ?? 14,
     conditionsPaiement: d.conditionsPaiement ?? null,
+    soldeCaisseInitial: d.soldeCaisseInitial ?? null,
+    dateSoldeInitial: d.dateSoldeInitial ?? null,
     deviseBase: d.deviseBase,
     tauxReferenceXof: d.tauxReferenceXof ?? null,
     accueilSurtitre: d.accueilSurtitre ?? null,
@@ -140,5 +146,6 @@ export async function enregistrerParametres(
   // La page de connexion affiche ces textes et n'est pas sous le layout du
   // cockpit : sans cette invalidation, elle garderait l'ancienne version.
   revalidatePath("/connexion");
+  revalidatePath("/caisse");
   return { ok: true };
 }

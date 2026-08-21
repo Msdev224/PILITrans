@@ -231,6 +231,14 @@ export const LIBELLE_TYPE_ETAPE: Record<string, string> = {
   CHARGEMENT: "Chargement",
 };
 
+export const LIBELLE_MOYEN_PAIEMENT: Record<string, string> = {
+  ESPECES: "Espèces",
+  ORANGE_MONEY: "Orange Money",
+  VIREMENT: "Virement bancaire",
+  CHEQUE: "Chèque",
+  AUTRE: "Autre",
+};
+
 export const LIBELLE_PAYS: Record<string, string> = {
   GUINEE: "Guinée",
   SENEGAL: "Sénégal",

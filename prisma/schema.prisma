@@ -390,6 +390,11 @@ model Depense {
   litres         Decimal?    @db.Decimal(8, 2) // litres ajoutés lors d'un plein (ravitaillement)
   releveCompteur Int?        // km (tracteur) ou heures (groupe froid) au plein — pour la conso
   description String?
+  /// Comment la dépense a été réglée : espèces, Orange Money, virement…
+  /// Sert à retrouver l'opération dans un relevé et à la justifier.
+  moyen       MoyenPaiement @default(ESPECES)
+  /// Référence du transfert, identifiant Orange Money, n° de reçu.
+  reference   String?
   date        DateTime    @default(now())
 
   voyage      Voyage? @relation(fields: [voyageId], references: [id])
@@ -491,6 +496,19 @@ model MouvementCaisse {
   devise      Devise        @default(GNF)
   montantGnf  Decimal       @default(0) @db.Decimal(16, 2) // équivalent GNF figé
   motif       String?
+  /// Comment l'argent a circulé : espèces de la main à la main, Orange Money,
+  /// virement… Nécessaire pour retrouver une opération et la justifier.
+  moyen       MoyenPaiement @default(ESPECES)
+  /// Référence du transfert, identifiant Orange Money, n° de chèque.
+  reference   String?
+  /**
+   * Frais prélevés par l'opérateur sur l'envoi.
+   *
+   * Envoyer 2 000 000 par Orange Money n'en coûte pas 2 000 000 : la
+   * commission est un vrai coût d'exploitation. Comptée à part, elle ne se
+   * confond pas avec l'argent remis au chauffeur, qui devra le justifier.
+   */
+  fraisGnf    Decimal?      @db.Decimal(14, 2)
   date        DateTime      @default(now())
 
   depense     Depense? @relation(fields: [depenseId], references: [id])
@@ -768,6 +786,17 @@ model Parametres {
   smsClientRelance        Boolean  @default(false)
   /// Privilégier WhatsApp quand le destinataire y est joignable.
   whatsappActif           Boolean  @default(false)
+
+  // --- Caisse de l'entreprise ---
+  /**
+   * Argent déjà détenu au démarrage de l'application.
+   *
+   * Sans lui, la trésorerie partirait de zéro et afficherait un solde négatif
+   * dès la première dépense, alors que l'exploitation tournait avant.
+   */
+  soldeCaisseInitial Decimal?  @db.Decimal(16, 2)
+  /// Date à laquelle ce solde a été constaté.
+  dateSoldeInitial   DateTime?
 
   // --- Écran d'accueil / connexion ---
   /// Tous les textes de la page de connexion sont éditables ici : ils portent

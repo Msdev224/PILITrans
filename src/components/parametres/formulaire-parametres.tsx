@@ -23,6 +23,8 @@ export interface ParametresEditables {
   delaiPaiementJours: number;
   conditionsPaiement: string | null;
   deviseBase: string;
+  soldeCaisseInitial: number | null;
+  dateSoldeInitial: string | null;
   tauxReferenceXof: number | null;
   consigneFroidDefaut: number | null;
   toleranceFroid: number | null;
@@ -139,6 +141,26 @@ export function FormulaireParametres({
             <input name="conditionsPaiement" defaultValue={val("conditionsPaiement", parametres.conditionsPaiement)} />
           </Champ>
         </div>
+      </Section>
+
+      <Section
+        titre="Caisse"
+        aide="Argent déjà détenu au démarrage. Sans lui, la trésorerie partirait de zéro et afficherait un solde négatif dès la première dépense."
+      >
+        <Champ label="Solde d'ouverture (GNF)" erreur={err("soldeCaisseInitial")}>
+          <input
+            name="soldeCaisseInitial"
+            inputMode="numeric"
+            defaultValue={val("soldeCaisseInitial", parametres.soldeCaisseInitial)}
+          />
+        </Champ>
+        <Champ label="Constaté le" erreur={err("dateSoldeInitial")}>
+          <input
+            type="date"
+            name="dateSoldeInitial"
+            defaultValue={val("dateSoldeInitial", parametres.dateSoldeInitial)}
+          />
+        </Champ>
       </Section>
 
       <Section
