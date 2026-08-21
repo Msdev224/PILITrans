@@ -7,6 +7,7 @@ import { z } from "zod";
 import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
+import { numeroLibre } from "@/lib/donnees/facturation-auto";
 import { notifierFacture, notifierRelance } from "@/lib/sms/declencheurs";
 import {
   caseACocher,
@@ -54,20 +55,7 @@ export interface EtatFacture {
  * Numéro de facture : préfixe des Paramètres + année + rang.
  * Exemple : « FAC-2026-042 ».
  */
-async function numeroLibre(prefixe: string, annee: number) {
-  const debut = `${prefixe}-${annee}`;
-  const existantes = await prisma.facture.findMany({
-    where: { numero: { startsWith: debut } },
-    select: { numero: true },
-  });
 
-  const rangs = existantes
-    .map((f) => Number.parseInt(f.numero.split("-")[2] ?? "", 10))
-    .filter((r) => Number.isFinite(r));
-  const rang = (rangs.length ? Math.max(...rangs) : 0) + 1;
-
-  return `${debut}-${String(rang).padStart(3, "0")}`;
-}
 
 /**
  * Statut déduit de l'encaissement et de l'échéance — jamais saisi à la main :

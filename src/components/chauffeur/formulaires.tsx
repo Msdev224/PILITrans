@@ -237,11 +237,10 @@ export function FormulaireCodeLivraison({
   }, [etat.ok]);
 
   if (confirme) {
-    return (
-      <p className="ph-ok">
-        ✓ {designation} — livraison confirmée par le client.
-      </p>
-    );
+    // Le retour de l'action prime : il annonce la facture quand la livraison
+    // du voyage vient d'être complétée. Sans cela, le message se perdait dès
+    // que la page se rafraîchissait.
+    return <p className="ph-ok">✓ {etat.message ?? "Livraison confirmée par le client."}</p>;
   }
 
   if (!codeEnvoye) {

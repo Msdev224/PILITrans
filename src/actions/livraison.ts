@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { sessionRequise } from "@/auth";
+import { facturerSiLivre } from "@/lib/donnees/facturation-auto";
 import { TENTATIVES_MAX_CODE } from "@/lib/donnees/marchandises";
 import { peut } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -187,8 +188,18 @@ export async function confirmerParCode(
     data: { codeConfirmeLe: new Date() },
   });
 
+  // La facture part à la livraison, pas à la création du voyage : c'est ici
+  // qu'on sait enfin ce qui a réellement été remis. `facturerSiLivre` ne fait
+  // rien tant qu'une marchandise du voyage reste non confirmée.
+  const facturation = await facturerSiLivre(ligne.voyage.id);
+
   rafraichir(ligne.voyage.id);
-  return { ok: true, message: "Livraison confirmée par le client." };
+  return {
+    ok: true,
+    message: facturation.fait
+      ? `Livraison confirmée. Facture ${facturation.numero} émise et envoyée au client.`
+      : "Livraison confirmée par le client.",
+  };
 }
 
 /**
