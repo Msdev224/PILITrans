@@ -22,15 +22,19 @@ import { n } from "@/lib/utils";
  * par correspondance de nom pour récupérer son téléphone. Sans fiche client
  * ou sans numéro, aucun SMS n'est produit — il n'y a personne à prévenir.
  */
-async function clientDuVoyage(nomClient: string | null) {
-  if (!nomClient?.trim()) return null;
-
-  const clients = await prisma.client.findMany({
+/**
+ * Client destinataire des notifications d'une mission.
+ *
+ * Recherche par identifiant : le rapprochement par nom qu'il fallait faire
+ * avant échouait dès qu'une orthographe différait, et le client n'était alors
+ * jamais prévenu — sans que rien ne le signale.
+ */
+async function clientDuVoyage(clientId: string | null) {
+  if (!clientId) return null;
+  return prisma.client.findUnique({
+    where: { id: clientId },
     select: { id: true, nom: true, telephone: true, whatsapp: true, whatsappNumero: true },
   });
-  return (
-    clients.find((c) => c.nom.trim().toLowerCase() === nomClient.trim().toLowerCase()) ?? null
-  );
 }
 
 /** Étape du transport → événement SMS. Les autres états ne notifient pas. */
@@ -53,7 +57,7 @@ export async function notifierEtapeVoyage(voyageId: string, statut: StatutVoyage
   ]);
   if (!voyage) return;
 
-  const client = await clientDuVoyage(voyage.client);
+  const client = await clientDuVoyage(voyage.clientId);
   if (!client?.telephone) return;
 
   const trajet = `${voyage.villeDepart} → ${voyage.villeArrivee}`;

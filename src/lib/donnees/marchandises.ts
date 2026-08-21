@@ -26,7 +26,9 @@ export interface PrelevementLigne {
 export interface LigneVue {
   id: string;
   designation: string;
+  /** Nom du destinataire, quand il diffère du client principal du voyage. */
   client: string | null;
+  clientId: string | null;
   uniteId: string;
   unite: string;
   symbole: string;
@@ -56,7 +58,8 @@ type Decimalish = { toString(): string } | number | string | null;
 interface LigneBrute {
   id: string;
   designation: string;
-  client: string | null;
+  client: { nom: string } | null;
+  clientId: string | null;
   uniteId: string;
   ordre: number;
   quantiteACharger: Decimalish;
@@ -97,7 +100,8 @@ export function vueLignes(lignes: LigneBrute[]): LigneVue[] {
       return {
         id: l.id,
         designation: l.designation,
-        client: l.client,
+        client: l.client?.nom ?? null,
+        clientId: l.clientId,
         uniteId: l.uniteId,
         unite: l.unite.nom,
         symbole: l.unite.symbole,
@@ -123,6 +127,7 @@ export const INCLURE_LIGNES = {
   orderBy: { ordre: "asc" },
   include: {
     unite: { select: { nom: true, symbole: true, facteurTonne: true } },
+    client: { select: { nom: true } },
     prelevements: { orderBy: { date: "asc" } },
   },
 } as const;

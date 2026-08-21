@@ -9,7 +9,7 @@ import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { notifierAffectationChauffeur, notifierEtapeVoyage } from "@/lib/sms/declencheurs";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
-import { caseACocher, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
+import { caseACocher, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -29,7 +29,10 @@ const schemaVoyage = z
     villeDepart: z.string().trim().min(1, "Ville de départ requise"),
     paysArrivee: z.nativeEnum(Pays),
     villeArrivee: z.string().trim().min(1, "Ville d'arrivée requise"),
-    client: z.string().trim().optional(),
+    /** Client de la mission, choisi dans la liste — plus de saisie libre. */
+    clientId: texteOptionnel,
+    /** Trajet à vide destiné à aller chercher la marchandise du client. */
+    vaChercher: caseACocher,
     distanceKm: nombreOptionnel,
     dateDepart: z.coerce.date({ message: "Date de départ invalide" }),
     aVide: caseACocher,
@@ -47,9 +50,9 @@ const schemaVoyage = z
     message: "Saisir l'équivalent en GNF de la recette en CFA",
     path: ["recetteGnf"],
   })
-  .refine((v) => v.aVide || !!v.client, {
+  .refine((v) => v.aVide || !!v.clientId, {
     message: "Client requis (sauf pour un trajet à vide)",
-    path: ["client"],
+    path: ["clientId"],
   });
 
 export interface EtatFormulaire {
@@ -111,7 +114,9 @@ function donneesVoyage(saisie: z.infer<typeof schemaVoyage>) {
     villeDepart: saisie.villeDepart,
     paysArrivee: saisie.paysArrivee,
     villeArrivee: saisie.villeArrivee,
-    client: saisie.client || null,
+    clientId: saisie.clientId || null,
+    // Un repositionnement à vide n'a pas de marchandise à aller chercher.
+    vaChercher: saisie.aVide ? saisie.vaChercher : false,
     distanceKm: saisie.distanceKm != null ? Math.round(saisie.distanceKm) : null,
     dateDepart: saisie.dateDepart,
     aVide: saisie.aVide,
@@ -136,7 +141,7 @@ interface SaisieLigne {
   designation: string;
   uniteId: string;
   quantiteACharger: number | null;
-  client: string | null;
+  clientId: string | null;
 }
 
 function lignesDepuisFormulaire(donnees: FormData): SaisieLigne[] {
@@ -144,7 +149,7 @@ function lignesDepuisFormulaire(donnees: FormData): SaisieLigne[] {
   const designations = donnees.getAll("ligneDesignation").map(String);
   const unites = donnees.getAll("ligneUniteId").map(String);
   const quantites = donnees.getAll("ligneQuantite").map(String);
-  const clients = donnees.getAll("ligneClient").map(String);
+  const clients = donnees.getAll("ligneClientId").map(String);
 
   return designations
     .map((designation, i) => {
@@ -155,7 +160,7 @@ function lignesDepuisFormulaire(donnees: FormData): SaisieLigne[] {
         designation: designation.trim(),
         uniteId: unites[i] ?? "",
         quantiteACharger: quantite !== null && Number.isFinite(quantite) ? quantite : null,
-        client: (clients[i] ?? "").trim() || null,
+        clientId: (clients[i] ?? "").trim() || null,
       };
     })
     // Une ligne sans désignation ni unité est une saisie abandonnée.
@@ -186,7 +191,7 @@ async function synchroniserLignes(voyageId: string, lignes: SaisieLigne[]) {
       designation: l.designation,
       uniteId: l.uniteId,
       quantiteACharger: l.quantiteACharger,
-      client: l.client,
+      clientId: l.clientId,
       ordre: (i + 1) * 10,
     };
     if (l.id && conservees.has(l.id)) {

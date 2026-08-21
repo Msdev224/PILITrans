@@ -21,18 +21,17 @@ export async function vueClients(aujourdhui: Date = new Date()): Promise<LigneCl
     orderBy: { nom: "asc" },
   });
 
-  // Le voyage porte le nom du client en texte libre (champ dénormalisé du
-  // schéma) : on compte donc par correspondance de nom.
-  const voyages = await prisma.voyage.findMany({
-    where: { statut: { not: "ANNULE" }, client: { not: null } },
-    select: { client: true },
+  // Le voyage référence désormais le client : on compte par identifiant.
+  // Le rapprochement par nom qu'il fallait faire avant ratait dès qu'une
+  // orthographe différait d'un caractère.
+  const voyages = await prisma.voyage.groupBy({
+    by: ["clientId"],
+    where: { statut: { not: "ANNULE" }, clientId: { not: null } },
+    _count: { _all: true },
   });
 
-  const parNom = new Map<string, number>();
-  for (const v of voyages) {
-    const cle = (v.client ?? "").trim().toLowerCase();
-    parNom.set(cle, (parNom.get(cle) ?? 0) + 1);
-  }
+  const parId = new Map<string, number>();
+  for (const v of voyages) if (v.clientId) parId.set(v.clientId, v._count._all);
 
   return clients.map((client) => {
     const situation = creances(

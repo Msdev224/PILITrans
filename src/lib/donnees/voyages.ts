@@ -79,6 +79,7 @@ export function estFiltreVoyage(valeur: string | undefined): valeur is FiltreVoy
 export type VoyageComplet = Voyage & {
   camion: Camion;
   chauffeur: Chauffeur;
+  client: { id: string; nom: string } | null;
   factures: Facture[];
   lignes: Parameters<typeof vueLignes>[0];
 };
@@ -155,7 +156,7 @@ function appliquerRecherche(lignes: LigneVoyage[], recherche: string): LigneVoya
     [
       l.voyage.villeDepart,
       l.voyage.villeArrivee,
-      l.voyage.client,
+      l.voyage.client?.nom,
       l.chargement,
       l.voyage.reference,
       l.voyage.camion.nom,
@@ -187,7 +188,13 @@ export async function vueVoyages(
   const [voyages, depenses] = await Promise.all([
     prisma.voyage.findMany({
       where: { statut: { not: "ANNULE" } },
-      include: { camion: true, chauffeur: true, factures: true, lignes: INCLURE_LIGNES },
+      include: {
+        camion: true,
+        chauffeur: true,
+        client: { select: { id: true, nom: true } },
+        factures: true,
+        lignes: INCLURE_LIGNES,
+      },
       orderBy: { dateDepart: "desc" },
     }),
     prisma.depense.findMany({ where: { voyageId: { not: null } } }),
@@ -302,7 +309,13 @@ function construireTroncon(etape: EtapeVoyage & { ravitaillements: Depense[] }):
 export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Promise<FicheVoyage | null> {
   const voyage = await prisma.voyage.findUnique({
     where: { id },
-    include: { camion: true, chauffeur: true, factures: true, lignes: INCLURE_LIGNES },
+    include: {
+        camion: true,
+        chauffeur: true,
+        client: { select: { id: true, nom: true } },
+        factures: true,
+        lignes: INCLURE_LIGNES,
+      },
   });
   if (!voyage) return null;
 

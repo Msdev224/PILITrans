@@ -181,6 +181,12 @@ model Chauffeur {
   numeroPermis    String?
   categoriePermis String?   @default("CE")
   permisExpire    DateTime?
+  /// Photo d'identité, stockée en data URI (image redimensionnée à la saisie).
+  ///
+  /// Conservée en base plutôt que sur disque : le système de fichiers de
+  /// Vercel est en lecture seule, et un stockage objet serait une dépendance
+  /// de plus pour quelques dizaines de kilo-octets par chauffeur.
+  photo           String?
   modeRemuneration ModeRemuneration @default(FORFAIT_VOYAGE)
   tauxRemuneration Decimal?         @db.Decimal(12, 2) // montant/voyage, %/recette ou montant/km selon le mode
   actif           Boolean   @default(true)
@@ -238,6 +244,13 @@ model Unite {
 /// unité et son propre suivi chargé → reçu → livré : c'est la seule façon de
 /// situer un manquant sur la bonne marchandise plutôt que sur un total qui ne
 /// veut rien dire quand les unités diffèrent.
+/// Statut de la livraison d'une marchandise, tel qu'il apparaît sur la facture.
+enum StatutLivraison {
+  EN_ATTENTE   // pas encore livrée
+  CONFORME     // livrée, quantité conforme après déduction des prélèvements
+  NON_CONFORME // livrée, mais avec un manquant inexpliqué
+}
+
 model LigneMarchandise {
   id          String @id @default(cuid())
   voyage      Voyage @relation(fields: [voyageId], references: [id], onDelete: Cascade)
@@ -250,9 +263,29 @@ model LigneMarchandise {
   quantiteRecue    Decimal? @db.Decimal(14, 3) // constatée par le chauffeur au chargement
   quantiteLivree   Decimal? @db.Decimal(14, 3) // remise à destination
 
-  /// Destinataire, lorsqu'un voyage groupe les marchandises de plusieurs clients.
-  client      String?
+  /// Destinataire, lorsqu'un voyage groupe les marchandises de plusieurs
+  /// clients. Vide = le client principal du voyage.
+  client      Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId    String?
   ordre       Int    @default(0)
+
+  /*
+   * --- Preuve de livraison ---
+   *
+   * Le client reçoit un code par SMS ou WhatsApp, le communique au chauffeur
+   * à la remise, et le chauffeur le saisit. C'est ce qui atteste que la
+   * marchandise a bien été remise à son destinataire : une quantité saisie
+   * par le seul chauffeur ne prouve rien en cas de contestation.
+   */
+  /// Code attendu. Généré à l'expédition, jamais montré au chauffeur.
+  codeLivraison       String?
+  /// Nombre d'envois du code — le client peut en redemander un.
+  codeEnvois          Int      @default(0)
+  codeEnvoyeLe        DateTime?
+  /// Horodatage de la saisie correcte par le chauffeur.
+  codeConfirmeLe      DateTime?
+  /// Tentatives ratées, pour repérer une saisie au hasard.
+  codeTentatives      Int      @default(0)
 
   prelevements PrelevementDouane[]
   reclamations Reclamation[]
@@ -275,9 +308,13 @@ model Voyage {
   paysArrivee  Pays      @default(GUINEE)
   villeArrivee String
   // international = (paysDepart != paysArrivee) — calculé côté app
-  /// Client principal. Le détail par marchandise vit dans `lignes`, qui peut
-  /// désigner d'autres destinataires sur un même trajet.
-  client       String?
+  /// Client principal de la mission.
+  ///
+  /// Vraie liaison et non plus du texte libre : sans elle, impossible de
+  /// partir d'un client pour voir ses missions, ni de lui préparer une facture
+  /// depuis sa fiche. Deux orthographes du même nom créaient deux clients.
+  client       Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId     String?
   /// Bennes : une mission couvre une journée de rotations sur le même trajet.
   /// `distanceKm` et les quantités valent alors POUR UNE rotation ; les totaux
   /// se multiplient par `nbRotations`. Vaut 1 pour un transport classique.
@@ -285,7 +322,16 @@ model Voyage {
   /// Si renseigné, la recette vaut tarifRotation × nbRotations.
   tarifRotation          Decimal? @db.Decimal(14, 2)
 
-  aVide        Boolean      @default(false) // départ sans chargement (repositionnement)
+  /// Départ sans chargement.
+  ///
+  /// Deux cas distincts : un simple repositionnement du camion, ou l'aller
+  /// d'une mission — on part à vide CHERCHER la marchandise d'un client.
+  /// Dans le second cas le voyage porte quand même son client : la course
+  /// lui est imputable même si rien n'est chargé au départ.
+  aVide        Boolean      @default(false)
+  /// Vrai quand le trajet à vide sert à aller chercher la marchandise du
+  /// client ci-dessus. Distingue la course utile du repositionnement.
+  vaChercher   Boolean      @default(false)
   distanceKm   Int?
 
   dateDepart   DateTime
@@ -316,6 +362,8 @@ model Voyage {
   notifications NotificationSms[]
   prelevements  PrelevementDouane[]
   lignes        LigneMarchandise[]
+  /// Avances de caisse remises pour cette mission.
+  avances       MouvementCaisse[]
 }
 
 // ------------------------------------------------------------
@@ -447,6 +495,16 @@ model MouvementCaisse {
 
   depense     Depense? @relation(fields: [depenseId], references: [id])
   depenseId   String?  @unique
+
+  /// Mission que cette avance finance.
+  ///
+  /// Sans ce rattachement, l'argent remis pour un Conakry–Dakar se confond
+  /// avec celui d'une autre course : impossible de dire ce qu'un voyage a
+  /// réellement coûté en trésorerie, ni ce qu'il reste à justifier dessus.
+  voyage      Voyage?  @relation(fields: [voyageId], references: [id], onDelete: SetNull)
+  voyageId    String?
+
+  @@index([voyageId])
 }
 
 // ------------------------------------------------------------
@@ -467,9 +525,20 @@ model Echeance {
   camion         Camion       @relation(fields: [camionId], references: [id])
   camionId       String
   type           TypeEcheance
+  /// Numéro de police d'assurance, de carte brune, de vignette…
+  /// Ce qu'on doit pouvoir citer au poste-frontière sans sortir le papier.
+  numero         String?
+  /// Compagnie d'assurance ou organisme émetteur.
+  organisme      String?
+  /// Date de prise d'effet, quand elle est connue.
+  dateDebut      DateTime?
   dateExpiration DateTime
+  /// Coût du document, pour qu'il pèse sur la rentabilité du camion.
+  montantGnf     Decimal?     @db.Decimal(16, 2)
   rappelJours    Int          @default(30) // alerte X jours avant
   createdAt      DateTime     @default(now())
+
+  @@index([camionId])
 }
 
 
@@ -589,6 +658,8 @@ model Client {
   nif       String?   // pour la facturation
   createdAt DateTime  @default(now())
 
+  voyages      Voyage[]
+  lignes       LigneMarchandise[]
   factures     Facture[]
   reclamations Reclamation[]
   notifications NotificationSms[]
