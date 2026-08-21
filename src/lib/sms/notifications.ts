@@ -21,6 +21,9 @@ const INTERRUPTEUR: Record<EvenementSms, keyof Parametres | null> = {
   CLIENT_LIVRAISON: "smsClientLivraison",
   CLIENT_FACTURE: "smsClientFacture",
   CLIENT_RELANCE: "smsClientRelance",
+  // Le code de retrait n'a pas d'interrupteur : c'est le client qui le
+  // réclame, et le refuser bloquerait la livraison.
+  CLIENT_CODE_LIVRAISON: null,
   AUTRE: null,
 };
 
@@ -168,6 +171,20 @@ export function messageLivraison(
 ): string {
   const quantite = quantiteLivree ? ` ${quantiteLivree}` : "";
   return `${enseigne(parametres)} : livraison effectuée à ${ville}${quantite}. Merci de votre confiance.`;
+}
+
+/**
+ * Code de retrait envoyé au client.
+ *
+ * Volontairement sec : ce message circule sur un téléphone qui peut être lu
+ * par d'autres. Il ne dit ni le montant ni la valeur de la marchandise.
+ */
+export function messageCodeLivraison(
+  parametres: Parametres | null,
+  code: string,
+  marchandise: string,
+): string {
+  return `${enseigne(parametres)} : code de retrait pour ${marchandise} — ${code}. À communiquer au chauffeur au moment de la remise, à personne d'autre.`;
 }
 
 export function messageFacture(

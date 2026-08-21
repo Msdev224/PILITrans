@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { LIBELLE_MODE_REMUNERATION } from "@/lib/utils";
 import { ChampTelephone } from "@/components/champ-telephone";
+import { ChampPhoto } from "@/components/equipe/champ-photo";
 
 /** Unité du taux, selon le mode — un pourcentage et un forfait ne se saisissent pas pareil. */
 const UNITE_TAUX: Record<string, string> = {
@@ -27,6 +28,7 @@ export interface ChauffeurEditable {
   id: string;
   nom: string;
   telephone: string | null;
+  photo: string | null;
   numeroPermis: string | null;
   categoriePermis: string | null;
   permisExpire: string | null;
@@ -80,6 +82,15 @@ export function DialogueChauffeur({
               <div className="full">
                 <Champ label="Nom complet" erreur={err("nom")}>
                   <input name="nom" required defaultValue={val("nom", chauffeur?.nom ?? "")} />
+                </Champ>
+              </div>
+
+              <div className="full">
+                <Champ
+                  label="Photo"
+                  aide="Facultative. Réduite automatiquement avant enregistrement."
+                >
+                  <ChampPhoto nom="photo" valeur={chauffeur?.photo ?? null} />
                 </Champ>
               </div>
 

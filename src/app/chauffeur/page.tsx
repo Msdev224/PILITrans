@@ -8,6 +8,7 @@ import {
   FormulaireArret,
   FormulaireDepense,
   FormulairePrelevement,
+  FormulaireCodeLivraison,
   FormulaireQuantite,
   FormulaireReleve,
 } from "@/components/chauffeur/formulaires";
@@ -232,6 +233,17 @@ export default async function EspaceChauffeurPage() {
                   valeurInitiale={m.quantiteLivree}
                   prevu={null}
                   recue={m.quantiteRecue}
+                />
+
+                <div className="ph-separateur" />
+
+                {/* La quantité seule ne prouve pas la remise : c'est le code
+                    dicté par le client qui l'atteste. */}
+                <FormulaireCodeLivraison
+                  ligneId={m.id}
+                  designation="Code remis par le client"
+                  confirme={m.codeConfirme}
+                  codeEnvoye={m.codeEnvoye}
                 />
               </div>
             ))}

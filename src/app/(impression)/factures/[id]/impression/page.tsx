@@ -234,12 +234,31 @@ export default async function ImpressionFacturePage({
                   <td>
                     <span className="it-puce">↳</span> {m.designation}
                     {m.client ? <span className="it-sub"> — {m.client}</span> : null}
+                    {/* Une retenue de douane explique un manquant : sans elle
+                        écrite sur la facture, le client la prendrait pour une
+                        livraison incomplète. */}
+                    {m.prelevementQuantite > 0 ? (
+                      <div className="it-sub">
+                        dont {formatQuantite(m.prelevementQuantite, m.symbole)} prélevés en douane
+                      </div>
+                    ) : null}
                   </td>
-                  <td className="r" colSpan={3}>
+                  <td className="r">
                     {formatQuantite(m.quantiteLivree ?? m.quantiteACharger, m.symbole)}
                     {m.quantiteLivree == null && m.quantiteACharger != null ? (
                       <span className="it-sub"> (prévu)</span>
                     ) : null}
+                  </td>
+                  <td className="r" colSpan={2}>
+                    {m.statutLivraison === "CONFORME" ? (
+                      <span className="fac-livre">Livrée · conforme</span>
+                    ) : m.statutLivraison === "NON_CONFORME" ? (
+                      <span className="fac-ecart">
+                        Livrée · écart de {formatQuantite(m.ecart?.manquant ?? 0, m.symbole)}
+                      </span>
+                    ) : (
+                      <span className="it-sub">Livraison non confirmée</span>
+                    )}
                   </td>
                 </tr>
               ))}

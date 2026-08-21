@@ -46,6 +46,19 @@ export interface LigneVue {
    * chargement ou la livraison n'a pas été constaté.
    */
   ecart: { manquant: number; pct: number } | null;
+
+  /** Preuve de livraison : où en est le code remis au client. */
+  codeEnvoye: boolean;
+  codeConfirme: boolean;
+  codeEnvois: number;
+  /** Trop d'essais ratés : la saisie est bloquée jusqu'à un code neuf. */
+  codeBloque: boolean;
+  /**
+   * Statut porté sur la facture. Une marchandise n'est « livrée » qu'une fois
+   * le code confirmé ; conforme si aucun manquant ne subsiste après déduction
+   * des prélèvements de douane.
+   */
+  statutLivraison: "EN_ATTENTE" | "CONFORME" | "NON_CONFORME";
 }
 
 /**
@@ -65,6 +78,10 @@ interface LigneBrute {
   quantiteACharger: Decimalish;
   quantiteRecue: Decimalish;
   quantiteLivree: Decimalish;
+  codeLivraison?: string | null;
+  codeConfirmeLe?: Date | null;
+  codeEnvois?: number;
+  codeTentatives?: number;
   unite: { nom: string; symbole: string; facteurTonne: Decimalish };
   prelevements?: {
     id: string;
@@ -77,6 +94,15 @@ interface LigneBrute {
     date: Date;
   }[];
 }
+
+/**
+ * Essais autorisés sur un code de livraison avant blocage.
+ *
+ * Déclaré ici et importé par l'action : deux constantes pour une même règle
+ * finissent toujours par diverger, et l'écart se verrait comme un bouton
+ * proposé alors que la saisie est déjà refusée.
+ */
+export const TENTATIVES_MAX_CODE = 8;
 
 export function vueLignes(lignes: LigneBrute[]): LigneVue[] {
   return [...lignes]
@@ -97,6 +123,12 @@ export function vueLignes(lignes: LigneBrute[]): LigneVue[] {
       const recue = nOuNull(l.quantiteRecue);
       const livree = nOuNull(l.quantiteLivree);
 
+      const ecart =
+        recue !== undefined && livree !== undefined
+          ? ecartLivraison(Math.max(recue - prelevementQuantite, 0), livree)
+          : null;
+      const codeConfirme = !!l.codeConfirmeLe;
+
       return {
         id: l.id,
         designation: l.designation,
@@ -114,10 +146,18 @@ export function vueLignes(lignes: LigneBrute[]): LigneVue[] {
         prelevementGnf: prelevements.reduce((t, p) => t + (p.montantGnf ?? 0), 0),
         // La base de comparaison est ce qui a été chargé MOINS ce que la douane
         // a retenu : seul le reliquat est réellement manquant.
-        ecart:
-          recue !== undefined && livree !== undefined
-            ? ecartLivraison(Math.max(recue - prelevementQuantite, 0), livree)
-            : null,
+        ecart,
+        codeEnvoye: !!l.codeLivraison,
+        codeConfirme,
+        codeEnvois: l.codeEnvois ?? 0,
+        codeBloque: (l.codeTentatives ?? 0) >= TENTATIVES_MAX_CODE,
+        // Tant que le client n'a pas confirmé par son code, la livraison reste
+        // en attente — même si le chauffeur a saisi une quantité.
+        statutLivraison: !codeConfirme
+          ? "EN_ATTENTE"
+          : ecart && ecart.manquant > 0
+            ? "NON_CONFORME"
+            : "CONFORME",
       };
     });
 }

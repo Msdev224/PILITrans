@@ -43,6 +43,14 @@ const schemaMouvement = z
     devise: z.nativeEnum(Devise),
     montantGnf: nombreOptionnel,
     motif: texteOptionnel,
+    /**
+     * Mission financée par cette avance.
+     *
+     * Sans elle, l'argent remis pour un Conakry–Dakar se confond avec celui
+     * d'une autre course : impossible de dire ce qu'un voyage a coûté en
+     * trésorerie, ni ce qu'il reste à justifier dessus.
+     */
+    voyageId: texteOptionnel,
     date: dateOptionnelle,
   })
   .refine((m) => m.devise === "GNF" || (m.montantGnf ?? 0) > 0, {
@@ -77,11 +85,13 @@ export async function enregistrerMouvementCaisse(
       devise: saisie.data.devise,
       montantGnf,
       motif: saisie.data.motif ?? null,
+      voyageId: saisie.data.voyageId || null,
       date: saisie.data.date ?? new Date(),
     },
   });
 
   revalidatePath("/chauffeurs");
+  revalidatePath("/voyages");
   revalidatePath("/chauffeur");
   revalidatePath("/alertes");
   revalidatePath("/");
@@ -107,6 +117,7 @@ export async function supprimerMouvementCaisse(id: string) {
 
   await prisma.mouvementCaisse.delete({ where: { id } });
   revalidatePath("/chauffeurs");
+  revalidatePath("/voyages");
   revalidatePath("/chauffeur");
   revalidatePath("/");
 }

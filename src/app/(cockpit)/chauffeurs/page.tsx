@@ -185,6 +185,7 @@ function LigneTableau({
             soldeGnf={ligne.soldeGnf}
             soldeXof={ligne.soldeXof}
             tauxReferenceXof={tauxReferenceXof}
+            missions={ligne.missionsEnCours}
             declencheur={
               <button type="button" title="Mouvement de caisse (avance, remboursement)">
                 <IconeDepense />
@@ -204,6 +205,7 @@ function aplatir(ligne: LigneChauffeur): ChauffeurEditable {
     id: chauffeur.id,
     nom: chauffeur.nom,
     telephone: chauffeur.telephone,
+    photo: chauffeur.photo,
     numeroPermis: chauffeur.numeroPermis,
     categoriePermis: chauffeur.categoriePermis,
     permisExpire: chauffeur.permisExpire ? chauffeur.permisExpire.toISOString().slice(0, 10) : null,

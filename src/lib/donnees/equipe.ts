@@ -30,6 +30,8 @@ export interface LigneChauffeur {
   remunerationMoisGnf: number;
   /** Historique de caisse, du plus récent au plus ancien. */
   mouvements: MouvementVue[];
+  /** Missions non terminées : celles qu'une avance peut financer. */
+  missionsEnCours: { id: string; libelle: string }[];
   soldeGnf: number;
   soldeXof: number;
   consolideGnf: number;
@@ -51,6 +53,10 @@ export async function vueChauffeurs(
     prisma.voyage.findMany({
       where: { statut: { not: "ANNULE" } },
       select: {
+        id: true,
+        reference: true,
+        villeDepart: true,
+        villeArrivee: true,
         chauffeurId: true,
         statut: true,
         dateDepart: true,
@@ -120,6 +126,12 @@ export async function vueChauffeurs(
           date: m.date.toISOString(),
           lieAUneDepense: m.depenseId != null,
         })),
+      missionsEnCours: siens
+        .filter((v) => v.statut !== "TERMINE" && v.statut !== "ANNULE")
+        .map((v) => ({
+          id: v.id,
+          libelle: `${v.villeDepart} → ${v.villeArrivee} (${v.reference})`,
+        })),
       soldeGnf: solde.parDevise.GNF,
       soldeXof: solde.parDevise.XOF,
       consolideGnf: solde.consolideGnf,
@@ -136,6 +148,11 @@ export interface LigneEcheance {
   camionId: string;
   camionNom: string;
   type: string;
+  /** N° de police / document, à citer lors d'un contrôle. */
+  numero: string | null;
+  organisme: string | null;
+  dateDebut: Date | null;
+  montantGnf: number | null;
   dateExpiration: Date;
   rappelJours: number;
   joursRestants: number;
@@ -158,6 +175,10 @@ export async function vueEcheances(aujourdhui: Date = new Date()): Promise<Ligne
       camionId: e.camionId,
       camionNom: e.camion.nom,
       type: e.type,
+      numero: e.numero,
+      organisme: e.organisme,
+      dateDebut: e.dateDebut,
+      montantGnf: e.montantGnf != null ? n(e.montantGnf) : null,
       dateExpiration: e.dateExpiration,
       rappelJours: e.rappelJours,
       joursRestants,

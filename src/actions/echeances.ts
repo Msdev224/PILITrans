@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
-import { erreursFormulaire, nombreOptionnel } from "@/lib/validation";
+import { dateOptionnelle, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -16,7 +16,14 @@ async function droitEcriture() {
 const schemaEcheance = z.object({
   camionId: z.string().min(1, "Camion requis"),
   type: z.nativeEnum(TypeEcheance),
+  /** N° de police d'assurance, de carte brune, de vignette… */
+  numero: texteOptionnel,
+  /** Compagnie d'assurance ou organisme émetteur. */
+  organisme: texteOptionnel,
+  dateDebut: dateOptionnelle,
   dateExpiration: z.coerce.date({ message: "Date d'expiration invalide" }),
+  /** Coût du document : il pèse sur la rentabilité du camion. */
+  montantGnf: nombreOptionnel,
   rappelJours: nombreOptionnel.pipe(z.number().int().positive("Rappel requis").optional()),
 });
 
@@ -46,7 +53,11 @@ export async function creerEcheance(_etat: EtatEcheance, donnees: FormData): Pro
     data: {
       camionId: saisie.data.camionId,
       type: saisie.data.type,
+      numero: saisie.data.numero ?? null,
+      organisme: saisie.data.organisme ?? null,
+      dateDebut: saisie.data.dateDebut ?? null,
       dateExpiration: saisie.data.dateExpiration,
+      montantGnf: saisie.data.montantGnf ?? null,
       // À défaut, on reprend le délai de rappel des Paramètres.
       rappelJours: saisie.data.rappelJours ?? parametres?.rappelEcheanceJours ?? 30,
     },
@@ -71,7 +82,11 @@ export async function modifierEcheance(
     data: {
       camionId: saisie.data.camionId,
       type: saisie.data.type,
+      numero: saisie.data.numero ?? null,
+      organisme: saisie.data.organisme ?? null,
+      dateDebut: saisie.data.dateDebut ?? null,
       dateExpiration: saisie.data.dateExpiration,
+      montantGnf: saisie.data.montantGnf ?? null,
       rappelJours: saisie.data.rappelJours ?? 30,
     },
   });

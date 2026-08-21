@@ -17,6 +17,10 @@ export interface EcheanceEditable {
   id: string;
   camionId: string;
   type: string;
+  numero: string | null;
+  organisme: string | null;
+  dateDebut: string | null;
+  montantGnf: number | null;
   dateExpiration: string;
   rappelJours: number;
 }
@@ -91,12 +95,55 @@ export function DialogueEcheance({
                 </select>
               </div>
 
+              {/* Un contrôle au poste-frontière se règle en citant un numéro,
+                  pas en cherchant le papier dans la cabine. */}
+              <div className="field">
+                <label>N° de police / document</label>
+                <input
+                  name="numero"
+                  key={val("numero", echeance?.numero ?? "")}
+                  defaultValue={val("numero", echeance?.numero ?? "")}
+                />
+              </div>
+
+              <div className="field">
+                <label>Compagnie / organisme</label>
+                <input
+                  name="organisme"
+                  key={val("organisme", echeance?.organisme ?? "")}
+                  defaultValue={val("organisme", echeance?.organisme ?? "")}
+                />
+              </div>
+
+              <div className="field">
+                <label>Prise d&apos;effet</label>
+                <input
+                  type="date"
+                  name="dateDebut"
+                  key={val("dateDebut", echeance?.dateDebut ?? "")}
+                  defaultValue={val("dateDebut", echeance?.dateDebut ?? "")}
+                />
+              </div>
+
               <div className="field">
                 <label>Date d&apos;expiration</label>
                 <input type="date" name="dateExpiration" required key={val("dateExpiration", echeance?.dateExpiration ?? "")} defaultValue={val("dateExpiration", echeance?.dateExpiration ?? "")} />
                 {err("dateExpiration") ? (
                   <span className="text-[11.5px] text-[var(--neg)]">{err("dateExpiration")}</span>
                 ) : null}
+              </div>
+
+              <div className="field">
+                <label>Coût (GNF)</label>
+                <input
+                  name="montantGnf"
+                  inputMode="numeric"
+                  key={val("montantGnf", echeance?.montantGnf ?? "")}
+                  defaultValue={val("montantGnf", echeance?.montantGnf ?? "")}
+                />
+                <span className="text-[11px] text-[var(--muted-2)]">
+                  Facultatif. Ce que le document a coûté.
+                </span>
               </div>
 
               <div className="full">

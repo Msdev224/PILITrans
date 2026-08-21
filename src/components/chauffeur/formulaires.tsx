@@ -13,6 +13,7 @@ import {
   type EtatChauffeur,
 } from "@/actions/chauffeur";
 import { declarerPrelevement, type EtatPrelevement } from "@/actions/douane";
+import { confirmerParCode, type EtatLivraison } from "@/actions/livraison";
 import { enregistrerReleve, type EtatReleve } from "@/actions/froid";
 import { formatDecimal, formatNombre, LIBELLE_PAYS, LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
 
@@ -206,6 +207,75 @@ export function FormulairePrelevement({
       {etat.ok ? <p className="ph-ok">Prélèvement déclaré.</p> : null}
 
       <Bouton libelle="Déclarer le prélèvement" enCours="Envoi…" />
+    </form>
+  );
+}
+
+/**
+ * Confirmation de livraison par le code du client.
+ *
+ * Le chauffeur ne voit jamais le code attendu : il saisit celui que le client
+ * lui dicte à la remise. C'est ce qui distingue une livraison attestée d'une
+ * quantité simplement déclarée.
+ */
+export function FormulaireCodeLivraison({
+  ligneId,
+  designation,
+  confirme,
+  codeEnvoye,
+}: {
+  ligneId: string;
+  designation: string;
+  confirme: boolean;
+  codeEnvoye: boolean;
+}) {
+  const [etat, envoyer] = useActionState<EtatLivraison, FormData>(confirmerParCode, {});
+  const [code, setCode] = useState("");
+
+  useEffect(() => {
+    if (etat.ok) setCode("");
+  }, [etat.ok]);
+
+  if (confirme) {
+    return (
+      <p className="ph-ok">
+        ✓ {designation} — livraison confirmée par le client.
+      </p>
+    );
+  }
+
+  if (!codeEnvoye) {
+    return (
+      <p className="ph-aide">
+        {designation} : le client n&apos;a pas encore reçu son code. Demande au gérant de le
+        lui envoyer.
+      </p>
+    );
+  }
+
+  return (
+    <form action={envoyer}>
+      <input type="hidden" name="ligneId" value={ligneId} />
+      <div className="ph-champ">
+        <span>{designation}</span>
+        <input
+          name="code"
+          inputMode="numeric"
+          autoComplete="off"
+          required
+          placeholder="000000"
+          value={code}
+          // Le client dicte des chiffres : tout le reste est du bruit de frappe.
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          aria-label={`Code de livraison — ${designation}`}
+        />
+      </div>
+
+      {etat.champs?.code ? <p className="ph-erreur">{etat.champs.code}</p> : null}
+      {etat.erreur ? <p className="ph-erreur">{etat.erreur}</p> : null}
+      {etat.ok && etat.message ? <p className="ph-ok">{etat.message}</p> : null}
+
+      <Bouton libelle="Confirmer la livraison" enCours="Vérification…" />
     </form>
   );
 }

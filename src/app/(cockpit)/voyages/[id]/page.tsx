@@ -27,6 +27,7 @@ import {
 import { SiPeut } from "@/components/si-peut";
 import { formatQuantite } from "@/lib/donnees/unites";
 import { supprimerPrelevement } from "@/actions/douane";
+import { ActionsCodeLivraison } from "@/components/voyages/actions-code-livraison";
 
 export const dynamic = "force-dynamic";
 
@@ -150,6 +151,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                   <th className="num">Douane</th>
                   <th className="num">Livré</th>
                   <th className="num">Écart</th>
+                  <th>Preuve de livraison</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,6 +178,18 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                         : l.ecart.manquant > 0
                           ? `−${formatQuantite(l.ecart.manquant, l.symbole)}`
                           : "conforme"}
+                    </td>
+                    <td>
+                      <SiPeut droit="voyages.ecrire">
+                        <ActionsCodeLivraison
+                          ligneId={l.id}
+                          designation={l.designation}
+                          codeEnvoye={l.codeEnvoye}
+                          codeConfirme={l.codeConfirme}
+                          codeEnvois={l.codeEnvois}
+                          bloque={l.codeBloque}
+                        />
+                      </SiPeut>
                     </td>
                   </tr>
                 ))}

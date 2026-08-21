@@ -105,7 +105,10 @@ function LigneTableau({ ligne }: { ligne: LigneClient }) {
   return (
     <tr>
       <td>
-        <span className="t-title">{client.nom}</span>
+        {/* Le nom mène à la fiche : missions, factures et encours du client. */}
+        <Link href={`/clients/${client.id}`} className="lien-fiche">
+          <span className="t-title">{client.nom}</span>
+        </Link>
         {client.nif ? <div className="t-sub">NIF {client.nif}</div> : null}
       </td>
       <td>{client.ville ?? <span className="text-[var(--muted-2)]">—</span>}</td>

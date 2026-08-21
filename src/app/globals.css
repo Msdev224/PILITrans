@@ -1842,6 +1842,61 @@
     margin-right: 4px;
   }
 
+  /* Photo d'identité du chauffeur. */
+  .photo-champ {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .photo-apercu {
+    width: 72px;
+    height: 72px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface-2, #f2f5f6);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    font-size: 10px;
+    color: var(--muted-2);
+    text-align: center;
+  }
+  .photo-apercu img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .photo-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 11.5px;
+    min-width: 0;
+  }
+  .photo-actions input[type="file"] {
+    max-width: 100%;
+  }
+
+  /* Une pastille photo dans la liste des chauffeurs. */
+  .chauffeur-vignette {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--line);
+  }
+
+  /* État de livraison porté sur la facture. */
+  .fac-livre {
+    color: var(--pos);
+    font-weight: 600;
+  }
+  .fac-ecart {
+    color: var(--neg);
+    font-weight: 600;
+  }
+
   @media print {
     /* Sans cette instruction, le navigateur supprime fonds et aplats : le
        total en blanc sur fond sombre devient blanc sur blanc, et la pastille

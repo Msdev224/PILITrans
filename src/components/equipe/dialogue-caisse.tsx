@@ -39,6 +39,7 @@ export function DialogueCaisse({
   soldeGnf,
   soldeXof,
   tauxReferenceXof,
+  missions,
   declencheur,
 }: {
   chauffeurId: string;
@@ -46,6 +47,8 @@ export function DialogueCaisse({
   soldeGnf: number;
   soldeXof: number;
   tauxReferenceXof: number | null;
+  /** Missions en cours de ce chauffeur, pour rattacher l'avance. */
+  missions: { id: string; libelle: string }[];
   declencheur: React.ReactNode;
 }) {
   const [ouvert, setOuvert] = useState(false);
@@ -167,6 +170,22 @@ export function DialogueCaisse({
                 <label>Motif</label>
                 <input name="motif" placeholder="Avance mission Dakar…" />
               </div>
+
+              {/* Rattacher l'avance à la mission qu'elle finance : sans cela,
+                  impossible de dire ce qu'un voyage a coûté en trésorerie. */}
+              {missions.length > 0 ? (
+                <div className="field">
+                  <label>Mission financée</label>
+                  <select name="voyageId" defaultValue="">
+                    <option value="">— Aucune mission précise —</option>
+                    {missions.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.libelle}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
             </div>
           </div>
 

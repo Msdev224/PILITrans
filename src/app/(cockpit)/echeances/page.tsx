@@ -163,6 +163,10 @@ function Ligne({
             id: echeance.id,
             camionId: echeance.camionId,
             type: echeance.type,
+            numero: echeance.numero,
+            organisme: echeance.organisme,
+            dateDebut: echeance.dateDebut ? echeance.dateDebut.toISOString().slice(0, 10) : null,
+            montantGnf: echeance.montantGnf != null ? n(echeance.montantGnf) : null,
             dateExpiration: echeance.dateExpiration.toISOString().slice(0, 10),
             rappelJours: echeance.rappelJours,
           }}

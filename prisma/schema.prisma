@@ -825,6 +825,7 @@ enum EvenementSms {
   CLIENT_LIVRAISON      // livraison confirmée
   CLIENT_FACTURE        // facture émise, avec son lien
   CLIENT_RELANCE        // relance d'une facture échue
+  CLIENT_CODE_LIVRAISON // code de retrait, à remettre au chauffeur
   AUTRE
 }
 

@@ -17,6 +17,14 @@ const schemaChauffeur = z
   .object({
     nom: z.string().trim().min(1, "Nom requis"),
     telephone: telephoneOptionnel,
+    /**
+     * Photo d'identité en data URI, déjà réduite par le navigateur.
+     * Bornée ici aussi : le client peut être contourné, et une image de
+     * plusieurs mégaoctets n'a rien à faire dans une colonne texte.
+     */
+    photo: texteOptionnel.pipe(
+      z.string().max(600_000, "Photo trop lourde").optional(),
+    ),
     numeroPermis: texteOptionnel,
     categoriePermis: texteOptionnel,
     permisExpire: dateOptionnelle,
@@ -49,6 +57,7 @@ function donnees(saisie: z.infer<typeof schemaChauffeur>) {
   return {
     nom: saisie.nom,
     telephone: saisie.telephone ?? null,
+    photo: saisie.photo ?? null,
     numeroPermis: saisie.numeroPermis ?? null,
     categoriePermis: saisie.categoriePermis ?? null,
     permisExpire: saisie.permisExpire ?? null,
