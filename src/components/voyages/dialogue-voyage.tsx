@@ -40,7 +40,7 @@ interface SaisieLigne {
   designation: string;
   uniteId: string;
   quantite: string;
-  client: string;
+  clientId: string;
 }
 
 export interface OptionUnite {
@@ -49,12 +49,18 @@ export interface OptionUnite {
   symbole: string;
 }
 
+export interface OptionClientVoyage {
+  id: string;
+  nom: string;
+}
+
 export interface LigneEditable {
   id: string;
   designation: string;
   uniteId: string;
   quantiteACharger: number | null;
-  client: string | null;
+  /** Destinataire, s'il diffère du client principal. */
+  clientId: string | null;
 }
 
 export interface VoyageEditable {
@@ -66,7 +72,9 @@ export interface VoyageEditable {
   villeDepart: string;
   paysArrivee: string;
   villeArrivee: string;
-  client: string | null;
+  clientId: string | null;
+  /** Trajet à vide servant à aller chercher la marchandise du client. */
+  vaChercher: boolean;
   /** Marchandises déjà déclarées, avec leur unité. */
   marchandises: LigneEditable[];
   distanceKm: number | null;
@@ -86,13 +94,14 @@ interface Props {
   /** Taux de référence GNF pour 1 CFA — pré-remplissage uniquement. */
   tauxReferenceXof: number | null;
   unites: OptionUnite[];
+  clients: OptionClientVoyage[];
   voyage?: VoyageEditable | null;
   declencheur: React.ReactNode;
 }
 
 const jour = (date: string | null | undefined) => date ?? new Date().toISOString().slice(0, 10);
 
-export function DialogueVoyage({ unites, camions, chauffeurs, tauxReferenceXof, voyage, declencheur }: Props) {
+export function DialogueVoyage({ unites, clients, camions, chauffeurs, tauxReferenceXof, voyage, declencheur }: Props) {
   const [ouvert, setOuvert] = useState(false);
   const edition = !!voyage;
 
@@ -108,6 +117,7 @@ export function DialogueVoyage({ unites, camions, chauffeurs, tauxReferenceXof, 
   const [recette, setRecette] = useState(voyage ? String(voyage.recette) : "");
   const [recetteGnf, setRecetteGnf] = useState(voyage ? String(voyage.recetteGnf) : "");
   const [aVide, setAVide] = useState(voyage?.aVide ?? false);
+  const [vaChercher, setVaChercher] = useState(voyage?.vaChercher ?? false);
 
   // Les marchandises sont éditées en liste. Chaque ligne garde une clé stable :
   // sans elle, React réutiliserait les champs d'une ligne supprimée et le
@@ -119,7 +129,7 @@ export function DialogueVoyage({ unites, camions, chauffeurs, tauxReferenceXof, 
       designation: l.designation,
       uniteId: l.uniteId,
       quantite: l.quantiteACharger != null ? String(l.quantiteACharger) : "",
-      client: l.client ?? "",
+      clientId: l.clientId ?? "",
     })),
   );
 
@@ -154,6 +164,7 @@ export function DialogueVoyage({ unites, camions, chauffeurs, tauxReferenceXof, 
     setRecette(v.recette ?? "");
     setRecetteGnf(v.recetteGnf ?? "");
     setAVide(v.aVide === "true");
+    setVaChercher(v.vaChercher === "true");
     setDistanceKm(v.distanceKm ?? "");
     setNbRotations(v.nbRotations ?? "1");
     setTarifRotation(v.tarifRotation ?? "");
@@ -307,8 +318,27 @@ export function DialogueVoyage({ unites, camions, chauffeurs, tauxReferenceXof, 
                 ) : null}
 
                 <div className="form-grid">
-                  <Champ label="Client" erreur={err("client")}>
-                    <input name="client" key={val("client", voyage?.client ?? "")} defaultValue={val("client", voyage?.client ?? "")} disabled={aVide} />
+                  {/* Le client est choisi dans la liste, plus saisi à la main :
+                      deux orthographes créaient deux clients, et la fiche
+                      client ne retrouvait plus ses missions. */}
+                  <Champ label="Client" erreur={err("clientId")}>
+                    <select
+                      name="clientId"
+                      key={val("clientId", voyage?.clientId ?? "")}
+                      defaultValue={val("clientId", voyage?.clientId ?? "")}
+                    >
+                      <option value="">— Aucun —</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nom}
+                        </option>
+                      ))}
+                    </select>
+                    {clients.length === 0 ? (
+                      <span className="text-[11px] text-[var(--muted-2)]">
+                        Aucun client enregistré : créez-le d&apos;abord depuis l&apos;écran Clients.
+                      </span>
+                    ) : null}
                   </Champ>
 
                   <Champ label="Distance (km)">
@@ -344,8 +374,24 @@ export function DialogueVoyage({ unites, camions, chauffeurs, tauxReferenceXof, 
                         checked={aVide}
                         onChange={(e) => setAVide(e.target.checked)}
                       />
-                      Trajet <b>à vide</b> (repositionnement, sans marchandise ni client)
+                      Trajet <b>à vide</b> (aucun chargement au départ)
                     </label>
+
+                    {/* Un aller à vide n'est pas forcément un trajet perdu :
+                        il peut servir à aller chercher la marchandise d'un
+                        client, auquel cas la course lui est imputable. */}
+                    {aVide ? (
+                      <label className="ml-6 flex cursor-pointer items-center gap-2 text-[12.5px]">
+                        <input
+                          type="checkbox"
+                          name="vaChercher"
+                          value="true"
+                          checked={vaChercher}
+                          onChange={(e) => setVaChercher(e.target.checked)}
+                        />
+                        On part <b>chercher</b> la marchandise du client ci-dessus
+                      </label>
+                    ) : null}
                   </div>
 
                   {/* Marchandises : un même trajet en porte souvent plusieurs,
@@ -361,7 +407,7 @@ export function DialogueVoyage({ unites, camions, chauffeurs, tauxReferenceXof, 
                           onClick={() =>
                             setLignes((l) => [
                               ...l,
-                              { cle: `n${compteur.current++}`, designation: "", uniteId: unites[0]?.id ?? "", quantite: "", client: "" },
+                              { cle: `n${compteur.current++}`, designation: "", uniteId: unites[0]?.id ?? "", quantite: "", clientId: "" },
                             ])
                           }
                         >
@@ -409,13 +455,19 @@ export function DialogueVoyage({ unites, camions, chauffeurs, tauxReferenceXof, 
                               </option>
                             ))}
                           </select>
-                          <input
-                            name="ligneClient"
-                            placeholder="Destinataire (si différent)"
-                            value={l.client}
-                            onChange={(e) => majLigne(i, { client: e.target.value })}
+                          <select
+                            name="ligneClientId"
+                            value={l.clientId}
+                            onChange={(e) => majLigne(i, { clientId: e.target.value })}
                             aria-label={`Destinataire ${i + 1}`}
-                          />
+                          >
+                            <option value="">Client du voyage</option>
+                            {clients.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.nom}
+                              </option>
+                            ))}
+                          </select>
                           <button
                             type="button"
                             className="btn ghost sm"

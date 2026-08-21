@@ -141,7 +141,7 @@ async function main() {
     data: {
       reference: "KD-2026-041", camionId: pili01.id, chauffeurId: mamadou.id,
       paysDepart: Pays.GUINEE, villeDepart: "Koundara", paysArrivee: Pays.SENEGAL, villeArrivee: "Dakar",
-      client: "Établissements Baldé",
+      clientId: balde.id,
       distanceKm: 650, dateDepart: new Date("2026-08-14"), kmDepart: 128400, kmArrivee: 129050,
       dateArriveeDestination: new Date("2026-08-16"),
       recette: 14_200_000, devise: Devise.GNF, recetteGnf: 14_200_000, remunerationChauffeur: 2_100_000,
@@ -152,7 +152,9 @@ async function main() {
           { designation: "Produits frais", uniteId: unites["t"], ordre: 10,
             quantiteACharger: 12, quantiteRecue: 12, quantiteLivree: 11.4 },
           { designation: "Riz importé", uniteId: unites["sac"], ordre: 20,
-            client: "Marché Madina",
+            // Destinataire distinct du client principal : un même camion
+            // livre deux clients sur le trajet.
+            clientId: madina.id,
             quantiteACharger: 240, quantiteRecue: 240, quantiteLivree: 240 },
         ],
       },
@@ -163,7 +165,7 @@ async function main() {
   const vLabe = await db.voyage.create({
     data: {
       reference: "CL-2026-037", camionId: pili01.id, chauffeurId: mamadou.id,
-      villeDepart: "Conakry", villeArrivee: "Labé", client: "Pharmacie Centrale",
+      villeDepart: "Conakry", villeArrivee: "Labé", clientId: pharma.id,
       distanceKm: 420,
       lignes: {
         create: [
@@ -179,8 +181,11 @@ async function main() {
     data: {
       reference: "CB-2026-045", camionId: pili03.id, chauffeurId: ousmane.id,
       villeDepart: "Conakry", villeArrivee: "Boké",
+      // Départ à vide pour aller CHERCHER la marchandise d'un client :
+      // le camion roule vide, mais la course lui est bien imputable.
+      clientId: madina.id, aVide: true, vaChercher: true,
       lignes: { create: [{ designation: "Ciment", uniteId: unites["sac"], quantiteACharger: 200, ordre: 10 }] },
-      aVide: true, dateDepart: new Date("2026-08-15"), dateArriveeChargement: new Date("2026-08-15"),
+      dateDepart: new Date("2026-08-15"), dateArriveeChargement: new Date("2026-08-15"),
       statut: "EN_ATTENTE_CHARGEMENT",
     },
   });
@@ -190,7 +195,7 @@ async function main() {
   await db.voyage.create({
     data: {
       reference: "CS-2026-050", camionId: pili04.id, chauffeurId: ousmane.id,
-      villeDepart: "Conakry", villeArrivee: "Coyah",
+      villeDepart: "Conakry", villeArrivee: "Coyah", clientId: madina.id,
       lignes: { create: [{ designation: "Sable", uniteId: unites["m³"], quantiteACharger: 8, ordre: 10 }] },
       distanceKm: 45,
       nbRotations: 6, tarifRotation: 450_000,

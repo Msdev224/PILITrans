@@ -103,7 +103,15 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
               libelle="Trajet"
               valeur={`${LIBELLE_PAYS[voyage.paysDepart]} → ${LIBELLE_PAYS[voyage.paysArrivee]}`}
             />
-            <Info libelle="Client" valeur={voyage.client ?? "—"} />
+            <Info libelle="Client" valeur={voyage.client?.nom ?? "—"} />
+            {/* Le trajet à vide vers un chargement n'est pas un
+                repositionnement : la course appartient au client. */}
+            {voyage.aVide ? (
+              <Info
+                libelle="À vide"
+                valeur={voyage.vaChercher ? "Va chercher la marchandise" : "Repositionnement"}
+              />
+            ) : null}
             <Info libelle="Distance" valeur={fiche.km > 0 ? `${formatNombre(fiche.km)} km` : "—"} mono />
             <Info
               libelle="Conso moyenne"

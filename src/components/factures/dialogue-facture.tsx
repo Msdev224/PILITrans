@@ -18,6 +18,8 @@ export interface OptionVoyageFacturable {
   id: string;
   libelle: string;
   client: string | null;
+  /** Client du voyage : sert à présélectionner celui de la facture. */
+  clientId: string | null;
   marchandise: string | null;
   recette: number;
   devise: "GNF" | "XOF";
@@ -109,10 +111,9 @@ export function DialogueFacture({
     setDevise(voyage.devise);
     setMontantGnf(String(voyage.recetteGnf));
 
-    const correspondance = clients.find(
-      (c) => c.nom.trim().toLowerCase() === (voyage.client ?? "").trim().toLowerCase(),
-    );
-    if (correspondance) setClientId(correspondance.id);
+    // Le voyage désigne son client par identifiant : plus de rapprochement
+    // par nom, qui ratait dès qu'une orthographe différait d'un caractère.
+    if (voyage.clientId) setClientId(voyage.clientId);
   };
 
   // En CFA, l'équivalent GNF se pré-remplit au dernier taux connu.

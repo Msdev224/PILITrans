@@ -97,7 +97,8 @@ export default async function VoyagesPage({ searchParams }: Props) {
   const voyagesFacturables: OptionVoyageFacturable[] = vue.lignes.map((l) => ({
     id: l.voyage.id,
     libelle: `${l.voyage.villeDepart} → ${l.voyage.villeArrivee} (${l.voyage.reference})`,
-    client: l.voyage.client,
+    client: l.voyage.client?.nom ?? null,
+    clientId: l.voyage.clientId,
     marchandise: l.chargement === "—" ? null : l.chargement,
     recette: n(l.voyage.recette),
     devise: l.voyage.devise,
@@ -180,6 +181,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
               camions={camions}
               chauffeurs={chauffeurs}
               unites={unites}
+              clients={clients}
               tauxReferenceXof={tauxReferenceXof}
               declencheur={
                 <button type="button" className="btn-add">
@@ -217,8 +219,8 @@ export default async function VoyagesPage({ searchParams }: Props) {
               <tbody>
                 {vue.lignes.map((ligne) => (
                   <LigneTableau
-              unites={unites}
                     key={ligne.voyage.id}
+                    unites={unites}
                     ligne={ligne}
                     camions={camions}
                     chauffeurs={chauffeurs}
@@ -250,18 +252,19 @@ function LigneTableau({
   ligne,
   camions,
   unites,
+  clients,
   chauffeurs,
   tauxReferenceXof,
-  clients,
   voyagesFacturables,
   delaiPaiementJours,
 }: {
   ligne: LigneVoyage;
   camions: OptionCamion[];
   unites: OptionUnite[];
+  /** Même forme pour les deux dialogues : { id, nom }. */
+  clients: OptionClient[];
   chauffeurs: OptionChauffeur[];
   tauxReferenceXof: number | null;
-  clients: OptionClient[];
   voyagesFacturables: OptionVoyageFacturable[];
   delaiPaiementJours: number;
 }) {
@@ -303,7 +306,15 @@ function LigneTableau({
         </div>
       </td>
 
-      <td>{voyage.client ?? <span className="text-[var(--muted-2)]">—</span>}</td>
+      <td>
+        {voyage.client ? (
+          <Link href={`/clients/${voyage.clientId}`} className="link">
+            {voyage.client.nom}
+          </Link>
+        ) : (
+          <span className="text-[var(--muted-2)]">—</span>
+        )}
+      </td>
 
       <td>
         <Link href={`/camions/${voyage.camionId}`} className="link">
@@ -355,6 +366,7 @@ function LigneTableau({
           camions={camions}
           chauffeurs={chauffeurs}
           unites={unites}
+          clients={clients}
           tauxReferenceXof={tauxReferenceXof}
             aDesEcritures={ligne.postes.length > 0 || ligne.facture}
           />
@@ -376,13 +388,14 @@ function aplatir(ligne: LigneVoyage): VoyageEditable {
     villeDepart: voyage.villeDepart,
     paysArrivee: voyage.paysArrivee,
     villeArrivee: voyage.villeArrivee,
-    client: voyage.client,
+    clientId: voyage.clientId,
+    vaChercher: voyage.vaChercher,
     marchandises: ligne.marchandises.map((m) => ({
       id: m.id,
       designation: m.designation,
       uniteId: m.uniteId,
       quantiteACharger: m.quantiteACharger,
-      client: m.client,
+      clientId: m.clientId,
     })),
     distanceKm: voyage.distanceKm,
     dateDepart: voyage.dateDepart.toISOString().slice(0, 10),

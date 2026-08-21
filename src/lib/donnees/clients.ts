@@ -46,7 +46,7 @@ export async function vueClients(aujourdhui: Date = new Date()): Promise<LigneCl
 
     return {
       client,
-      nbVoyages: parNom.get(client.nom.trim().toLowerCase()) ?? 0,
+      nbVoyages: parId.get(client.id) ?? 0,
       nbFactures: client.factures.length,
       encoursGnf: situation.encours,
       enRetardGnf: situation.enRetard,

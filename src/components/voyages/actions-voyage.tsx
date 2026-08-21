@@ -9,6 +9,7 @@ import {
   DialogueVoyage,
   type OptionCamion,
   type OptionChauffeur,
+  type OptionClientVoyage,
   type OptionUnite,
   type VoyageEditable,
 } from "@/components/voyages/dialogue-voyage";
@@ -29,6 +30,7 @@ interface Props {
   camions: OptionCamion[];
   chauffeurs: OptionChauffeur[];
   unites: OptionUnite[];
+  clients: OptionClientVoyage[];
   tauxReferenceXof: number | null;
   /** `true` si le voyage porte déjà des frais, étapes ou factures. */
   aDesEcritures: boolean;
@@ -39,6 +41,7 @@ export function ActionsVoyage({
   camions,
   chauffeurs,
   unites,
+  clients,
   tauxReferenceXof,
   aDesEcritures,
 }: Props) {
@@ -62,6 +65,7 @@ export function ActionsVoyage({
         camions={camions}
         chauffeurs={chauffeurs}
         unites={unites}
+        clients={clients}
         tauxReferenceXof={tauxReferenceXof}
         voyage={voyage}
         declencheur={

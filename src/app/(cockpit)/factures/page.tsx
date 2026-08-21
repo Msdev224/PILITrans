@@ -63,7 +63,8 @@ export default async function FacturesPage({ searchParams }: Props) {
         reference: true,
         villeDepart: true,
         villeArrivee: true,
-        client: true,
+        clientId: true,
+        client: { select: { nom: true } },
         lignes: {
           orderBy: { ordre: "asc" },
           select: { designation: true, quantiteACharger: true, unite: { select: { symbole: true } } },
@@ -84,7 +85,9 @@ export default async function FacturesPage({ searchParams }: Props) {
   const optionsVoyages: OptionVoyageFacturable[] = voyages.map((v) => ({
     id: v.id,
     libelle: `${v.villeDepart} → ${v.villeArrivee} (${v.reference})`,
-    client: v.client,
+    client: v.client?.nom ?? null,
+    // Le client de la facture se présélectionne depuis celui du voyage.
+    clientId: v.clientId,
     // La désignation portée sur la facture reprend le chargement réel.
     marchandise:
       v.lignes.map((l) => l.designation).join(", ") || null,
