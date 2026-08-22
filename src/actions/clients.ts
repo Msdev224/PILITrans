@@ -16,6 +16,8 @@ async function droitEcriture() {
 const schemaClient = z.object({
   nom: z.string().trim().min(1, "Nom requis"),
   telephone: telephoneOptionnel,
+  /** Ligne directe de la personne de contact, si elle diffère. */
+  telephoneContact: telephoneOptionnel,
   ville: texteOptionnel,
   adresse: texteOptionnel,
   email: texteOptionnel.pipe(z.string().email("Adresse e-mail invalide").optional()),
@@ -36,6 +38,7 @@ function donneesClient(saisie: z.infer<typeof schemaClient>) {
   return {
     nom: saisie.nom,
     telephone: saisie.telephone ?? null,
+    telephoneContact: saisie.telephoneContact ?? null,
     ville: saisie.ville ?? null,
     adresse: saisie.adresse ?? null,
     email: saisie.email ?? null,

@@ -696,6 +696,15 @@ model Client {
   adresse   String?
   email     String?
   contact   String?   // personne de contact
+  /**
+   * Ligne directe de la personne de contact.
+   *
+   * Le numéro de l'entreprise est souvent un standard ou celui du gérant ;
+   * l'interlocuteur qui suit réellement les livraisons a le sien. Sans ce
+   * champ, on notait son numéro dans le nom du contact — introuvable à la
+   * recherche et inutilisable pour un envoi.
+   */
+  telephoneContact String?
   nif       String?   // pour la facturation
   createdAt DateTime  @default(now())
 

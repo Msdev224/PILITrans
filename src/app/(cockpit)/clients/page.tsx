@@ -8,6 +8,7 @@ import { IconePlus } from "@/components/icones";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import { vueClients, type LigneClient } from "@/lib/donnees/clients";
 import { prisma } from "@/lib/prisma";
+import { formatTelephone } from "@/lib/telephone";
 import { formatNombre, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
 
@@ -114,7 +115,14 @@ function LigneTableau({ ligne }: { ligne: LigneClient }) {
       <td>{client.ville ?? <span className="text-[var(--muted-2)]">—</span>}</td>
       <td className="tel">
         {client.telephone ?? <span className="text-[var(--muted-2)]">—</span>}
-        {client.contact ? <div className="t-sub">{client.contact}</div> : null}
+        {client.contact ? (
+          <div className="t-sub">
+            {client.contact}
+            {client.telephoneContact ? ` · ${formatTelephone(client.telephoneContact)}` : ""}
+          </div>
+        ) : client.telephoneContact ? (
+          <div className="t-sub">contact · {formatTelephone(client.telephoneContact)}</div>
+        ) : null}
       </td>
       <td className="num">{ligne.nbVoyages}</td>
       {/* Un encours en retard se lit d'un coup d'œil. */}
@@ -140,6 +148,7 @@ function aplatir(client: LigneClient["client"]): ClientEditable {
     adresse: client.adresse,
     email: client.email,
     contact: client.contact,
+    telephoneContact: client.telephoneContact,
     nif: client.nif,
     whatsapp: client.whatsapp,
     whatsappNumero: client.whatsappNumero,

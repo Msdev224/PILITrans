@@ -46,6 +46,7 @@ export interface FicheClient {
     telephone: string | null;
     email: string | null;
     contact: string | null;
+    telephoneContact: string | null;
     nif: string | null;
     whatsapp: boolean;
   };
@@ -104,6 +105,7 @@ export async function ficheClient(
       telephone: client.telephone,
       email: client.email,
       contact: client.contact,
+      telephoneContact: client.telephoneContact,
       nif: client.nif,
       whatsapp: client.whatsapp,
     },

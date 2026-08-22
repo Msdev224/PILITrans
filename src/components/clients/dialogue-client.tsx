@@ -21,6 +21,7 @@ export interface ClientEditable {
   adresse: string | null;
   email: string | null;
   contact: string | null;
+  telephoneContact: string | null;
   nif: string | null;
   whatsapp: boolean;
   whatsappNumero: string | null;
@@ -77,6 +78,20 @@ export function DialogueClient({
                   nom="telephone"
                   key={val("telephone", client?.telephone ?? "")}
                   valeur={val("telephone", client?.telephone ?? "")}
+                />
+              </Champ>
+
+              {/* Le numéro de l'entreprise est souvent un standard ; celui qui
+                  suit les livraisons a sa propre ligne. */}
+              <Champ
+                label="Téléphone du contact"
+                erreur={err("telephoneContact")}
+                aide="Si différent du numéro principal."
+              >
+                <ChampTelephone
+                  nom="telephoneContact"
+                  key={val("telephoneContact", client?.telephoneContact ?? "")}
+                  valeur={val("telephoneContact", client?.telephoneContact ?? "")}
                 />
               </Champ>
 

@@ -58,6 +58,8 @@ export interface OptionClientVoyage {
   nom: string;
   ville?: string | null;
   telephone?: string | null;
+  /** Ligne directe du contact : on a souvent ce numéro sans savoir à qui il est. */
+  telephoneContact?: string | null;
 }
 
 export interface LigneEditable {
@@ -350,7 +352,10 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                         detail: [c.ville, c.telephone ? formatTelephone(c.telephone) : null]
                           .filter(Boolean)
                           .join(" · "),
-                        recherche: c.telephone,
+                        // Le numéro du contact est cherché sans être affiché :
+                        // on l'a souvent sous les yeux sans savoir à quel client il
+                        // se rattache.
+                        recherche: [c.telephone, c.telephoneContact].filter(Boolean).join(" "),
                       }))}
                     />
                     {clients.length === 0 ? (

@@ -81,6 +81,14 @@ export default async function FicheClientPage({ params }: { params: Promise<{ id
           <div className="flex flex-wrap gap-x-8 gap-y-3 text-xs text-[var(--muted)]">
             <Info libelle="Téléphone" valeur={formatTelephone(client.telephone)} mono />
             <Info libelle="WhatsApp" valeur={client.whatsapp ? "Oui" : "Non"} />
+            <Info
+              libelle="Contact"
+              valeur={
+                [client.contact, client.telephoneContact ? formatTelephone(client.telephoneContact) : null]
+                  .filter(Boolean)
+                  .join(" · ") || "—"
+              }
+            />
             <Info libelle="E-mail" valeur={client.email ?? "—"} />
             <Info libelle="Adresse" valeur={client.adresse ?? "—"} />
             <Info libelle="NIF" valeur={client.nif ?? "—"} mono />

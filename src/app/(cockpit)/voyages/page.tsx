@@ -80,7 +80,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
     unitesActives(),
     paysActifs(),
     prisma.client.findMany({
-      select: { id: true, nom: true, ville: true, telephone: true },
+      select: { id: true, nom: true, ville: true, telephone: true, telephoneContact: true },
       orderBy: { nom: "asc" },
     }),
   ]);
