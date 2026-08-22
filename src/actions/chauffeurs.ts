@@ -34,11 +34,18 @@ const schemaChauffeur = z
     whatsapp: caseACocher,
     whatsappNumero: telephoneOptionnel,
   })
-  // Sans taux, la paie du voyage ne peut pas être calculée.
-  .refine((c) => c.modeRemuneration === "FIXE_MENSUEL" || (c.tauxRemuneration ?? 0) > 0, {
-    message: "Renseigner le taux correspondant au mode de rémunération",
-    path: ["tauxRemuneration"],
-  })
+  /*
+   * Le taux reste facultatif.
+   *
+   * Beaucoup de courses se paient au cas par cas : le montant est convenu au
+   * départ et saisi sur la mission elle-même. Exiger un barème général
+   * obligeait à inventer un chiffre à la création de la fiche, chiffre qui
+   * s'appliquait ensuite à toutes les missions sans paie saisie — et faisait
+   * apparaître des charges que personne n'avait décidées.
+   *
+   * Sans taux ni paie de mission, la rémunération vaut zéro : rien n'est
+   * inventé.
+   */
   // Une commission au-delà de 100 % de la recette est une erreur de saisie.
   .refine(
     (c) =>

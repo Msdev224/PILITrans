@@ -798,10 +798,21 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                     />
                   </Champ>
 
-                  {/* Le montant est relu en toutes lettres : les écrans parlent
+                  {/* Le gérant ne connaît qu'un chiffre au départ : ce qu'il
+                      facture au client. La recette de la mission en découle,
+                      et la facture reprendra ce montant — un seul nombre à
+                      saisir, donc un seul endroit où se tromper.
+                      Le montant est relu en toutes lettres : les écrans parlent
                       en millions, ce champ attend des francs, et 46,5 saisi à
                       la place de 50 000 000 passait inaperçu. */}
-                  <Champ label="Recette">
+                  <Champ
+                    label="Montant facturé au client"
+                    aide={
+                      recetteCalculee !== null
+                        ? "Calculé : tarif par rotation × nombre de rotations."
+                        : "Le forfait convenu. C'est la recette de la mission, et le montant repris sur la facture."
+                    }
+                  >
                     <ChampMontant
                       nom="recette"
                       key={`recette-${recetteCalculee ?? ""}`}

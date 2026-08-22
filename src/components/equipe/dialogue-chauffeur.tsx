@@ -130,9 +130,13 @@ export function DialogueChauffeur({ indicatifs, chauffeur, declencheur }: {
               </Champ>
 
               <Champ
-                label="Taux"
+                label="Taux (facultatif)"
                 erreur={err("tauxRemuneration")}
-                aide={UNITE_TAUX[mode] ?? "Selon le mode choisi."}
+                aide={
+                  mode === "FIXE_MENSUEL"
+                    ? "Payé au mois : sans effet sur le coût d'une mission."
+                    : `${UNITE_TAUX[mode] ?? "Selon le mode choisi."} Laisser vide si la paie se convient mission par mission — elle se saisit alors sur la mission.`
+                }
               >
                 <input
                   name="tauxRemuneration"

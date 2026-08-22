@@ -27,6 +27,11 @@ import { SiPeut } from "@/components/si-peut";
 import { formatQuantite } from "@/lib/donnees/unites";
 import { supprimerPrelevement } from "@/actions/douane";
 import { ActionsCodeLivraison } from "@/components/voyages/actions-code-livraison";
+import {
+  DialogueFacture,
+  type OptionVoyageFacturable,
+} from "@/components/factures/dialogue-facture";
+import { IconeFacture } from "@/components/icones";
 import { paysActifs } from "@/lib/donnees/pays";
 
 export const dynamic = "force-dynamic";
@@ -34,16 +39,32 @@ export const dynamic = "force-dynamic";
 export default async function FicheVoyagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [session, fiche, parametres, fil, pays] = await Promise.all([
+  const [session, fiche, parametres, fil, pays, clients] = await Promise.all([
     sessionRequise(),
     ficheVoyage(id),
     prisma.parametres.findFirst(),
     filAlertes(),
     paysActifs(),
+    prisma.client.findMany({ select: { id: true, nom: true }, orderBy: { nom: "asc" } }),
   ]);
 
   if (!fiche) notFound();
   const { voyage } = fiche;
+
+  // Une mission déjà facturée mène à sa facture ; sinon on propose de la
+  // créer, avec ce que la mission sait déjà.
+  const factureExistante = voyage.factures[0] ?? null;
+  const optionFacturable: OptionVoyageFacturable = {
+    id: voyage.id,
+    libelle: `${voyage.villeDepart} → ${voyage.villeArrivee} (${voyage.reference})`,
+    client: voyage.client?.nom ?? null,
+    clientId: voyage.clientId,
+    marchandise: fiche.chargement === "—" ? null : fiche.chargement,
+    recette: n(voyage.recette),
+    devise: voyage.devise,
+    recetteGnf: fiche.recetteGnf,
+    dejaFacture: fiche.facture,
+  };
 
   // Pleins saisis en litres : rattachables à un tronçon.
   const dejaRattaches = new Set(
@@ -69,10 +90,42 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
       />
 
       <div className="wrap">
-        <div className="mb-3.5">
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <Link href="/voyages" className="link text-[13px]">
             ← Retour aux voyages
           </Link>
+
+          {/* La facture se crée DEPUIS la mission (CLAUDE.md) : le client, la
+              marchandise et le montant en sont repris tels quels. La proposer
+              ici évite d'aller la chercher ailleurs et de ressaisir des
+              chiffres déjà connus — donc de les saisir différemment. */}
+          <SiPeut droit="facturation.ecrire">
+            {factureExistante ? (
+              <Link href={`/factures?q=${encodeURIComponent(factureExistante.numero)}`} className="btn ghost sm">
+                <IconeFacture width={14} height={14} />
+                Facture {factureExistante.numero}
+              </Link>
+            ) : fiche.recetteGnf > 0 ? (
+              <DialogueFacture
+                clients={clients}
+                voyages={[optionFacturable]}
+                delaiPaiementJours={parametres?.delaiPaiementJours ?? 14}
+                tauxReferenceXof={parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null}
+                voyageImpose={voyage.id}
+                declencheur={
+                  <button type="button" className="btn-add">
+                    <IconeFacture width={14} height={14} />
+                    Générer la facture
+                  </button>
+                }
+              />
+            ) : (
+              // Sans montant facturé, une facture partirait à zéro.
+              <span className="text-[11.5px] text-[var(--muted-2)]">
+                Renseigne le montant facturé au client pour pouvoir facturer.
+              </span>
+            )}
+          </SiPeut>
         </div>
 
         {/* ---------- Résumé de la mission ---------- */}

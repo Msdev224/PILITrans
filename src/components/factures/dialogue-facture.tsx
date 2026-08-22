@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { creerFacture, modifierFacture, type EtatFacture } from "@/actions/factures";
@@ -103,19 +103,39 @@ export function DialogueFacture({
    * C'est le mode de création attendu (cf. CLAUDE.md) — l'utilisateur
    * garde la main pour corriger ensuite.
    */
+  const reprendreLeVoyage = useCallback(
+    (id: string) => {
+      const voyage = voyages.find((v) => v.id === id);
+      if (!voyage) return;
+
+      setMontant(String(voyage.recette));
+      setDevise(voyage.devise);
+      setMontantGnf(String(voyage.recetteGnf));
+
+      // Le voyage désigne son client par identifiant : plus de rapprochement
+      // par nom, qui ratait dès qu'une orthographe différait d'un caractère.
+      if (voyage.clientId) setClientId(voyage.clientId);
+    },
+    [voyages],
+  );
+
   const choisirVoyage = (id: string) => {
     setVoyageId(id);
-    const voyage = voyages.find((v) => v.id === id);
-    if (!voyage) return;
-
-    setMontant(String(voyage.recette));
-    setDevise(voyage.devise);
-    setMontantGnf(String(voyage.recetteGnf));
-
-    // Le voyage désigne son client par identifiant : plus de rapprochement
-    // par nom, qui ratait dès qu'une orthographe différait d'un caractère.
-    if (voyage.clientId) setClientId(voyage.clientId);
+    reprendreLeVoyage(id);
   };
+
+  /*
+   * Ouverture depuis une mission : le voyage est imposé, mais personne ne le
+   * « choisit » — la reprise des montants ne se déclenchait donc jamais. La
+   * facture s'ouvrait vide alors que la mission connaît déjà le client et le
+   * montant facturé, et il fallait tout ressaisir à la main. C'est
+   * exactement là que les chiffres finissaient par diverger.
+   */
+  useEffect(() => {
+    if (!ouvert || !voyageImpose || edition) return;
+    setVoyageId(voyageImpose);
+    reprendreLeVoyage(voyageImpose);
+  }, [ouvert, voyageImpose, edition, reprendreLeVoyage]);
 
   // En CFA, l'équivalent GNF se pré-remplit au dernier taux connu.
   useEffect(() => {
@@ -129,6 +149,8 @@ export function DialogueFacture({
   const err = (champ: string) => etat.champs?.[champ];
   const val = (champ: string, origine: string) => etat.valeurs?.[champ] ?? origine;
   const voyageChoisi = voyages.find((v) => v.id === voyageId);
+  /** Ouverture depuis une mission : le voyage ne se change pas ici. */
+  const voyageVerrouille = !!voyageImpose && !edition;
 
   return (
     <Dialog open={ouvert} onOpenChange={setOuvert}>
@@ -152,12 +174,22 @@ export function DialogueFacture({
             <div className="form-grid">
               <div className="full">
                 <Champ label="Voyage facturé">
+                  {/*
+                    * Un champ désactivé n'est PAS envoyé par le navigateur.
+                    *
+                    * Le voyage était donc perdu à chaque facture ouverte
+                    * depuis une mission : la facture se créait détachée, la
+                    * recette ne remontait jamais sur la mission, et celle-ci
+                    * restait marquée « à facturer ». On garde le champ verrouillé
+                    * — le voyage est imposé — mais un champ caché porte la valeur.
+                    */}
+                  {voyageVerrouille ? <input type="hidden" name="voyageId" value={voyageId} /> : null}
                   <select
-                    name="voyageId"
+                    name={voyageVerrouille ? undefined : "voyageId"}
                     key={voyageId}
                     defaultValue={voyageId}
                     onChange={(e) => choisirVoyage(e.target.value)}
-                    disabled={!!voyageImpose && !edition}
+                    disabled={voyageVerrouille}
                   >
                     <option value="">— facture hors voyage —</option>
                     {voyages.map((v) => (
