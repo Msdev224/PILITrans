@@ -293,7 +293,22 @@ export default async function ImpressionFacturePage({
                 <b>Référence à rappeler :</b> {facture.numero}
               </div>
 
-              {/* Règlements déjà reçus, avec leur moyen : le client doit
+              {/* Payée ou non : la mention figure sur le document, pour que le
+              client sache ce qu'il lui reste à régler sans avoir à comparer
+              ses relevés. */}
+          {ligne.resteGnf <= 0 ? (
+            <div className="fac-cachet fac-cachet-paye">Facture réglée</div>
+          ) : ligne.payeGnf > 0 ? (
+            <div className="fac-cachet fac-cachet-partiel">
+              Réglée partiellement — reste {formatNombre(ligne.resteGnf)} GNF
+            </div>
+          ) : (
+            <div className="fac-cachet fac-cachet-impaye">
+              Non réglée — {formatNombre(ligne.resteGnf)} GNF dus
+            </div>
+          )}
+
+          {/* Règlements déjà reçus, avec leur moyen : le client doit
                   pouvoir rapprocher la facture de ses propres relevés. */}
               {facture.paiements && facture.paiements.length > 0 ? (
                 <div className="fac-reglements">

@@ -258,3 +258,21 @@ export function initiales(nom: string): string {
     .map((mot) => mot[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+/**
+ * Ce pour quoi un camion roule.
+ *
+ * Toutes les missions ne transportent pas : on va aussi à l'atelier ou
+ * repositionner le véhicule. Le motif commande la suite — une course d'atelier
+ * ne se facture pas et ne se rémunère pas comme un transport.
+ */
+export const LIBELLE_MOTIF_VOYAGE: Record<string, string> = {
+  TRANSPORT: "Transport de marchandise",
+  RECUPERATION_MARCHANDISE: "Aller chercher la marchandise",
+  REPARATION: "Atelier / réparation",
+  REPOSITIONNEMENT: "Repositionnement du camion",
+  AUTRE: "Autre motif",
+};
+
+/** Motifs qui ne transportent rien : la mission part à vide et ne se facture pas. */
+export const MOTIFS_SANS_MARCHANDISE = ["REPARATION", "REPOSITIONNEMENT", "AUTRE"];

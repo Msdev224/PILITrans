@@ -65,6 +65,8 @@ function voyage(
     nbRotations: 1,
     aVide: false,
     remunerationChauffeur: null,
+    remunererChauffeur: true,
+    perDiemJournalierGnf: null,
     chauffeur: chauffeur(),
     ...surcharge,
   } as Voyage & { chauffeur: Chauffeur };

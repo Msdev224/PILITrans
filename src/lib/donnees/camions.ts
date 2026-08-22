@@ -3,6 +3,7 @@ import type { Camion, Chauffeur, Depense, Echeance, Entretien, Reparation, Voyag
 import {
   amortissementMensuel,
   coutParKm,
+  joursEntre,
   margeCamion,
   margeParKm,
   paybackMois,
@@ -13,6 +14,7 @@ import {
 import { consoMoyenne } from "@/lib/donnees/carburant";
 import { prisma } from "@/lib/prisma";
 import { dansPeriode, moisCourant, type Periode } from "@/lib/periode";
+import { debutDeJour } from "@/lib/utils";
 import { n, nOuNull } from "@/lib/utils";
 
 // ------------------------------------------------------------
@@ -48,6 +50,14 @@ type VoyageAvecChauffeur = Voyage & { chauffeur: Chauffeur };
  * voyage) prime ; sinon on l'estime depuis le mode de rémunération du chauffeur.
  */
 export function remunerationDuVoyage(voyage: VoyageAvecChauffeur): number {
+  // Certaines missions ne se rémunèrent pas : un aller à l'atelier, un
+  // repositionnement. Le chauffeur n'y touche que ses frais de route.
+  //
+  // Seul un « non » explicite supprime la paie. Un champ absent — objet
+  // partiel, donnée d'avant la migration — doit garder l'ancien comportement
+  // plutôt que d'effacer silencieusement la rémunération.
+  if (voyage.remunererChauffeur === false) return 0;
+
   const versee = nOuNull(voyage.remunerationChauffeur);
   if (versee !== undefined) return versee;
 
@@ -57,6 +67,31 @@ export function remunerationDuVoyage(voyage: VoyageAvecChauffeur): number {
     recetteGnf: n(voyage.recetteGnf),
     km: kmVoyage(voyage),
   });
+}
+
+/**
+ * Jours couverts par une mission, bornes incluses.
+ *
+ * Une course partie et revenue le même jour compte un jour : le chauffeur a
+ * quand même mangé. Une mission non terminée court jusqu'à aujourd'hui.
+ */
+export function joursMission(voyage: VoyageAvecChauffeur, aujourdhui: Date = new Date()): number {
+  const fin = voyage.dateArrivee ?? voyage.dateArriveeDestination ?? aujourdhui;
+  return joursEntre(debutDeJour(voyage.dateDepart), debutDeJour(fin)) + 1;
+}
+
+/**
+ * Indemnité de nourriture d'une mission : barème journalier × jours.
+ *
+ * Le barème vient de la mission si le gérant l'a fixé, sinon de la fiche du
+ * chauffeur. Aucun repli automatique sur un barème général ici : ce serait
+ * appliquer un montant que personne n'a validé pour cette course.
+ */
+export function perDiemDuVoyage(voyage: VoyageAvecChauffeur, aujourdhui: Date = new Date()): number {
+  const taux =
+    nOuNull(voyage.perDiemJournalierGnf) ?? nOuNull(voyage.chauffeur.perDiemJournalierGnf) ?? 0;
+  if (taux <= 0) return 0;
+  return Math.round(taux * joursMission(voyage, aujourdhui));
 }
 
 // ------------------------------------------------------------
@@ -79,6 +114,8 @@ export interface PnlCamion {
   reparationsGnf: number;
   entretiensGnf: number;
   remunerationGnf: number;
+  /** Indemnités de nourriture, comptées au jour de mission. */
+  perDiemGnf: number;
   /** Amortissement théorique, informatif : jamais déduit des marges. */
   amortissementGnf: number;
 
@@ -135,6 +172,8 @@ export function calculerPnl(camion: Camion, mvts: MouvementsCamion, periode: Per
   const reparationsGnf = reparations.reduce((total, r) => total + n(r.coutTotalGnf), 0);
   const entretiensGnf = entretiens.reduce((total, e) => total + n(e.coutGnf), 0);
   const remunerationGnf = voyages.reduce((total, v) => total + remunerationDuVoyage(v), 0);
+  // La nourriture du chauffeur est une charge de la mission, comptée au jour.
+  const perDiemGnf = voyages.reduce((total, v) => total + perDiemDuVoyage(v), 0);
 
   const coutAcquisition = nOuNull(camion.coutAcquisition);
   const amortissementGnf =
@@ -147,7 +186,9 @@ export function calculerPnl(camion: Camion, mvts: MouvementsCamion, periode: Per
   const { couts, margeExploitation } = margeCamion({
     recetteGnf,
     gasoilGnf,
-    autresDepensesGnf,
+    // Le per diem rejoint les frais de route : c'est de l'argent sorti pour
+    // cette mission, au même titre qu'un péage.
+    autresDepensesGnf: autresDepensesGnf + perDiemGnf,
     reparationsGnf,
     entretiensGnf,
     remunerationGnf,
@@ -169,6 +210,7 @@ export function calculerPnl(camion: Camion, mvts: MouvementsCamion, periode: Per
     recetteGnf,
     gasoilGnf,
     autresDepensesGnf,
+    perDiemGnf,
     reparationsGnf,
     entretiensGnf,
     remunerationGnf,

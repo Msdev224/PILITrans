@@ -1987,6 +1987,28 @@
     border: 1px solid var(--line);
   }
 
+  /* Mention de règlement, façon cachet. */
+  .fac-cachet {
+    display: inline-block;
+    margin: 14px 0 4px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1.5px solid currentColor;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .fac-cachet-paye {
+    color: var(--pos);
+  }
+  .fac-cachet-partiel {
+    color: #8a5d06;
+  }
+  .fac-cachet-impaye {
+    color: var(--neg);
+  }
+
   /* État de livraison porté sur la facture. */
   .fac-livre {
     color: var(--pos);

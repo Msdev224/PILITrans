@@ -400,6 +400,12 @@ function aplatir(ligne: LigneVoyage): VoyageEditable {
     distanceKm: voyage.distanceKm,
     dateDepart: voyage.dateDepart.toISOString().slice(0, 10),
     aVide: voyage.aVide,
+    motif: voyage.motif,
+    remunererChauffeur: voyage.remunererChauffeur,
+    perDiemJournalierGnf:
+      voyage.perDiemJournalierGnf != null ? n(voyage.perDiemJournalierGnf) : null,
+    remunerationChauffeur:
+      voyage.remunerationChauffeur != null ? n(voyage.remunerationChauffeur) : null,
     recette: n(voyage.recette),
     devise: voyage.devise,
     recetteGnf: ligne.recetteGnf,

@@ -1,6 +1,6 @@
 "use server";
 
-import { StatutVoyage } from "@prisma/client";
+import { MotifVoyage, StatutVoyage } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -34,6 +34,14 @@ const schemaVoyage = z
     clientId: texteOptionnel,
     /** Trajet à vide destiné à aller chercher la marchandise du client. */
     vaChercher: caseACocher,
+    /** Ce pour quoi le camion roule : transport, atelier, repositionnement… */
+    motif: z.nativeEnum(MotifVoyage).default("TRANSPORT"),
+    /** Décoché sur un aller d'atelier : le chauffeur n'a que ses frais. */
+    remunererChauffeur: caseACocher,
+    /** Indemnité de nourriture par jour, convenue pour cette mission. */
+    perDiemJournalierGnf: nombreOptionnel,
+    /** Paie de la mission, si elle est déjà arrêtée. */
+    remunerationChauffeur: nombreOptionnel,
     distanceKm: nombreOptionnel,
     dateDepart: z.coerce.date({ message: "Date de départ invalide" }),
     aVide: caseACocher,
@@ -126,6 +134,10 @@ function donneesVoyage(saisie: z.infer<typeof schemaVoyage>) {
     clientId: saisie.clientId || null,
     // Un repositionnement à vide n'a pas de marchandise à aller chercher.
     vaChercher: saisie.aVide ? saisie.vaChercher : false,
+    motif: saisie.motif,
+    remunererChauffeur: saisie.remunererChauffeur,
+    perDiemJournalierGnf: saisie.perDiemJournalierGnf ?? null,
+    remunerationChauffeur: saisie.remunerationChauffeur ?? null,
     distanceKm: saisie.distanceKm != null ? Math.round(saisie.distanceKm) : null,
     dateDepart: saisie.dateDepart,
     aVide: saisie.aVide,

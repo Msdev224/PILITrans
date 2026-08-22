@@ -21,6 +21,7 @@ import type { Suggestion } from "@/lib/donnees/trajets";
 import { formatDecimal, formatNombre } from "@/lib/utils";
 import { ChampRecherche } from "@/components/champ-recherche";
 import { formatTelephone } from "@/lib/telephone";
+import { LIBELLE_MOTIF_VOYAGE, MOTIFS_SANS_MARCHANDISE } from "@/lib/utils";
 
 
 // Les objets Prisma portent des Decimal, qui ne traversent pas la frontière
@@ -88,6 +89,10 @@ export interface VoyageEditable {
   distanceKm: number | null;
   dateDepart: string;
   aVide: boolean;
+  motif: string;
+  remunererChauffeur: boolean;
+  perDiemJournalierGnf: number | null;
+  remunerationChauffeur: number | null;
   recette: number;
   devise: "GNF" | "XOF";
   recetteGnf: number;
@@ -130,6 +135,8 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
   const [recette, setRecette] = useState(voyage ? String(voyage.recette) : "");
   const [recetteGnf, setRecetteGnf] = useState(voyage ? String(voyage.recetteGnf) : "");
   const [aVide, setAVide] = useState(voyage?.aVide ?? false);
+  const [motif, setMotif] = useState(voyage?.motif ?? "TRANSPORT");
+  const [remunerer, setRemunerer] = useState(voyage?.remunererChauffeur ?? true);
   const [vaChercher, setVaChercher] = useState(voyage?.vaChercher ?? false);
 
   // Les marchandises sont éditées en liste. Chaque ligne garde une clé stable :
@@ -388,6 +395,79 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                       <option value="TERMINE">Terminé</option>
                     </select>
                   </Champ>
+
+                  {/* Toutes les missions ne transportent pas : on roule aussi
+                      pour l'atelier ou pour repositionner le camion. Ce choix
+                      commande le reste — une course d'atelier ne se facture ni
+                      ne se rémunère comme un transport. */}
+                  <Champ label="Motif de la mission">
+                    <select
+                      name="motif"
+                      key={motif}
+                      defaultValue={motif}
+                      onChange={(e) => {
+                        const m = e.target.value;
+                        setMotif(m);
+                        // Un aller d'atelier part forcément à vide et ne se
+                        // rémunère pas par défaut : on l'applique plutôt que
+                        // de laisser l'utilisateur y penser.
+                        if (MOTIFS_SANS_MARCHANDISE.includes(m)) {
+                          setAVide(true);
+                          setRemunerer(false);
+                        }
+                      }}
+                    >
+                      {Object.keys(LIBELLE_MOTIF_VOYAGE).map((m) => (
+                        <option key={m} value={m}>
+                          {LIBELLE_MOTIF_VOYAGE[m]}
+                        </option>
+                      ))}
+                    </select>
+                  </Champ>
+
+                  <Champ
+                    label="Indemnité de nourriture (GNF/jour)"
+                    aide="Comptée par jour de mission. Vide : le barème du chauffeur s'applique."
+                  >
+                    <input
+                      name="perDiemJournalierGnf"
+                      inputMode="numeric"
+                      key={val("perDiemJournalierGnf", voyage?.perDiemJournalierGnf != null ? String(voyage.perDiemJournalierGnf) : "")}
+                      defaultValue={val("perDiemJournalierGnf", voyage?.perDiemJournalierGnf != null ? String(voyage.perDiemJournalierGnf) : "")}
+                    />
+                  </Champ>
+
+                  <div className="full">
+                    <label className="flex cursor-pointer items-center gap-2 text-[12.5px]">
+                      <input
+                        type="checkbox"
+                        name="remunererChauffeur"
+                        value="true"
+                        checked={remunerer}
+                        onChange={(e) => setRemunerer(e.target.checked)}
+                      />
+                      Le chauffeur est <b>rémunéré</b> pour cette mission
+                    </label>
+                    {!remunerer ? (
+                      <p className="aide-role">
+                        Il ne touchera que ses frais de route et son indemnité de nourriture.
+                        Sans cette case, l&apos;application appliquerait son forfait et la mission
+                        paraîtrait lourdement déficitaire.
+                      </p>
+                    ) : (
+                      <Champ
+                        label="Paie de la mission (GNF)"
+                        aide="Facultatif. Vide : le mode de rémunération du chauffeur s'applique."
+                      >
+                        <input
+                          name="remunerationChauffeur"
+                          inputMode="numeric"
+                          key={val("remunerationChauffeur", voyage?.remunerationChauffeur != null ? String(voyage.remunerationChauffeur) : "")}
+                          defaultValue={val("remunerationChauffeur", voyage?.remunerationChauffeur != null ? String(voyage.remunerationChauffeur) : "")}
+                        />
+                      </Champ>
+                    )}
+                  </div>
 
                   <div className="full">
                     <label className="flex cursor-pointer items-center gap-2 text-[12.5px]">

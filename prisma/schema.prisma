@@ -206,6 +206,9 @@ model Chauffeur {
   /// Vercel est en lecture seule, et un stockage objet serait une dépendance
   /// de plus pour quelques dizaines de kilo-octets par chauffeur.
   photo           String?
+  /// Indemnité de nourriture par jour, propre à ce chauffeur.
+  /// Sert à pré-remplir les missions ; le montant convenu par mission prime.
+  perDiemJournalierGnf Decimal? @db.Decimal(14, 2)
   modeRemuneration ModeRemuneration @default(FORFAIT_VOYAGE)
   tauxRemuneration Decimal?         @db.Decimal(12, 2) // montant/voyage, %/recette ou montant/km selon le mode
   actif           Boolean   @default(true)
@@ -314,6 +317,20 @@ model LigneMarchandise {
   @@index([voyageId])
 }
 
+/// Raison d'être d'une mission.
+///
+/// Toutes ne transportent pas : on roule aussi pour aller réparer le camion,
+/// le repositionner, ou chercher une marchandise. La distinction commande le
+/// reste — un trajet d'atelier ne se facture pas et ne se rémunère pas comme
+/// un transport.
+enum MotifVoyage {
+  TRANSPORT               // course classique, chargée
+  RECUPERATION_MARCHANDISE // part à vide chercher le chargement d'un client
+  REPARATION              // va à l'atelier
+  REPOSITIONNEMENT        // ramène le camion là où il servira
+  AUTRE
+}
+
 model Voyage {
   id           String    @id @default(cuid())
   reference    String    @unique @default(cuid())
@@ -353,6 +370,27 @@ model Voyage {
   /// Vrai quand le trajet à vide sert à aller chercher la marchandise du
   /// client ci-dessus. Distingue la course utile du repositionnement.
   vaChercher   Boolean      @default(false)
+  /// Ce pour quoi le camion roule. Détermine ce qu'on attend de la mission.
+  motif        MotifVoyage  @default(TRANSPORT)
+
+  /**
+   * Le chauffeur est-il payé pour cette mission ?
+   *
+   * Un aller à l'atelier ne se rémunère pas forcément : il touche alors ses
+   * seuls frais de route. Sans ce drapeau, l'application estimait sa paie
+   * depuis son forfait et faisait apparaître le camion lourdement déficitaire
+   * sur une course qui ne rapportait rien par nature.
+   */
+  remunererChauffeur Boolean @default(true)
+
+  /**
+   * Indemnité de nourriture, par jour de mission.
+   *
+   * Se compte au jour, pas au voyage : une course de trois jours nourrit trois
+   * jours. Pré-remplie depuis la fiche du chauffeur, ajustable ici — le
+   * montant réellement convenu prime sur le barème.
+   */
+  perDiemJournalierGnf Decimal? @db.Decimal(14, 2)
   distanceKm   Int?
 
   dateDepart   DateTime
@@ -828,6 +866,10 @@ model Parametres {
    * livraison et la chaîne du froid n'ont aucun sens pour des passagers.
    */
   transportPersonnesActif Boolean @default(false)
+
+  /// Indemnité de nourriture par jour, appliquée à défaut de barème sur la
+  /// fiche du chauffeur.
+  perDiemJournalierGnf Decimal? @db.Decimal(14, 2)
 
   // --- Caisse de l'entreprise ---
   /**
