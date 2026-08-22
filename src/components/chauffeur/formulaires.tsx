@@ -15,7 +15,7 @@ import {
 import { declarerPrelevement, type EtatPrelevement } from "@/actions/douane";
 import { confirmerParCode, type EtatLivraison } from "@/actions/livraison";
 import { enregistrerReleve, type EtatReleve } from "@/actions/froid";
-import { formatDecimal, formatNombre, LIBELLE_PAYS, LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
+import { formatDecimal, formatNombre, LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
 
 const TYPES_GASOIL = ["GASOIL_TRACTEUR", "GASOIL_GROUPE_FROID"];
 
@@ -115,10 +115,13 @@ export function FormulairePrelevement({
   voyageId,
   marchandises,
   paysDefaut,
+  pays,
 }: {
   voyageId: string;
   marchandises: { id: string; designation: string; symbole: string; dejaPreleve: number }[];
   paysDefaut: string;
+  /** Pays proposés, tenus par l'exploitation. */
+  pays: { id: string; nom: string }[];
 }) {
   const [etat, envoyer] = useActionState<EtatPrelevement, FormData>(declarerPrelevement, {});
   const [quantite, setQuantite] = useState("");
@@ -183,10 +186,10 @@ export function FormulairePrelevement({
 
       <div className="ph-champ">
         <span>Pays</span>
-        <select name="pays" defaultValue={paysDefaut} className="ph-select-inline" aria-label="Pays">
-          {Object.keys(LIBELLE_PAYS).map((p) => (
-            <option key={p} value={p}>
-              {LIBELLE_PAYS[p]}
+        <select name="paysId" defaultValue={paysDefaut} className="ph-select-inline" aria-label="Pays">
+          {pays.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nom}
             </option>
           ))}
         </select>

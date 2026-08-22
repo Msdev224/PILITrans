@@ -13,10 +13,13 @@ import {
 
 export function ActionsEtape({
   voyageId,
+  pays,
   etape,
   ravitaillements,
 }: {
   voyageId: string;
+  /** Pays proposés, tenus par l'exploitation. */
+  pays: { id: string; nom: string }[];
   etape: EtapeEditable;
   ravitaillements: RavitaillementOption[];
 }) {
@@ -26,6 +29,7 @@ export function ActionsEtape({
     <div className="acts">
       <DialogueEtape
         voyageId={voyageId}
+        pays={pays}
         etape={etape}
         ravitaillements={ravitaillements}
         declencheur={

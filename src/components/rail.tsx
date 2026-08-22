@@ -108,6 +108,7 @@ export function Rail({
       entrees: [
         { libelle: "Comptes", href: "/utilisateurs", icone: <IconeClients />, droit: "equipe.ecrire" },
         { libelle: "Unités", href: "/unites", icone: <IconeDossier />, droit: "parametres.ecrire" },
+        { libelle: "Pays", href: "/pays", icone: <IconeVoyages />, droit: "parametres.ecrire" },
         { libelle: "Paramètres", href: "/parametres", icone: <IconeParametres />, droit: "parametres.lire" },
       ],
     },

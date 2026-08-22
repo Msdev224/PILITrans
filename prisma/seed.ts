@@ -2,7 +2,7 @@
  * Seed PILITrans — données de démonstration alignées sur la maquette.
  * Lancer sur une base vide :  npm run db:push && npm run db:seed
  */
-import { PrismaClient, Pays, Devise } from "@prisma/client";
+import { Devise, PrismaClient } from "@prisma/client";
 import { hacherMotDePasse } from "../src/lib/mots-de-passe";
 import { UNITES_INITIALES } from "../src/lib/unites";
 import { synchroniserCamion } from "../src/lib/donnees/synchronisation";
@@ -29,6 +29,7 @@ async function main() {
   await db.chauffeur.deleteMany();
   await db.camion.deleteMany();
   await db.unite.deleteMany();
+  await db.pays.deleteMany();
   await db.tauxChange.deleteMany();
   await db.parametres.deleteMany();
 
@@ -116,6 +117,24 @@ async function main() {
     data: { nom: "Marché Madina", ville: "Conakry", telephone: "+224622405060" },
   });
 
+  // --- Pays desservis ---
+  // Saisis par l'exploitation : ouvrir un corridor n'exige pas de redéployer.
+  await db.pays.createMany({
+    data: [
+      { nom: "Guinée", code: "GN", indicatif: "+224", longueurTelephone: 9, ordre: 10 },
+      { nom: "Sénégal", code: "SN", indicatif: "+221", longueurTelephone: 9, ordre: 20 },
+      { nom: "Mali", code: "ML", indicatif: "+223", longueurTelephone: 8, ordre: 30 },
+      { nom: "Guinée-Bissau", code: "GW", indicatif: "+245", longueurTelephone: 9, ordre: 40 },
+      { nom: "Côte d'Ivoire", code: "CI", indicatif: "+225", longueurTelephone: 10, ordre: 50 },
+      { nom: "Sierra Leone", code: "SL", indicatif: "+232", longueurTelephone: 8, ordre: 60 },
+      { nom: "Liberia", code: "LR", indicatif: "+231", longueurTelephone: 8, ordre: 70 },
+      { nom: "Mauritanie", code: "MR", indicatif: "+222", longueurTelephone: 8, ordre: 80 },
+    ],
+  });
+  const pays = Object.fromEntries(
+    (await db.pays.findMany({ select: { id: true, code: true } })).map((p) => [p.code, p.id]),
+  );
+
   // --- Taux GNF ⇄ CFA observés ---
   // Le taux se relève tout seul sur les transactions en devise. On en pose
   // quelques-uns pour que l'historique soit lisible dès la première ouverture,
@@ -140,7 +159,7 @@ async function main() {
   const vDakar = await db.voyage.create({
     data: {
       reference: "KD-2026-041", camionId: pili01.id, chauffeurId: mamadou.id,
-      paysDepart: Pays.GUINEE, villeDepart: "Koundara", paysArrivee: Pays.SENEGAL, villeArrivee: "Dakar",
+      paysDepartId: pays["GN"], villeDepart: "Koundara", paysArriveeId: pays["SN"], villeArrivee: "Dakar",
       clientId: balde.id,
       distanceKm: 650, dateDepart: new Date("2026-08-14"), kmDepart: 128400, kmArrivee: 129050,
       dateArriveeDestination: new Date("2026-08-16"),
@@ -227,7 +246,7 @@ async function main() {
     data: {
       voyageId: vDakar.id, ordre: 1, type: "ETAPE",
       villeDepart: "Koundara", villeArrivee: "Dakar",
-      paysDepart: Pays.GUINEE, paysArrivee: Pays.SENEGAL,
+      paysDepartId: pays["GN"], paysArriveeId: pays["SN"],
       kmDepart: 128_400, kmArrivee: 129_050,
       carburantRestantDepart: 480, carburantRestantArrivee: 403,
       departLe: new Date("2026-08-14"), arriveeLe: new Date("2026-08-16"),

@@ -38,15 +38,30 @@ enum Devise {
 
 // Pays desservis (voyages parfois internationaux — passage de frontière).
 // Enum extensible : ajouter un pays = une ligne.
-enum Pays {
-  GUINEE
-  SENEGAL
-  MALI
-  GUINEE_BISSAU
-  COTE_IVOIRE
-  SIERRA_LEONE
-  LIBERIA
-  MAURITANIE
+/// Pays desservis, saisis par l'exploitation.
+///
+/// Une liste figée dans le code obligeait à redéployer pour ouvrir un
+/// corridor. Le pays porte aussi son indicatif téléphonique : ajouter un
+/// pays rend du même coup ses numéros saisissables.
+model Pays {
+  id        String @id @default(cuid())
+  nom       String @unique // « Guinée »
+  /// Code ISO à deux lettres, repris sur les factures : « GN ».
+  code      String @unique
+  /// Indicatif téléphonique avec le `+`.
+  indicatif String
+  /// Longueur attendue du numéro national, pour signaler une saisie douteuse.
+  longueurTelephone Int?
+  actif     Boolean @default(true)
+  ordre     Int     @default(0)
+
+  voyagesDepart   Voyage[] @relation("VoyageDepart")
+  voyagesArrivee  Voyage[] @relation("VoyageArrivee")
+  etapesDepart    EtapeVoyage[] @relation("EtapeDepart")
+  etapesArrivee   EtapeVoyage[] @relation("EtapeArrivee")
+  prelevements    PrelevementDouane[]
+
+  createdAt DateTime @default(now())
 }
 
 
@@ -303,9 +318,11 @@ model Voyage {
   chauffeur    Chauffeur @relation(fields: [chauffeurId], references: [id])
   chauffeurId  String
 
-  paysDepart   Pays      @default(GUINEE)
+  paysDepart   Pays?     @relation("VoyageDepart", fields: [paysDepartId], references: [id], onDelete: SetNull)
+  paysDepartId String?
   villeDepart  String
-  paysArrivee  Pays      @default(GUINEE)
+  paysArrivee  Pays?     @relation("VoyageArrivee", fields: [paysArriveeId], references: [id], onDelete: SetNull)
+  paysArriveeId String?
   villeArrivee String
   // international = (paysDepart != paysArrivee) — calculé côté app
   /// Client principal de la mission.
@@ -624,8 +641,10 @@ model EtapeVoyage {
   // chaque étape est un TRONÇON : ville + km + carburant, au départ ET à l'arrivée
   villeDepart      String
   villeArrivee     String
-  paysDepart       Pays?
-  paysArrivee      Pays?
+  paysDepart       Pays?   @relation("EtapeDepart", fields: [paysDepartId], references: [id], onDelete: SetNull)
+  paysDepartId     String?
+  paysArrivee      Pays?   @relation("EtapeArrivee", fields: [paysArriveeId], references: [id], onDelete: SetNull)
+  paysArriveeId    String?
   kmDepart         Int?
   kmArrivee        Int?
   carburantRestantDepart  Decimal? @db.Decimal(8, 2) // litres RESTANTS dans le réservoir au départ
@@ -926,7 +945,8 @@ model PrelevementDouane {
   /// Quantité retenue, exprimée dans l'unité de la ligne.
   quantite       Decimal  @db.Decimal(14, 3)
   lieu           String
-  pays           Pays     @default(GUINEE)
+  pays           Pays?    @relation(fields: [paysId], references: [id], onDelete: SetNull)
+  paysId         String?
   motif          String?
   /// Certains postes convertissent le prélèvement en argent : on garde la
   /// contrepartie quand elle existe, au taux réel comme partout ailleurs.

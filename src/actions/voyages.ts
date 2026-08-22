@@ -1,6 +1,6 @@
 "use server";
 
-import { Pays, StatutVoyage } from "@prisma/client";
+import { StatutVoyage } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -25,9 +25,10 @@ const schemaVoyage = z
   .object({
     camionId: z.string().min(1, "Camion requis"),
     chauffeurId: z.string().min(1, "Chauffeur requis"),
-    paysDepart: z.nativeEnum(Pays),
+    /** Pays choisis dans la liste tenue par l'exploitation. */
+    paysDepartId: texteOptionnel,
     villeDepart: z.string().trim().min(1, "Ville de départ requise"),
-    paysArrivee: z.nativeEnum(Pays),
+    paysArriveeId: texteOptionnel,
     villeArrivee: z.string().trim().min(1, "Ville d'arrivée requise"),
     /** Client de la mission, choisi dans la liste — plus de saisie libre. */
     clientId: texteOptionnel,
@@ -110,9 +111,9 @@ function donneesVoyage(saisie: z.infer<typeof schemaVoyage>) {
   return {
     camionId: saisie.camionId,
     chauffeurId: saisie.chauffeurId,
-    paysDepart: saisie.paysDepart,
+    paysDepartId: saisie.paysDepartId || null,
     villeDepart: saisie.villeDepart,
-    paysArrivee: saisie.paysArrivee,
+    paysArriveeId: saisie.paysArriveeId || null,
     villeArrivee: saisie.villeArrivee,
     clientId: saisie.clientId || null,
     // Un repositionnement à vide n'a pas de marchandise à aller chercher.

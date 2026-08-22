@@ -13,7 +13,6 @@ import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes
 import { ficheVoyage, type TronconVue } from "@/lib/donnees/voyages";
 import { prisma } from "@/lib/prisma";
 import {
-  LIBELLE_PAYS,
   LIBELLE_STATUT_VOYAGE,
   LIBELLE_TYPE_DEPENSE,
   LIBELLE_TYPE_ETAPE,
@@ -28,17 +27,19 @@ import { SiPeut } from "@/components/si-peut";
 import { formatQuantite } from "@/lib/donnees/unites";
 import { supprimerPrelevement } from "@/actions/douane";
 import { ActionsCodeLivraison } from "@/components/voyages/actions-code-livraison";
+import { paysActifs } from "@/lib/donnees/pays";
 
 export const dynamic = "force-dynamic";
 
 export default async function FicheVoyagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [session, fiche, parametres, fil] = await Promise.all([
+  const [session, fiche, parametres, fil, pays] = await Promise.all([
     sessionRequise(),
     ficheVoyage(id),
     prisma.parametres.findFirst(),
     filAlertes(),
+    paysActifs(),
   ]);
 
   if (!fiche) notFound();
@@ -102,7 +103,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
             <Info libelle="État" valeur={LIBELLE_STATUT_VOYAGE[voyage.statut]} />
             <Info
               libelle="Trajet"
-              valeur={`${LIBELLE_PAYS[voyage.paysDepart]} → ${LIBELLE_PAYS[voyage.paysArrivee]}`}
+              valeur={`${voyage.paysDepart?.nom ?? "—"} → ${voyage.paysArrivee?.nom ?? "—"}`}
             />
             <Info libelle="Client" valeur={voyage.client?.nom ?? "—"} />
             {/* Le trajet à vide vers un chargement n'est pas un
@@ -243,7 +244,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                         <td className="num">{formatQuantite(p.quantite, l.symbole)}</td>
                         <td>
                           {p.lieu}
-                          <div className="t-sub">{LIBELLE_PAYS[p.pays] ?? p.pays}</div>
+                          <div className="t-sub">{p.pays}</div>
                         </td>
                         <td className="muted">{p.motif ?? "—"}</td>
                         <td className="mono">{p.reference ?? "—"}</td>
@@ -301,6 +302,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
           <SiPeut droit="voyages.ecrire">
             <DialogueEtape
               voyageId={voyage.id}
+              pays={pays}
               ravitaillements={ravitaillements}
               declencheur={
                 <button type="button" className="btn-add">
@@ -335,6 +337,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                     key={troncon.etape.id}
                     troncon={troncon}
                     voyageId={voyage.id}
+                    pays={pays}
                     ravitaillements={ravitaillements}
                     dejaRattaches={dejaRattaches}
                   />
@@ -367,11 +370,13 @@ function Info({ libelle, valeur, mono }: { libelle: string; valeur: string; mono
 function LigneTroncon({
   troncon,
   voyageId,
+  pays,
   ravitaillements,
   dejaRattaches,
 }: {
   troncon: TronconVue;
   voyageId: string;
+  pays: { id: string; nom: string }[];
   ravitaillements: RavitaillementOption[];
   dejaRattaches: Set<string>;
 }) {
@@ -409,13 +414,14 @@ function LigneTroncon({
       <td>
         <ActionsEtape
           voyageId={voyageId}
+          pays={pays}
           etape={{
             id: etape.id,
             type: etape.type,
             villeDepart: etape.villeDepart,
             villeArrivee: etape.villeArrivee,
-            paysDepart: etape.paysDepart,
-            paysArrivee: etape.paysArrivee,
+            paysDepartId: etape.paysDepartId,
+            paysArriveeId: etape.paysArriveeId,
             kmDepart: etape.kmDepart,
             kmArrivee: etape.kmArrivee,
             carburantRestantDepart:

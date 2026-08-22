@@ -239,16 +239,6 @@ export const LIBELLE_MOYEN_PAIEMENT: Record<string, string> = {
   AUTRE: "Autre",
 };
 
-export const LIBELLE_PAYS: Record<string, string> = {
-  GUINEE: "Guinée",
-  SENEGAL: "Sénégal",
-  MALI: "Mali",
-  GUINEE_BISSAU: "Guinée-Bissau",
-  COTE_IVOIRE: "Côte d'Ivoire",
-  SIERRA_LEONE: "Sierra Leone",
-  LIBERIA: "Liberia",
-  MAURITANIE: "Mauritanie",
-};
 
 /** Initiales pour l'avatar : « Mamadou Diallo » → « MD ». */
 export function initiales(nom: string): string {

@@ -1,6 +1,6 @@
 "use server";
 
-import { Devise, Pays } from "@prisma/client";
+import { Devise } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -46,7 +46,8 @@ const schemaPrelevement = z
     ligneId: z.string().min(1, "Marchandise requise"),
     quantite: nombrePositif("Quantité prélevée requise"),
     lieu: z.string().trim().min(1, "Lieu du prélèvement requis"),
-    pays: z.nativeEnum(Pays),
+    /** Pays du poste. Choisi dans la liste tenue par l'exploitation. */
+    paysId: texteOptionnel,
     motif: texteOptionnel,
     montant: nombreOptionnel,
     devise: z.nativeEnum(Devise),
@@ -118,7 +119,7 @@ export async function declarerPrelevement(
       ligneId: ligne.id,
       quantite: saisie.data.quantite,
       lieu: saisie.data.lieu,
-      pays: saisie.data.pays,
+      paysId: saisie.data.paysId || null,
       motif: saisie.data.motif ?? null,
       montant,
       devise: saisie.data.devise,

@@ -79,6 +79,9 @@ export function estFiltreVoyage(valeur: string | undefined): valeur is FiltreVoy
 export type VoyageComplet = Voyage & {
   camion: Camion;
   chauffeur: Chauffeur;
+  /** Pays liés : ils sont saisis par l'exploitation, plus figés dans le code. */
+  paysDepart: { nom: string; code: string } | null;
+  paysArrivee: { nom: string; code: string } | null;
   client: { id: string; nom: string } | null;
   factures: Facture[];
   lignes: Parameters<typeof vueLignes>[0];
@@ -109,7 +112,7 @@ function construireLigne(
     remunerationGnf,
     margeGnf: recetteGnf - fraisGnf - remunerationGnf,
     km: kmVoyage(voyage),
-    international: voyage.paysDepart !== voyage.paysArrivee,
+    international: voyage.paysDepartId !== voyage.paysArriveeId,
     joursAttente,
     enRoute: (STATUTS_EN_ROUTE as readonly string[]).includes(voyage.statut),
     termine: voyage.statut === "TERMINE",
@@ -194,6 +197,8 @@ export async function vueVoyages(
         client: { select: { id: true, nom: true } },
         factures: true,
         lignes: INCLURE_LIGNES,
+        paysDepart: { select: { nom: true, code: true } },
+        paysArrivee: { select: { nom: true, code: true } },
       },
       orderBy: { dateDepart: "desc" },
     }),
@@ -315,6 +320,8 @@ export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Pr
         client: { select: { id: true, nom: true } },
         factures: true,
         lignes: INCLURE_LIGNES,
+        paysDepart: { select: { nom: true, code: true } },
+        paysArrivee: { select: { nom: true, code: true } },
       },
   });
   if (!voyage) return null;
@@ -323,7 +330,11 @@ export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Pr
     prisma.depense.findMany({ where: { voyageId: id }, orderBy: { date: "asc" } }),
     prisma.etapeVoyage.findMany({
       where: { voyageId: id },
-      include: { ravitaillements: true },
+      include: {
+        ravitaillements: true,
+        paysDepart: { select: { nom: true, code: true } },
+        paysArrivee: { select: { nom: true, code: true } },
+      },
       orderBy: { ordre: "asc" },
     }),
   ]);

@@ -25,6 +25,7 @@ import {
   type LigneVoyage,
 } from "@/lib/donnees/voyages";
 import { moisCourant } from "@/lib/periode";
+import { paysActifs } from "@/lib/donnees/pays";
 import { unitesActives } from "@/lib/donnees/unites";
 import { prisma } from "@/lib/prisma";
 import {
@@ -41,16 +42,6 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Voyages — PILITrans" };
 
 // Codes pays courts pour le badge « INTL · SN ».
-const CODE_PAYS: Record<string, string> = {
-  GUINEE: "GN",
-  SENEGAL: "SN",
-  MALI: "ML",
-  GUINEE_BISSAU: "GW",
-  COTE_IVOIRE: "CI",
-  SIERRA_LEONE: "SL",
-  LIBERIA: "LR",
-  MAURITANIE: "MR",
-};
 
 const BADGE_STATUT: Record<string, string> = {
   PLANIFIE: "b-idle",
@@ -71,7 +62,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
   const recherche = params.q ?? "";
   const periode = moisCourant();
 
-  const [session, vue, parametres, fil, camions, chauffeurs, unites, clients] = await Promise.all([
+  const [session, vue, parametres, fil, camions, chauffeurs, unites, pays, clients] = await Promise.all([
     sessionRequise(),
     vueVoyages(periode, { filtre, recherche }),
     prisma.parametres.findFirst(),
@@ -87,6 +78,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
       orderBy: { nom: "asc" },
     }),
     unitesActives(),
+    paysActifs(),
     prisma.client.findMany({ select: { id: true, nom: true }, orderBy: { nom: "asc" } }),
   ]);
 
@@ -181,6 +173,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
               camions={camions}
               chauffeurs={chauffeurs}
               unites={unites}
+              pays={pays}
               clients={clients}
               tauxReferenceXof={tauxReferenceXof}
               declencheur={
@@ -221,6 +214,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
                   <LigneTableau
                     key={ligne.voyage.id}
                     unites={unites}
+                    pays={pays}
                     ligne={ligne}
                     camions={camions}
                     chauffeurs={chauffeurs}
@@ -252,6 +246,7 @@ function LigneTableau({
   ligne,
   camions,
   unites,
+  pays,
   clients,
   chauffeurs,
   tauxReferenceXof,
@@ -261,6 +256,7 @@ function LigneTableau({
   ligne: LigneVoyage;
   camions: OptionCamion[];
   unites: OptionUnite[];
+  pays: { id: string; nom: string }[];
   /** Même forme pour les deux dialogues : { id, nom }. */
   clients: OptionClient[];
   chauffeurs: OptionChauffeur[];
@@ -295,7 +291,7 @@ function LigneTableau({
       <td>
         <div className="flex flex-wrap gap-1">
           {ligne.international ? (
-            <span className="badge b-intl">INTL · {CODE_PAYS[voyage.paysArrivee]}</span>
+            <span className="badge b-intl">INTL · {voyage.paysArrivee?.code ?? "?"}</span>
           ) : (
             <span className="badge b-dom">DOM</span>
           )}
@@ -366,6 +362,7 @@ function LigneTableau({
           camions={camions}
           chauffeurs={chauffeurs}
           unites={unites}
+          pays={pays}
           clients={clients}
           tauxReferenceXof={tauxReferenceXof}
             aDesEcritures={ligne.postes.length > 0 || ligne.facture}
@@ -384,9 +381,9 @@ function aplatir(ligne: LigneVoyage): VoyageEditable {
     reference: voyage.reference,
     camionId: voyage.camionId,
     chauffeurId: voyage.chauffeurId,
-    paysDepart: voyage.paysDepart,
+    paysDepartId: voyage.paysDepartId,
     villeDepart: voyage.villeDepart,
-    paysArrivee: voyage.paysArrivee,
+    paysArriveeId: voyage.paysArriveeId,
     villeArrivee: voyage.villeArrivee,
     clientId: voyage.clientId,
     vaChercher: voyage.vaChercher,

@@ -165,7 +165,7 @@ export default async function ImpressionFacturePage({
             <div className="fac-voyage">
               <Cellule
                 libelle="Trajet"
-                valeur={`${voyage.villeDepart} (${CODE[voyage.paysDepart] ?? ""}) → ${voyage.villeArrivee} (${CODE[voyage.paysArrivee] ?? ""})`}
+                valeur={`${voyage.villeDepart} (${voyage.paysDepart?.code ?? ""}) → ${voyage.villeArrivee} (${voyage.paysArrivee?.code ?? ""})`}
                 route
               />
               <Cellule
@@ -404,16 +404,6 @@ export default async function ImpressionFacturePage({
   );
 }
 
-const CODE: Record<string, string> = {
-  GUINEE: "GN",
-  SENEGAL: "SN",
-  MALI: "ML",
-  GUINEE_BISSAU: "GW",
-  COTE_IVOIRE: "CI",
-  SIERRA_LEONE: "SL",
-  LIBERIA: "LR",
-  MAURITANIE: "MR",
-};
 
 function Cellule({ libelle, valeur, route }: { libelle: string; valeur: string; route?: boolean }) {
   return (

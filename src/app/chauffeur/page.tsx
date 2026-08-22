@@ -23,6 +23,7 @@ import {
 } from "@/lib/utils";
 import { vueLignes } from "@/lib/donnees/marchandises";
 import { formatQuantite } from "@/lib/donnees/unites";
+import { paysActifs } from "@/lib/donnees/pays";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Espace chauffeur — PILITrans" };
@@ -41,6 +42,8 @@ export default async function EspaceChauffeurPage() {
 
   // Le gérant peut ouvrir l'écran, mais il n'a pas de fiche chauffeur.
   const espace = session.user.chauffeurId ? await espaceChauffeur(session.user.chauffeurId) : null;
+  // Les pays viennent de la base : le chauffeur y désigne le poste de douane.
+  const pays = await paysActifs();
 
   if (!espace) {
     return (
@@ -124,7 +127,7 @@ export default async function EspaceChauffeurPage() {
               <div className="lab">Trajet en cours</div>
               <div className="ph-trajet">
                 {mission.villeDepart} → {mission.villeArrivee}
-                {mission.paysDepart !== mission.paysArrivee ? (
+                {mission.paysDepartId !== mission.paysArriveeId ? (
                   <span className="badge b-intl ml-2">INTL</span>
                 ) : null}
               </div>
@@ -257,7 +260,8 @@ export default async function EspaceChauffeurPage() {
               </p>
               <FormulairePrelevement
                 voyageId={mission.id}
-                paysDefaut={mission.paysArrivee}
+                pays={pays}
+                paysDefaut={mission.paysArriveeId ?? ""}
                 marchandises={marchandises.map((m) => ({
                   id: m.id,
                   designation: m.designation,

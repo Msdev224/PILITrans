@@ -1,13 +1,13 @@
 "use server";
 
-import { Pays, TypeEtape } from "@prisma/client";
+import { TypeEtape } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { synchroniserCamionDuVoyage } from "@/lib/donnees/synchronisation";
-import { dateOptionnelle, enumOptionnel, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
+import { dateOptionnelle, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -21,8 +21,9 @@ const schemaEtape = z
     type: z.nativeEnum(TypeEtape),
     villeDepart: z.string().trim().min(1, "Ville de départ requise"),
     villeArrivee: z.string().trim().min(1, "Ville d'arrivée requise"),
-    paysDepart: enumOptionnel(Pays),
-    paysArrivee: enumOptionnel(Pays),
+    /** Pays choisis dans la liste tenue par l'exploitation. */
+    paysDepartId: texteOptionnel,
+    paysArriveeId: texteOptionnel,
     kmDepart: nombreOptionnel,
     kmArrivee: nombreOptionnel,
     carburantRestantDepart: nombreOptionnel,
@@ -62,8 +63,8 @@ function donneesEtape(saisie: z.infer<typeof schemaEtape>) {
     type: saisie.type,
     villeDepart: saisie.villeDepart,
     villeArrivee: saisie.villeArrivee,
-    paysDepart: saisie.paysDepart ?? null,
-    paysArrivee: saisie.paysArrivee ?? null,
+    paysDepartId: saisie.paysDepartId || null,
+    paysArriveeId: saisie.paysArriveeId || null,
     kmDepart: saisie.kmDepart != null ? Math.round(saisie.kmDepart) : null,
     kmArrivee: saisie.kmArrivee != null ? Math.round(saisie.kmArrivee) : null,
     carburantRestantDepart: saisie.carburantRestantDepart ?? null,

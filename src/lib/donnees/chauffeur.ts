@@ -21,6 +21,8 @@ export async function espaceChauffeur(chauffeurId: string) {
         depenses: { orderBy: { date: "desc" }, take: 5 },
         relevesTemp: { orderBy: { releveLe: "desc" }, take: 1 },
         lignes: INCLURE_LIGNES,
+        paysDepart: { select: { nom: true, code: true } },
+        paysArrivee: { select: { nom: true, code: true } },
       },
       orderBy: { dateDepart: "desc" },
     }),

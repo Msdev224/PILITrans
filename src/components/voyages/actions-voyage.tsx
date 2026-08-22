@@ -30,6 +30,7 @@ interface Props {
   camions: OptionCamion[];
   chauffeurs: OptionChauffeur[];
   unites: OptionUnite[];
+  pays: { id: string; nom: string }[];
   clients: OptionClientVoyage[];
   tauxReferenceXof: number | null;
   /** `true` si le voyage porte déjà des frais, étapes ou factures. */
@@ -41,6 +42,7 @@ export function ActionsVoyage({
   camions,
   chauffeurs,
   unites,
+  pays,
   clients,
   tauxReferenceXof,
   aDesEcritures,
@@ -65,6 +67,7 @@ export function ActionsVoyage({
         camions={camions}
         chauffeurs={chauffeurs}
         unites={unites}
+        pays={pays}
         clients={clients}
         tauxReferenceXof={tauxReferenceXof}
         voyage={voyage}

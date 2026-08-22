@@ -87,7 +87,7 @@ interface LigneBrute {
     id: string;
     quantite: Decimalish;
     lieu: string;
-    pays: string;
+    pays: { nom: string } | null;
     motif: string | null;
     montantGnf: Decimalish;
     reference: string | null;
@@ -112,7 +112,7 @@ export function vueLignes(lignes: LigneBrute[]): LigneVue[] {
         id: p.id,
         quantite: n(p.quantite),
         lieu: p.lieu,
-        pays: p.pays,
+        pays: p.pays?.nom ?? "—",
         motif: p.motif,
         montantGnf: p.montantGnf != null ? n(p.montantGnf) : null,
         reference: p.reference,
@@ -168,7 +168,7 @@ export const INCLURE_LIGNES = {
   include: {
     unite: { select: { nom: true, symbole: true, facteurTonne: true } },
     client: { select: { nom: true } },
-    prelevements: { orderBy: { date: "asc" } },
+    prelevements: { orderBy: { date: "asc" }, include: { pays: { select: { nom: true } } } },
   },
 } as const;
 

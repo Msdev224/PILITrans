@@ -59,7 +59,7 @@ async function vueDossiersBrut(): Promise<DossierVoyage[]> {
   const tolerance = nOuNull(parametres?.toleranceFroid) ?? 1;
 
   return voyages.map((v) => {
-    const international = v.paysDepart !== v.paysArrivee;
+    const international = v.paysDepartId !== v.paysArriveeId;
     const pieces: Piece[] = [];
 
     // --- Facture client : attendue dès qu'il y a une recette ---

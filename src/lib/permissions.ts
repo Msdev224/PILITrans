@@ -183,6 +183,7 @@ export function permissionDeRoute(chemin: string): Permission | null {
     ["/analyses", "analyses.lire"],
     ["/alertes", "analyses.lire"],
     ["/unites", "parametres.ecrire"],
+    ["/pays", "parametres.ecrire"],
     ["/parametres", "parametres.lire"],
   ];
   return table.find(([prefixe]) => chemin.startsWith(prefixe))?.[1] ?? null;

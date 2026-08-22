@@ -178,6 +178,8 @@ export type FactureImprimable = Facture & {
     | (Voyage & {
         camion: Camion;
         chauffeur: Chauffeur;
+        paysDepart: { nom: string; code: string } | null;
+        paysArrivee: { nom: string; code: string } | null;
         lignes: Parameters<typeof vueLignes>[0];
       })
     | null;
@@ -197,7 +199,15 @@ export async function ficheFacture(
     where: { id },
     include: {
       client: true,
-      voyage: { include: { camion: true, chauffeur: true, lignes: INCLURE_LIGNES } },
+      voyage: {
+        include: {
+          camion: true,
+          chauffeur: true,
+          lignes: INCLURE_LIGNES,
+          paysDepart: { select: { nom: true, code: true } },
+          paysArrivee: { select: { nom: true, code: true } },
+        },
+      },
       paiements: { orderBy: { date: "asc" } },
     },
   });

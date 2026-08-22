@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { formatNombre, LIBELLE_PAYS, LIBELLE_TYPE_ETAPE } from "@/lib/utils";
+import { formatNombre, LIBELLE_TYPE_ETAPE } from "@/lib/utils";
 
 export interface RavitaillementOption {
   id: string;
@@ -26,8 +26,8 @@ export interface EtapeEditable {
   type: string;
   villeDepart: string;
   villeArrivee: string;
-  paysDepart: string | null;
-  paysArrivee: string | null;
+  paysDepartId: string | null;
+  paysArriveeId: string | null;
   kmDepart: number | null;
   kmArrivee: number | null;
   carburantRestantDepart: number | null;
@@ -40,15 +40,16 @@ export interface EtapeEditable {
 
 interface Props {
   voyageId: string;
+  /** Pays proposés, tenus par l'exploitation. */
+  pays: { id: string; nom: string }[];
   etape?: EtapeEditable | null;
   ravitaillements: RavitaillementOption[];
   declencheur: React.ReactNode;
 }
 
 const TYPES = Object.keys(LIBELLE_TYPE_ETAPE);
-const PAYS = Object.keys(LIBELLE_PAYS);
 
-export function DialogueEtape({ voyageId, etape, ravitaillements, declencheur }: Props) {
+export function DialogueEtape({ voyageId, pays, etape, ravitaillements, declencheur }: Props) {
   const [ouvert, setOuvert] = useState(false);
   const edition = !!etape;
 
@@ -108,22 +109,22 @@ export function DialogueEtape({ voyageId, etape, ravitaillements, declencheur }:
               </Champ>
 
               <Champ label="Pays de départ">
-                <select name="paysDepart" key={val("paysDepart", etape?.paysDepart ?? "")} defaultValue={val("paysDepart", etape?.paysDepart ?? "")}>
+                <select name="paysDepartId" key={val("paysDepartId", etape?.paysDepartId ?? "")} defaultValue={val("paysDepartId", etape?.paysDepartId ?? "")}>
                   <option value="">—</option>
-                  {PAYS.map((p) => (
-                    <option key={p} value={p}>
-                      {LIBELLE_PAYS[p]}
+                  {pays.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nom}
                     </option>
                   ))}
                 </select>
               </Champ>
 
               <Champ label="Pays d'arrivée">
-                <select name="paysArrivee" key={val("paysArrivee", etape?.paysArrivee ?? "")} defaultValue={val("paysArrivee", etape?.paysArrivee ?? "")}>
+                <select name="paysArriveeId" key={val("paysArriveeId", etape?.paysArriveeId ?? "")} defaultValue={val("paysArriveeId", etape?.paysArriveeId ?? "")}>
                   <option value="">—</option>
-                  {PAYS.map((p) => (
-                    <option key={p} value={p}>
-                      {LIBELLE_PAYS[p]}
+                  {pays.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nom}
                     </option>
                   ))}
                 </select>

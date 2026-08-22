@@ -18,9 +18,8 @@ import {
 } from "@/actions/voyages";
 import { IconeInfo } from "@/components/icones";
 import type { Suggestion } from "@/lib/donnees/trajets";
-import { formatDecimal, formatNombre, LIBELLE_PAYS } from "@/lib/utils";
+import { formatDecimal, formatNombre } from "@/lib/utils";
 
-const PAYS = Object.keys(LIBELLE_PAYS);
 
 // Les objets Prisma portent des Decimal, qui ne traversent pas la frontière
 // serveur → client. Le formulaire reçoit donc des données déjà aplaties.
@@ -68,9 +67,9 @@ export interface VoyageEditable {
   reference: string;
   camionId: string;
   chauffeurId: string;
-  paysDepart: string;
+  paysDepartId: string | null;
   villeDepart: string;
-  paysArrivee: string;
+  paysArriveeId: string | null;
   villeArrivee: string;
   clientId: string | null;
   /** Trajet à vide servant à aller chercher la marchandise du client. */
@@ -95,13 +94,18 @@ interface Props {
   tauxReferenceXof: number | null;
   unites: OptionUnite[];
   clients: OptionClientVoyage[];
+  /** Pays proposés, tenus par l'exploitation. Le premier sert de défaut. */
+  pays: { id: string; nom: string }[];
   voyage?: VoyageEditable | null;
   declencheur: React.ReactNode;
 }
 
 const jour = (date: string | null | undefined) => date ?? new Date().toISOString().slice(0, 10);
 
-export function DialogueVoyage({ unites, clients, camions, chauffeurs, tauxReferenceXof, voyage, declencheur }: Props) {
+export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tauxReferenceXof, voyage, declencheur }: Props) {
+  // Le pays du siège est en tête de liste : c'est le cas courant.
+  const paysDefaut = pays[0]?.id ?? "";
+
   const [ouvert, setOuvert] = useState(false);
   const edition = !!voyage;
 
@@ -243,10 +247,10 @@ export function DialogueVoyage({ unites, clients, camions, chauffeurs, tauxRefer
                   </Champ>
 
                   <Champ label="Pays de départ">
-                    <select name="paysDepart" key={val("paysDepart", voyage?.paysDepart ?? "GUINEE")} defaultValue={val("paysDepart", voyage?.paysDepart ?? "GUINEE")}>
-                      {PAYS.map((p) => (
-                        <option key={p} value={p}>
-                          {LIBELLE_PAYS[p]}
+                    <select name="paysDepartId" key={val("paysDepartId", voyage?.paysDepartId ?? paysDefaut)} defaultValue={val("paysDepartId", voyage?.paysDepartId ?? paysDefaut)}>
+                      {pays.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nom}
                         </option>
                       ))}
                     </select>
@@ -262,10 +266,10 @@ export function DialogueVoyage({ unites, clients, camions, chauffeurs, tauxRefer
                   </Champ>
 
                   <Champ label="Pays d'arrivée">
-                    <select name="paysArrivee" key={val("paysArrivee", voyage?.paysArrivee ?? "GUINEE")} defaultValue={val("paysArrivee", voyage?.paysArrivee ?? "GUINEE")}>
-                      {PAYS.map((p) => (
-                        <option key={p} value={p}>
-                          {LIBELLE_PAYS[p]}
+                    <select name="paysArriveeId" key={val("paysArriveeId", voyage?.paysArriveeId ?? paysDefaut)} defaultValue={val("paysArriveeId", voyage?.paysArriveeId ?? paysDefaut)}>
+                      {pays.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nom}
                         </option>
                       ))}
                     </select>
