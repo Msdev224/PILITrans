@@ -361,6 +361,40 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
     });
   }
 
+  // --- Facture et mission qui ne disent pas le même montant ---
+  //
+  // Une recette saisie en millions là où le champ attend des francs — 46,5 au
+  // lieu de 50 000 000 — ne se voit nulle part : la facture reste juste, mais
+  // la rentabilité du camion s'effondre sans raison apparente. Le rapprochement
+  // est le seul moyen de rattraper l'erreur une fois la saisie oubliée.
+  const facturees = await prisma.voyage.findMany({
+    where: { statut: { not: "ANNULE" }, factures: { some: {} } },
+    include: { camion: { select: { nom: true } }, factures: true },
+  });
+  for (const v of facturees) {
+    const factureGnf = v.factures.reduce((t, f) => t + n(f.montantGnf), 0);
+    const recetteGnf = n(v.recetteGnf);
+    if (factureGnf <= 0) continue;
+
+    const ecart = Math.abs(factureGnf - recetteGnf);
+    // Une tolérance d'un pour cent absorbe les arrondis et les avoirs mineurs.
+    if (ecart <= factureGnf * 0.01) continue;
+
+    liste.push({
+      id: `ecart-recette-${v.id}`,
+      type: "AUTRE",
+      severite: ecart > factureGnf * 0.5 ? "URGENT" : "ATTENTION",
+      categorie: "finances",
+      lien: `/voyages/${v.id}`,
+      action: "Corriger la recette",
+      titre: `Recette et facture divergent — ${v.villeDepart} → ${v.villeArrivee}`,
+      detail: `Facturé ${formatNombre(factureGnf)} GNF, mission à ${formatNombre(recetteGnf)} GNF. La marge du camion est calculée sur la mission.`,
+      meta: [v.camion.nom, "Recette", v.reference],
+      camionId: v.camionId,
+      persistee: false,
+    });
+  }
+
   // --- Missions terminées jamais facturées ---
   const nonFacturees = await prisma.voyage.findMany({
     where: { statut: "TERMINE", aVide: false, factures: { none: {} }, recetteGnf: { gt: 0 } },

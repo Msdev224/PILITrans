@@ -22,6 +22,7 @@ import { formatDecimal, formatNombre } from "@/lib/utils";
 import { ChampRecherche } from "@/components/champ-recherche";
 import { formatTelephone } from "@/lib/telephone";
 import { LIBELLE_MOTIF_VOYAGE, MOTIFS_SANS_MARCHANDISE } from "@/lib/utils";
+import { ChampMontant } from "@/components/champ-montant";
 
 
 // Les objets Prisma portent des Decimal, qui ne traversent pas la frontière
@@ -613,13 +614,17 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                     />
                   </Champ>
 
+                  {/* Le montant est relu en toutes lettres : les écrans parlent
+                      en millions, ce champ attend des francs, et 46,5 saisi à
+                      la place de 50 000 000 passait inaperçu. */}
                   <Champ label="Recette">
-                    <input
-                      name="recette"
-                      inputMode="decimal"
-                      value={recetteCalculee ?? recette}
-                      onChange={(e) => setRecette(e.target.value)}
-                      disabled={aVide || recetteCalculee !== null}
+                    <ChampMontant
+                      nom="recette"
+                      key={`recette-${recetteCalculee ?? ""}`}
+                      valeur={recetteCalculee ?? recette}
+                      devise={devise}
+                      desactive={aVide || recetteCalculee !== null}
+                      onChange={setRecette}
                     />
                   </Champ>
 

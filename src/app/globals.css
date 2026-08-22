@@ -1987,6 +1987,15 @@
     border: 1px solid var(--line);
   }
 
+  /* Relecture d'un montant en toutes lettres, sous le champ. */
+  .montant-lettres {
+    display: block;
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--muted-2);
+  }
+
   /* Mention de règlement, façon cachet. */
   .fac-cachet {
     display: inline-block;
