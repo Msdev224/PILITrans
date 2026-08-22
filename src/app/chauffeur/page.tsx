@@ -2,6 +2,7 @@ import { sessionRequise } from "@/auth";
 import { BoutonDeconnexion } from "@/components/chauffeur/bouton-deconnexion";
 import { EnregistrementServiceWorker } from "@/components/chauffeur/enregistrement-sw";
 import { EtatReseau } from "@/components/chauffeur/etat-reseau";
+import { FournisseurFile } from "@/components/chauffeur/file-attente";
 import {
   BoutonAvancer,
   BoutonRotation,
@@ -89,6 +90,9 @@ export default async function EspaceChauffeurPage() {
     : null;
 
   return (
+    // La file des saisies hors ligne enveloppe tout l'espace : le bandeau
+    // comme les formulaires doivent y accéder.
+    <FournisseurFile>
     <div className="ph-app">
       <EnregistrementServiceWorker />
 
@@ -314,7 +318,6 @@ export default async function EspaceChauffeurPage() {
         <BoutonDeconnexion />
       </div>
     </div>
+    </FournisseurFile>
   );
 }
-
-

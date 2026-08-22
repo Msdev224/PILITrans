@@ -9,6 +9,7 @@ import { observerTaux } from "@/lib/donnees/taux";
 import { prisma } from "@/lib/prisma";
 import { notifierEtapeVoyage } from "@/lib/sms/declencheurs";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
+import { CHAMP_SAISIE, instantSaisie } from "@/lib/chauffeur/operations";
 import { erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /**
@@ -39,6 +40,19 @@ export interface EtatChauffeur {
   valeurs?: Record<string, string>;
 }
 
+/**
+ * Instant à retenir pour une saisie.
+ *
+ * Une saisie faite lundi sur la route et remontée mercredi au retour du
+ * réseau doit rester datée de lundi : sinon le gasoil change de mois, les
+ * jours de mission se comptent faux et la marge du mois bouge après coup.
+ * La valeur vient du téléphone, donc `instantSaisie` la borne.
+ */
+function quand(donnees?: FormData): Date {
+  const valeur = donnees?.get(CHAMP_SAISIE);
+  return instantSaisie(typeof valeur === "string" ? valeur : null);
+}
+
 function rafraichir(voyageId: string) {
   revalidatePath("/chauffeur");
   revalidatePath("/voyages");
@@ -58,7 +72,7 @@ const SUITE: Partial<Record<StatutVoyage, { statut: StatutVoyage; champDate: str
   EN_DECHARGEMENT: { statut: "TERMINE", champDate: "dateArrivee" },
 };
 
-export async function avancerMission(voyageId: string) {
+export async function avancerMission(voyageId: string, donnees?: FormData) {
   const { voyage } = await missionDuChauffeur(voyageId);
 
   const suite = SUITE[voyage.statut];
@@ -71,7 +85,7 @@ export async function avancerMission(voyageId: string) {
     where: { id: voyageId },
     data: {
       statut: suite.statut,
-      ...(dejaPosee ? {} : { [suite.champDate]: new Date() }),
+      ...(dejaPosee ? {} : { [suite.champDate]: quand(donnees) }),
     },
   });
 
@@ -86,7 +100,7 @@ export async function avancerMission(voyageId: string) {
  * praticable quand il en fait huit dans la journée. La recette suit
  * automatiquement si un tarif par rotation est défini.
  */
-export async function ajouterRotation(voyageId: string) {
+export async function ajouterRotation(voyageId: string, _donnees?: FormData) {
   const { voyage } = await missionDuChauffeur(voyageId);
 
   const nbRotations = voyage.nbRotations + 1;
@@ -224,7 +238,7 @@ export async function signalerArret(
       motif: saisie.data.motif ?? null,
       kmDepart: saisie.data.kmDepart != null ? Math.round(saisie.data.kmDepart) : null,
       carburantRestantDepart: saisie.data.carburantRestantDepart ?? null,
-      departLe: new Date(),
+      departLe: quand(donnees),
     },
   });
 
@@ -289,7 +303,7 @@ export async function saisirDepense(
       litres: saisie.data.litres ?? null,
       releveCompteur: saisie.data.releveCompteur != null ? Math.round(saisie.data.releveCompteur) : null,
       description: saisie.data.description ?? null,
-      date: new Date(),
+      date: quand(donnees),
       voyageId: voyage.id,
       camionId: voyage.camionId,
     },
@@ -305,6 +319,7 @@ export async function saisirDepense(
         devise: saisie.data.devise,
         montantGnf,
         motif: saisie.data.description ?? null,
+        date: quand(donnees),
         depenseId: depense.id,
       },
     });

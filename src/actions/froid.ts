@@ -6,6 +6,7 @@ import { z } from "zod";
 import { sessionRequise } from "@/auth";
 import { conformiteFroid } from "@/lib/calculs";
 import { peut } from "@/lib/permissions";
+import { CHAMP_SAISIE, instantSaisie } from "@/lib/chauffeur/operations";
 import { prisma } from "@/lib/prisma";
 import { erreursFormulaire, nombreOptionnel } from "@/lib/validation";
 
@@ -89,6 +90,9 @@ export async function enregistrerReleve(
       temperature: saisie.data.temperature,
       consigne,
       conformite,
+      // Un relevé remonté au retour du réseau garde l'heure où le chauffeur
+      // a lu le thermomètre : la chaîne du froid se juge sur cette heure-là.
+      releveLe: instantSaisie(donnees.get(CHAMP_SAISIE) as string | null),
     },
   });
 

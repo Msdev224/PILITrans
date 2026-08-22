@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -15,9 +15,22 @@ import {
 import { declarerPrelevement, type EtatPrelevement } from "@/actions/douane";
 import { confirmerParCode, type EtatLivraison } from "@/actions/livraison";
 import { enregistrerReleve, type EtatReleve } from "@/actions/froid";
+import { useActionDifferee, useFile } from "@/components/chauffeur/file-attente";
 import { formatDecimal, formatNombre, LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
 
 const TYPES_GASOIL = ["GASOIL_TRACTEUR", "GASOIL_GROUPE_FROID"];
+
+/**
+ * Confirmation d'une saisie gardée faute de réseau.
+ *
+ * Le chauffeur doit savoir que c'est enregistré sur son téléphone et que
+ * l'envoi se fera seul : sans ce mot, il ressaisirait la même dépense.
+ */
+function Garde({ differe, ok, texte }: { differe?: boolean; ok?: boolean; texte: string }) {
+  if (differe) return <p className="ph-ok">Gardée sur le téléphone — envoi au retour du réseau.</p>;
+  if (ok) return <p className="ph-ok">{texte}</p>;
+  return null;
+}
 
 function Bouton({ libelle, enCours }: { libelle: string; enCours: string }) {
   const { pending } = useFormStatus();
@@ -30,8 +43,15 @@ function Bouton({ libelle, enCours }: { libelle: string; enCours: string }) {
 
 /** Bouton d'avancement de mission — une soumission = un cran. */
 export function BoutonAvancer({ voyageId, libelle }: { voyageId: string; libelle: string }) {
+  const lancer = useCallback((d: FormData) => avancerMission(voyageId, d), [voyageId]);
+  const [etat, envoyer] = useActionDifferee(lancer, "avancerMission", `Étape — ${libelle}`);
+
   return (
-    <form action={avancerMission.bind(null, voyageId)}>
+    <form action={envoyer}>
+      {/* Sert au rejeu : la file doit savoir de quelle mission il s'agit. */}
+      <input type="hidden" name="voyageId" value={voyageId} />
+      <Garde differe={etat.differe} texte="" />
+      {etat.erreur ? <p className="ph-erreur">{etat.erreur}</p> : null}
       <Bouton libelle={libelle} enCours="Envoi…" />
     </form>
   );
@@ -51,7 +71,8 @@ export function FormulaireReleve({
   consigne: number | null;
   dernier: { temperature: number; conformite: string; releveLe: string } | null;
 }) {
-  const [etat, envoyer] = useActionState<EtatReleve, FormData>(enregistrerReleve, {});
+  const lancer = useCallback((d: FormData) => enregistrerReleve({}, d), []);
+  const [etat, envoyer] = useActionDifferee<EtatReleve>(lancer, "enregistrerReleve", "Relevé de température");
   const [temperature, setTemperature] = useState("");
 
   useEffect(() => {
@@ -97,7 +118,7 @@ export function FormulaireReleve({
 
       {etat.champs?.temperature ? <p className="ph-erreur">{etat.champs.temperature}</p> : null}
       {etat.erreur ? <p className="ph-erreur">{etat.erreur}</p> : null}
-      {etat.ok ? <p className="ph-ok">Relevé enregistré.</p> : null}
+      <Garde differe={etat.differe} ok={etat.ok} texte="Relevé enregistré." />
 
       <Bouton libelle="Enregistrer le relevé" enCours="Envoi…" />
     </form>
@@ -123,7 +144,8 @@ export function FormulairePrelevement({
   /** Pays proposés, tenus par l'exploitation. */
   pays: { id: string; nom: string }[];
 }) {
-  const [etat, envoyer] = useActionState<EtatPrelevement, FormData>(declarerPrelevement, {});
+  const lancer = useCallback((d: FormData) => declarerPrelevement({}, d), []);
+  const [etat, envoyer] = useActionDifferee<EtatPrelevement>(lancer, "declarerPrelevement", "Prélèvement de douane");
   const [quantite, setQuantite] = useState("");
   const [ligneId, setLigneId] = useState(marchandises[0]?.id ?? "");
 
@@ -207,7 +229,7 @@ export function FormulairePrelevement({
 
       {etat.champs?.quantite ? <p className="ph-erreur">{etat.champs.quantite}</p> : null}
       {etat.erreur ? <p className="ph-erreur">{etat.erreur}</p> : null}
-      {etat.ok ? <p className="ph-ok">Prélèvement déclaré.</p> : null}
+      <Garde differe={etat.differe} ok={etat.ok} texte="Prélèvement déclaré." />
 
       <Bouton libelle="Déclarer le prélèvement" enCours="Envoi…" />
     </form>
@@ -234,6 +256,21 @@ export function FormulaireCodeLivraison({
 }) {
   const [etat, envoyer] = useActionState<EtatLivraison, FormData>(confirmerParCode, {});
   const [code, setCode] = useState("");
+  // Seule saisie qui exige le réseau : le code doit être vérifié en direct.
+  // L'accepter hors ligne reviendrait à remettre la marchandise sur un code
+  // faux, que le rejeu rejetterait des heures plus tard.
+  const { enAttente } = useFile();
+  const [enLigne, setEnLigne] = useState(true);
+  useEffect(() => {
+    const maj = () => setEnLigne(navigator.onLine);
+    maj();
+    window.addEventListener("online", maj);
+    window.addEventListener("offline", maj);
+    return () => {
+      window.removeEventListener("online", maj);
+      window.removeEventListener("offline", maj);
+    };
+  }, []);
 
   useEffect(() => {
     if (etat.ok) setCode("");
@@ -251,6 +288,18 @@ export function FormulaireCodeLivraison({
       <p className="ph-aide">
         {designation} : le client n&apos;a pas encore reçu son code. Demande au gérant de le
         lui envoyer.
+      </p>
+    );
+  }
+
+  // Hors réseau, mieux vaut le dire franchement que laisser un envoi échouer
+  // sans explication au moment de remettre la marchandise.
+  if (!enLigne) {
+    return (
+      <p className="ph-aide">
+        {designation} : le code se vérifie en direct. Sans réseau, note la livraison plus bas —
+        la confirmation par code se fera dès le retour du réseau.
+        {enAttente.length > 0 ? " Tes autres saisies sont gardées." : ""}
       </p>
     );
   }
@@ -292,8 +341,12 @@ export function BoutonRotation({
   nbRotations: number;
   tarifRotation: number | null;
 }) {
+  const lancer = useCallback((d: FormData) => ajouterRotation(voyageId, d), [voyageId]);
+  const [etat, envoyer] = useActionDifferee(lancer, "ajouterRotation", "Rotation");
+
   return (
-    <form action={ajouterRotation.bind(null, voyageId)}>
+    <form action={envoyer}>
+      <input type="hidden" name="voyageId" value={voyageId} />
       <div className="ph-champ">
         <span>Rotations effectuées</span>
         <b className="mono text-[17px]">{nbRotations}</b>
@@ -303,6 +356,8 @@ export function BoutonRotation({
           Recette du jour : <b>{formatNombre(tarifRotation * nbRotations)} GNF</b> ({formatNombre(tarifRotation)} × {nbRotations})
         </p>
       ) : null}
+      <Garde differe={etat.differe} texte="" />
+      {etat.erreur ? <p className="ph-erreur">{etat.erreur}</p> : null}
       <Bouton libelle="+ 1 rotation" enCours="Envoi…" />
     </form>
   );
@@ -329,7 +384,12 @@ export function FormulaireQuantite({
   recue: number | null;
 }) {
   const action = mode === "chargement" ? confirmerChargement : confirmerLivraison;
-  const [etat, envoyer] = useActionState<EtatChauffeur, FormData>(action, {});
+  const lancer = useCallback((d: FormData) => action({} as EtatChauffeur, d), [action]);
+  const [etat, envoyer] = useActionDifferee<EtatChauffeur>(
+    lancer,
+    mode === "chargement" ? "confirmerChargement" : "confirmerLivraison",
+    `${mode === "chargement" ? "Chargement" : "Livraison"} — ${designation}`,
+  );
   const [valeur, setValeur] = useState(valeurInitiale != null ? String(valeurInitiale) : "");
 
   useEffect(() => {
@@ -368,7 +428,7 @@ export function FormulaireQuantite({
       ) : null}
       {etat.champs?.quantite ? <p className="ph-erreur">{etat.champs.quantite}</p> : null}
       {etat.erreur && !etat.champs?.quantite ? <p className="ph-erreur">{etat.erreur}</p> : null}
-      {etat.ok ? <p className="ph-ok">Enregistré.</p> : null}
+      <Garde differe={etat.differe} ok={etat.ok} texte="Enregistré." />
 
       <Bouton
         libelle={mode === "chargement" ? "Confirmer le chargement" : "Confirmer la livraison"}
@@ -386,7 +446,8 @@ export function FormulaireArret({
   voyageId: string;
   villeActuelle: string;
 }) {
-  const [etat, envoyer] = useActionState<EtatChauffeur, FormData>(signalerArret, {});
+  const lancer = useCallback((d: FormData) => signalerArret({} as EtatChauffeur, d), []);
+  const [etat, envoyer] = useActionDifferee<EtatChauffeur>(lancer, "signalerArret", "Arrêt / déroutement");
   const [changement, setChangement] = useState(false);
 
   return (
@@ -422,7 +483,7 @@ export function FormulaireArret({
       </div>
 
       {etat.erreur ? <p className="ph-erreur">{etat.erreur}</p> : null}
-      {etat.ok ? <p className="ph-ok">Signalé.</p> : null}
+      <Garde differe={etat.differe} ok={etat.ok} texte="Signalé." />
 
       <Bouton libelle={changement ? "Changer la destination" : "Signaler l'arrêt"} enCours="Envoi…" />
     </form>
@@ -437,7 +498,8 @@ export function FormulaireDepense({
   voyageId: string;
   tauxReferenceXof: number | null;
 }) {
-  const [etat, envoyer] = useActionState<EtatChauffeur, FormData>(saisirDepense, {});
+  const lancer = useCallback((d: FormData) => saisirDepense({} as EtatChauffeur, d), []);
+  const [etat, envoyer] = useActionDifferee<EtatChauffeur>(lancer, "saisirDepense", "Dépense de route");
   const [type, setType] = useState("GASOIL_TRACTEUR");
   const [devise, setDevise] = useState<"GNF" | "XOF">("GNF");
   const [montant, setMontant] = useState("");
@@ -552,7 +614,7 @@ export function FormulaireDepense({
       {etat.champs?.litres ? <p className="ph-erreur">{etat.champs.litres}</p> : null}
       {etat.champs?.montantGnf ? <p className="ph-erreur">{etat.champs.montantGnf}</p> : null}
       {etat.erreur ? <p className="ph-erreur">{etat.erreur}</p> : null}
-      {etat.ok ? <p className="ph-ok">Dépense enregistrée.</p> : null}
+      <Garde differe={etat.differe} ok={etat.ok} texte="Dépense enregistrée." />
 
       <Bouton libelle="Enregistrer la dépense" enCours="Envoi…" />
     </form>

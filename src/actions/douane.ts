@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { sessionRequise } from "@/auth";
 import { peut } from "@/lib/permissions";
+import { CHAMP_SAISIE, instantSaisie } from "@/lib/chauffeur/operations";
 import { prisma } from "@/lib/prisma";
 import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
@@ -120,7 +121,7 @@ export async function declarerPrelevement(
       montantGnf:
         montant == null ? null : saisie.data.devise === "GNF" ? montant : (saisie.data.montantGnf ?? 0),
       reference: saisie.data.reference ?? null,
-      date: saisie.data.date ?? new Date(),
+      date: saisie.data.date ?? instantSaisie(donnees.get(CHAMP_SAISIE) as string | null),
     },
   });
 

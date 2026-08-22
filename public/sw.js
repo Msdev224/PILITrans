@@ -6,11 +6,14 @@
  * de Next portent un hachage dans leur nom : elles sont immuables, donc
  * servies depuis le cache en priorité.
  *
- * Les saisies hors ligne ne sont pas rejouées automatiquement : une écriture
- * comptable ne doit pas partir sans que le chauffeur sache si elle est passée.
- * L'interface signale l'état du réseau et bloque l'envoi.
+ * Les saisies faites hors réseau ne passent PAS par ce fichier : elles sont
+ * rangées dans IndexedDB par la page, qui les rejoue une par une au retour du
+ * réseau. Chacune porte un identifiant produit sur l'appareil, si bien qu'un
+ * renvoi ne peut pas compter une dépense deux fois. Le service worker ne sert
+ * donc qu'à une chose : que la page s'ouvre encore quand il n'y a pas de
+ * réseau du tout.
  */
-const CACHE = "pilitrans-v2";
+const CACHE = "pilitrans-v3";
 const COQUILLE = ["/chauffeur", "/manifest.webmanifest", "/icone.svg"];
 
 self.addEventListener("install", (evenement) => {
