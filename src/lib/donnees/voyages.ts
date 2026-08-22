@@ -8,8 +8,14 @@ import {
   vueLignes,
   type LigneVue,
 } from "@/lib/donnees/marchandises";
-import { kmVoyage, remunerationDuVoyage } from "@/lib/donnees/camions";
-import { dansPeriode, type Periode } from "@/lib/periode";
+import { kmVoyage, pnlFlotte, remunerationDuVoyage } from "@/lib/donnees/camions";
+import {
+  baseRepartition,
+  coutCompletTrajet,
+  quotePartTrajet,
+  type CoutCompletTrajet,
+} from "@/lib/donnees/repartition";
+import { dansPeriode, moisCourant, type Periode } from "@/lib/periode";
 import { prisma } from "@/lib/prisma";
 import { debutDeJour, n } from "@/lib/utils";
 
@@ -259,6 +265,12 @@ export interface FicheVoyage extends LigneVoyage {
   lignesEnEcart: LigneVue[];
   /** Contrepartie en argent des retenues de douane, tous articles confondus. */
   prelevementGnf: number;
+  /**
+   * Coût complet : charges du trajet + part des coûts du camion revenant à
+   * cette mission, au prorata des kilomètres du mois. La marge de route seule
+   * fait paraître rentables des courses qui ne paient pas leur véhicule.
+   */
+  coutComplet: CoutCompletTrajet | null;
 }
 
 export interface PrelevementVue {
@@ -311,6 +323,32 @@ function construireTroncon(etape: EtapeVoyage & { ravitaillements: Depense[] }):
   };
 }
 
+/**
+ * Coût complet d'une mission : ses charges propres, plus la part des coûts du
+ * camion qui lui revient sur le mois.
+ *
+ * `null` quand le camion n'a parcouru aucun kilomètre sur la période : il n'y
+ * a alors aucune clé de répartition, et en inventer une donnerait un chiffre
+ * que personne ne pourrait justifier.
+ */
+async function coutCompletDuVoyage(
+  voyage: VoyageComplet,
+  ligne: LigneVoyage,
+): Promise<CoutCompletTrajet | null> {
+  const flotte = await pnlFlotte(moisCourant(voyage.dateDepart));
+  const pnl = flotte.find((p) => p.camion.id === voyage.camionId);
+  if (!pnl || pnl.km <= 0) return null;
+
+  const base = baseRepartition(pnl);
+  const km = kmVoyage(voyage);
+  return coutCompletTrajet(
+    ligne.recetteGnf,
+    ligne.fraisGnf + ligne.remunerationGnf,
+    quotePartTrajet(base, km),
+    km,
+  );
+}
+
 export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Promise<FicheVoyage | null> {
   const voyage = await prisma.voyage.findUnique({
     where: { id },
@@ -359,5 +397,6 @@ export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Pr
     lignes: ligne.marchandises,
     lignesEnEcart: lignesEnEcart(ligne.marchandises),
     prelevementGnf: ligne.marchandises.reduce((t, l) => t + l.prelevementGnf, 0),
+    coutComplet: await coutCompletDuVoyage(voyage, ligne),
   };
 }

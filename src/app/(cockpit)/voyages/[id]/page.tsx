@@ -127,6 +127,74 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
 
         </div>
 
+        {/* ---------- Coût complet ---------- */}
+        {fiche.coutComplet ? (
+          <div className="card panel mb-5">
+            <h3>
+              Coût complet <span className="sec-sub">— quote-part du camion comprise</span>
+            </h3>
+            <table className="tbl mt-0.5">
+              <tbody>
+                <tr>
+                  <td>Recette</td>
+                  <td className={`num ${fiche.coutComplet.recetteGnf > 0 ? "pos" : "vide"}`}>
+                    {formatSigne(fiche.coutComplet.recetteGnf)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="muted">Charges du trajet (frais + rémunération)</td>
+                  <td className="num">−{formatNombre(fiche.coutComplet.coutsDirectsGnf)}</td>
+                </tr>
+                <tr className="font-semibold">
+                  <td>Marge de route</td>
+                  <td className={`num ${fiche.coutComplet.margeOperationnelleGnf >= 0 ? "pos" : "neg"}`}>
+                    {formatSigne(fiche.coutComplet.margeOperationnelleGnf)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="muted">
+                    Quote-part du camion
+                    <div className="t-sub">
+                      Réparations et entretien du mois, au prorata des kilomètres
+                    </div>
+                  </td>
+                  <td className="num">−{formatNombre(fiche.coutComplet.quotePartVehiculeGnf)}</td>
+                </tr>
+                <tr className="font-bold">
+                  <td>Marge réelle</td>
+                  <td className={`num ${fiche.coutComplet.margeReelleGnf >= 0 ? "pos" : "neg"}`}>
+                    {formatSigne(fiche.coutComplet.margeReelleGnf)}
+                    {fiche.coutComplet.margeReellePct !== null ? (
+                      <span className="t-sub"> · {formatDecimal(fiche.coutComplet.margeReellePct)} %</span>
+                    ) : null}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div className="mt-3.5 flex flex-wrap gap-x-8 gap-y-2 border-t border-[var(--line-soft)] pt-3.5 text-[11.5px] text-[var(--muted)]">
+              <div>
+                Revenu par km
+                <b className="mono mt-0.5 block text-[13px] text-[var(--ink)]">
+                  {formatNombre(fiche.coutComplet.revenuKmGnf)} GNF
+                </b>
+              </div>
+              <div>
+                Coût complet par km
+                <b className="mono mt-0.5 block text-[13px] text-[var(--ink)]">
+                  {formatNombre(fiche.coutComplet.coutKmGnf)} GNF
+                </b>
+              </div>
+              <div>
+                Marge par km
+                <b className={`mono mt-0.5 block text-[13px] ${fiche.coutComplet.margeKmGnf >= 0 ? "text-[var(--pos)]" : "text-[var(--neg)]"}`}>
+                  {formatSigne(fiche.coutComplet.margeKmGnf)} GNF
+                </b>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {/* ---------- Marchandises ---------- */}
         {/* Un voyage groupe souvent plusieurs marchandises, dans des unités
             différentes et parfois pour des destinataires différents. Chacune

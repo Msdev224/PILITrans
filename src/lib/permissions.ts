@@ -181,6 +181,7 @@ export function permissionDeRoute(chemin: string): Permission | null {
     ["/chauffeurs", "equipe.lire"],
     ["/utilisateurs", "equipe.ecrire"],
     ["/exploitation", "analyses.lire"],
+    ["/classements", "analyses.lire"],
     ["/analyses", "analyses.lire"],
     ["/alertes", "analyses.lire"],
     ["/unites", "parametres.ecrire"],

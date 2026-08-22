@@ -69,6 +69,7 @@ export function Rail({
         { libelle: "Analyses", href: "/analyses", icone: <IconeAnalyses />, droit: "analyses.lire" },
         { libelle: "Exploitation", href: "/exploitation", icone: <IconeAnalyses />, droit: "analyses.lire" },
         { libelle: "Rentabilité", href: "/rentabilite", icone: <IconeCamion />, droit: "analyses.lire" },
+        { libelle: "Classements", href: "/classements", icone: <IconeAnalyses />, droit: "analyses.lire" },
         { libelle: "Alertes", href: "/alertes", icone: <IconeCloche />, compteur: nbAlertes, droit: "analyses.lire" },
       ],
     },
