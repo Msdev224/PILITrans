@@ -1,12 +1,13 @@
 "use server";
 
-import { Devise, MoyenPaiement, TypeDepense } from "@prisma/client";
+import { CategorieDepense, Devise, MoyenPaiement, TypeDepense } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
+import { estChargeDeStructure } from "@/lib/utils";
 import { erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
@@ -37,6 +38,11 @@ const schemaDepense = z
      */
     surCaisseChauffeurId: texteOptionnel,
     /** Comment la dépense a été réglée : à retrouver dans un relevé. */
+    /** Étage de la charge : mission, véhicule, administratif, général. */
+    categorie: z.nativeEnum(CategorieDepense).default("DIRECTE"),
+    /** Ventilations analytiques facultatives. */
+    chauffeurId: texteOptionnel,
+    clientId: texteOptionnel,
     moyen: z.nativeEnum(MoyenPaiement),
     reference: texteOptionnel,
   })
@@ -44,8 +50,16 @@ const schemaDepense = z
     message: "Saisir l'équivalent en GNF du montant en CFA",
     path: ["montantGnf"],
   })
-  // Sans rattachement, la dépense n'entre dans aucun P&L : elle serait invisible.
-  .refine((d) => !!d.voyageId || !!d.camionId, {
+  /*
+   * Une charge de mission ou de véhicule doit viser quelque chose, sinon elle
+   * n'entre dans aucun compte de résultat et devient invisible.
+   *
+   * Les charges de structure — loyer, salaires, électricité — ne visent rien
+   * par nature. Les y contraindre les rendait tout simplement impossibles à
+   * saisir : l'entreprise n'avait aucun moyen d'enregistrer ce qu'elle dépense
+   * pour exister.
+   */
+  .refine((d) => estChargeDeStructure(d.categorie) || !!d.voyageId || !!d.camionId, {
     message: "Rattacher la dépense à un voyage ou à un camion",
     path: ["camionId"],
   })
@@ -88,6 +102,9 @@ async function donneesDepense(saisie: z.infer<typeof schemaDepense>) {
     date: saisie.date,
     voyageId: saisie.voyageId || null,
     camionId,
+    categorie: saisie.categorie,
+    chauffeurId: saisie.chauffeurId || null,
+    clientId: saisie.clientId || null,
     moyen: saisie.moyen,
     reference: saisie.reference || null,
   };

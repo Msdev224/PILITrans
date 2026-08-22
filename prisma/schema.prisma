@@ -215,6 +215,7 @@ model Chauffeur {
   createdAt       DateTime  @default(now())
 
   voyages          Voyage[]
+  depenses         Depense[]
   mouvementsCaisse MouvementCaisse[]
   alertes          Alerte[]
   utilisateur      Utilisateur?
@@ -429,20 +430,66 @@ model Voyage {
 //  DÉPENSES  (typées pour obtenir les vrais coûts)
 // ------------------------------------------------------------
 
+/**
+ * Étage d'une charge.
+ *
+ * Trois natures qui ne se pilotent pas de la même façon : ce qu'une mission
+ * consomme, ce qu'un véhicule coûte qu'il roule ou non, et ce que l'entreprise
+ * dépense pour exister. Les mélanger empêche de dire d'où vient une dérive.
+ */
+enum CategorieDepense {
+  DIRECTE        // imputable à une mission précise
+  VEHICULE       // liée au camion, pas à un trajet
+  ADMINISTRATIVE // fonctionnement du bureau
+  GENERALE       // autres charges de structure
+}
+
 enum TypeDepense {
+  // --- Directes : consommées par une mission ---
   GASOIL_TRACTEUR
   GASOIL_GROUPE_FROID // le groupe froid consomme son propre gasoil
   PEAGE
   FRONTIERE // frais de passage frontière (souvent payés en XOF)
   DOUANE    // dédouanement / transit à la sortie/entrée
   PER_DIEM
+  HEBERGEMENT
+  STATIONNEMENT
+  CHARGEMENT_DECHARGEMENT
+  TRAVERSEE          // bac, ferry
+  COMMISSION
+  PRIME_CHAUFFEUR
   INTERNET  // forfait data du téléphone de bord — coût variable selon la localisation du camion
   DIVERS
+
+  // --- Véhicule : dues au camion, pas au trajet ---
+  PIECES_RECHANGE
+  IMMATRICULATION
+  AUTRE_VEHICULE
+
+  // --- Administratives et générales : l'entreprise, pas la route ---
+  LOYER
+  SALAIRE_ADMINISTRATIF
+  ELECTRICITE
+  TELECOMMUNICATIONS
+  LOGICIEL_ABONNEMENT
+  COMPTABILITE
+  MARKETING
+  FOURNITURES_BUREAU
+  MAINTENANCE_LOCAUX
+  FRAIS_BANCAIRES
+  IMPOTS_TAXES
+  AUTRE_GENERAL
 }
 
 model Depense {
   id          String      @id @default(cuid())
   type        TypeDepense
+  /**
+   * Étage de la charge. Déduit du type à la saisie, mais stocké : c'est lui
+   * qui structure le compte de résultat, et un type peut changer d'étage sans
+   * qu'on veuille réécrire l'historique.
+   */
+  categorie   CategorieDepense @default(DIRECTE)
   montant     Decimal     @db.Decimal(14, 2) // dans la devise réelle
   devise      Devise      @default(GNF)
   montantGnf  Decimal     @default(0) @db.Decimal(16, 2) // équivalent GNF figé
@@ -461,6 +508,11 @@ model Depense {
   camion      Camion? @relation(fields: [camionId], references: [id])
   camionId    String?
   etape       EtapeVoyage? @relation(fields: [etapeId], references: [id]) // plein rattaché à une étape
+  /// Rattachements analytiques facultatifs, pour ventiler au-delà du camion.
+  chauffeur   Chauffeur? @relation(fields: [chauffeurId], references: [id], onDelete: SetNull)
+  chauffeurId String?
+  client      Client?    @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId    String?
   etapeId     String?
 
   // si la dépense a été payée depuis la caisse du chauffeur
@@ -747,6 +799,7 @@ model Client {
   createdAt DateTime  @default(now())
 
   voyages      Voyage[]
+  depenses     Depense[]
   lignes       LigneMarchandise[]
   factures     Facture[]
   reclamations Reclamation[]

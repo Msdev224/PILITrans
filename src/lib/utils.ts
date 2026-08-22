@@ -151,15 +151,90 @@ export const LIBELLE_CATEGORIE_REPARATION: Record<string, string> = {
 };
 
 export const LIBELLE_TYPE_DEPENSE: Record<string, string> = {
+  // Directes
   GASOIL_TRACTEUR: "Gasoil tracteur",
   GASOIL_GROUPE_FROID: "Gasoil groupe froid",
   PEAGE: "Péage",
   FRONTIERE: "Frais de frontière",
   DOUANE: "Douane / transit",
-  PER_DIEM: "Per diem",
+  PER_DIEM: "Per diem / restauration",
+  HEBERGEMENT: "Hébergement",
+  STATIONNEMENT: "Stationnement",
+  CHARGEMENT_DECHARGEMENT: "Chargement / déchargement",
+  TRAVERSEE: "Bac / traversée",
+  COMMISSION: "Commission",
+  PRIME_CHAUFFEUR: "Prime chauffeur",
   INTERNET: "Internet",
   DIVERS: "Divers",
+  // Véhicule
+  PIECES_RECHANGE: "Pièces de rechange",
+  IMMATRICULATION: "Immatriculation",
+  AUTRE_VEHICULE: "Autre coût véhicule",
+  // Administratives et générales
+  LOYER: "Loyer",
+  SALAIRE_ADMINISTRATIF: "Salaire administratif",
+  ELECTRICITE: "Électricité",
+  TELECOMMUNICATIONS: "Télécommunications",
+  LOGICIEL_ABONNEMENT: "Logiciel / abonnement",
+  COMPTABILITE: "Comptabilité",
+  MARKETING: "Marketing",
+  FOURNITURES_BUREAU: "Fournitures de bureau",
+  MAINTENANCE_LOCAUX: "Maintenance des locaux",
+  FRAIS_BANCAIRES: "Frais bancaires",
+  IMPOTS_TAXES: "Impôts et taxes",
+  AUTRE_GENERAL: "Autre charge générale",
 };
+
+export const LIBELLE_CATEGORIE_DEPENSE: Record<string, string> = {
+  DIRECTE: "Charge directe (mission)",
+  VEHICULE: "Charge véhicule",
+  ADMINISTRATIVE: "Charge administrative",
+  GENERALE: "Charge générale",
+};
+
+/**
+ * Étage auquel appartient chaque type de charge.
+ *
+ * Sert à préremplir la catégorie à la saisie. La catégorie reste stockée à
+ * part : un type peut changer d'étage sans qu'on veuille réécrire ce qui a
+ * déjà été enregistré.
+ */
+export const CATEGORIE_PAR_TYPE_DEPENSE: Record<string, string> = {
+  GASOIL_TRACTEUR: "DIRECTE",
+  GASOIL_GROUPE_FROID: "DIRECTE",
+  PEAGE: "DIRECTE",
+  FRONTIERE: "DIRECTE",
+  DOUANE: "DIRECTE",
+  PER_DIEM: "DIRECTE",
+  HEBERGEMENT: "DIRECTE",
+  STATIONNEMENT: "DIRECTE",
+  CHARGEMENT_DECHARGEMENT: "DIRECTE",
+  TRAVERSEE: "DIRECTE",
+  COMMISSION: "DIRECTE",
+  PRIME_CHAUFFEUR: "DIRECTE",
+  INTERNET: "DIRECTE",
+  DIVERS: "DIRECTE",
+  PIECES_RECHANGE: "VEHICULE",
+  IMMATRICULATION: "VEHICULE",
+  AUTRE_VEHICULE: "VEHICULE",
+  LOYER: "ADMINISTRATIVE",
+  SALAIRE_ADMINISTRATIF: "ADMINISTRATIVE",
+  ELECTRICITE: "ADMINISTRATIVE",
+  TELECOMMUNICATIONS: "ADMINISTRATIVE",
+  LOGICIEL_ABONNEMENT: "ADMINISTRATIVE",
+  COMPTABILITE: "ADMINISTRATIVE",
+  MARKETING: "GENERALE",
+  FOURNITURES_BUREAU: "ADMINISTRATIVE",
+  MAINTENANCE_LOCAUX: "ADMINISTRATIVE",
+  FRAIS_BANCAIRES: "GENERALE",
+  IMPOTS_TAXES: "GENERALE",
+  AUTRE_GENERAL: "GENERALE",
+};
+
+/** Une charge de structure ne vise ni camion ni mission. */
+export function estChargeDeStructure(categorie: string): boolean {
+  return categorie === "ADMINISTRATIVE" || categorie === "GENERALE";
+}
 
 export const LIBELLE_TYPE_VEHICULE: Record<string, string> = {
   TRACTEUR_REMORQUE: "Tracteur + remorque",

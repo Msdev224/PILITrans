@@ -4,6 +4,8 @@ import type { SeveriteAlerte, TypeAlerte } from "@prisma/client";
 
 import { conformiteFroid, joursEntre, soldeCaisse } from "@/lib/calculs";
 import { dossiersIncomplets, vueDossiers } from "@/lib/donnees/dossiers";
+import { comparerExploitation } from "@/lib/donnees/exploitation";
+import { moisCourant } from "@/lib/periode";
 import { INCLURE_LIGNES, lignesEnEcart, vueLignes } from "@/lib/donnees/marchandises";
 import { tronconsDesVoyages } from "@/lib/donnees/carburant";
 import { prisma } from "@/lib/prisma";
@@ -378,6 +380,43 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
       camionId: v.camionId,
       persistee: false,
     });
+  }
+
+  // --- Marge d'exploitation dégradée ---
+  //
+  // Une marge qui plonge se voit rarement à temps : chaque poste pris isolément
+  // paraît normal. La comparaison au mois précédent est ce qui la rend visible.
+  const exploitation = await comparerExploitation(moisCourant(ceJour));
+  const margeActuelle = exploitation.actuel.margePct;
+  if (margeActuelle !== null) {
+    const chute = exploitation.ecartMargePoints;
+    if (margeActuelle < 0) {
+      liste.push({
+        id: "marge-negative",
+        type: "AUTRE",
+        severite: "URGENT",
+        categorie: "finances",
+        lien: "/exploitation",
+        action: "Voir le compte de résultat",
+        titre: `Marge d'exploitation négative — ${formatDecimal(margeActuelle)} %`,
+        detail: `Les charges dépassent le chiffre d'affaires de ${formatNombre(Math.abs(exploitation.actuel.resultatGnf))} GNF ce mois.`,
+        meta: ["Exploitation", exploitation.actuel.periode.libelle],
+        persistee: false,
+      });
+    } else if (chute !== null && chute <= -10) {
+      liste.push({
+        id: "marge-chute",
+        type: "AUTRE",
+        severite: "ATTENTION",
+        categorie: "finances",
+        lien: "/exploitation",
+        action: "Comprendre la baisse",
+        titre: `Marge d'exploitation en baisse — ${formatDecimal(margeActuelle)} %`,
+        detail: `${formatDecimal(Math.abs(chute))} points de moins qu'en ${exploitation.precedent.periode.libelle}.`,
+        meta: ["Exploitation", exploitation.actuel.periode.libelle],
+        persistee: false,
+      });
+    }
   }
 
   // --- Caisses chauffeurs non soldées ---

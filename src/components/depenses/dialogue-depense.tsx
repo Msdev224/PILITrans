@@ -13,6 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { formatDecimal, LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
 import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
+import {
+  CATEGORIE_PAR_TYPE_DEPENSE,
+  estChargeDeStructure,
+  LIBELLE_CATEGORIE_DEPENSE,
+} from "@/lib/utils";
 
 const TYPES_GASOIL = ["GASOIL_TRACTEUR", "GASOIL_GROUPE_FROID"];
 
@@ -35,6 +40,7 @@ export interface DepenseEditable {
   litres: number | null;
   releveCompteur: number | null;
   description: string | null;
+  categorie: string;
   moyen: string;
   reference: string | null;
   date: string;
@@ -73,6 +79,11 @@ export function DialogueDepense({
   const [etat, envoyer] = useActionState<EtatDepense, FormData>(action, {});
 
   const [type, setType] = useState(depense?.type ?? "GASOIL_TRACTEUR");
+  // L'étage suit le type choisi, sauf si le gérant l'a fixé lui-même.
+  const [categorie, setCategorie] = useState(
+    depense?.categorie ?? CATEGORIE_PAR_TYPE_DEPENSE["GASOIL_TRACTEUR"],
+  );
+  const structure = estChargeDeStructure(categorie);
   const [devise, setDevise] = useState<"GNF" | "XOF">(depense?.devise ?? "GNF");
   const [montant, setMontant] = useState(depense ? String(depense.montant) : "");
   const [montantGnf, setMontantGnf] = useState(depense ? String(depense.montantGnf) : "");
@@ -118,7 +129,10 @@ export function DialogueDepense({
 
             <div className="form-grid">
               <Champ label="Type de dépense">
-                <select name="type" key={type} defaultValue={type} onChange={(e) => setType(e.target.value)}>
+                <select name="type" key={type} defaultValue={type} onChange={(e) => {
+                    setType(e.target.value);
+                    setCategorie(CATEGORIE_PAR_TYPE_DEPENSE[e.target.value] ?? "DIRECTE");
+                  }}>
                   {Object.keys(LIBELLE_TYPE_DEPENSE).map((t) => (
                     <option key={t} value={t}>
                       {LIBELLE_TYPE_DEPENSE[t]}
@@ -197,6 +211,30 @@ export function DialogueDepense({
                   {camions.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.nom}
+                    </option>
+                  ))}
+                </select>
+              </Champ>
+
+              {/* L'étage de la charge se déduit du type, mais reste modifiable :
+                  c'est lui qui structure le compte de résultat. */}
+              <Champ
+                label="Étage de la charge"
+                aide={
+                  structure
+                    ? "Charge de structure : ni camion ni mission à rattacher."
+                    : "Rattachez-la à une mission ou à un camion ci-dessous."
+                }
+              >
+                <select
+                  name="categorie"
+                  key={categorie}
+                  defaultValue={categorie}
+                  onChange={(e) => setCategorie(e.target.value)}
+                >
+                  {Object.keys(LIBELLE_CATEGORIE_DEPENSE).map((c) => (
+                    <option key={c} value={c}>
+                      {LIBELLE_CATEGORIE_DEPENSE[c]}
                     </option>
                   ))}
                 </select>
