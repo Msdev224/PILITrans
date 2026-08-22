@@ -16,6 +16,7 @@ import { PrismaClient } from "@prisma/client";
 
 import { hacherMotDePasse } from "../src/lib/mots-de-passe";
 import { normaliserTelephone, telephoneValide } from "../src/lib/telephone";
+import { PAYS_INITIAUX } from "../src/lib/pays-initiaux";
 import { UNITES_INITIALES } from "../src/lib/unites";
 
 const db = new PrismaClient();
@@ -112,6 +113,7 @@ async function main() {
   await db.camion.deleteMany();
   await db.tauxChange.deleteMany();
   await db.unite.deleteMany();
+  await db.pays.deleteMany();
   await db.parametres.deleteMany();
 
   // Le gérant est le seul compte créé : il ajoutera son équipe lui-même depuis
@@ -127,9 +129,13 @@ async function main() {
   // Sans unités, aucun voyage n'est saisissable.
   await db.unite.createMany({ data: [...UNITES_INITIALES] });
 
+  // Sans pays, ni trajet ni numéro de téléphone ne peuvent être saisis.
+  await db.pays.createMany({ data: [...PAYS_INITIAUX] });
+
   console.log("\n✔ Base réinitialisée.");
   console.log(`✔ Gérant : ${nom} — ${telephone}`);
   console.log(`✔ ${UNITES_INITIALES.length} unités de mesure créées.`);
+  console.log(`✔ ${PAYS_INITIAUX.length} pays créés.`);
   console.log("✔ Paramètres initialisés — complétez-les dans l'application.");
   console.log("\nConnectez-vous, puis créez votre équipe depuis Paramètres → Comptes.");
 }

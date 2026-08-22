@@ -4,6 +4,7 @@
  */
 import { Devise, PrismaClient } from "@prisma/client";
 import { hacherMotDePasse } from "../src/lib/mots-de-passe";
+import { PAYS_INITIAUX } from "../src/lib/pays-initiaux";
 import { UNITES_INITIALES } from "../src/lib/unites";
 import { synchroniserCamion } from "../src/lib/donnees/synchronisation";
 
@@ -119,18 +120,7 @@ async function main() {
 
   // --- Pays desservis ---
   // Saisis par l'exploitation : ouvrir un corridor n'exige pas de redéployer.
-  await db.pays.createMany({
-    data: [
-      { nom: "Guinée", code: "GN", indicatif: "+224", longueurTelephone: 9, ordre: 10 },
-      { nom: "Sénégal", code: "SN", indicatif: "+221", longueurTelephone: 9, ordre: 20 },
-      { nom: "Mali", code: "ML", indicatif: "+223", longueurTelephone: 8, ordre: 30 },
-      { nom: "Guinée-Bissau", code: "GW", indicatif: "+245", longueurTelephone: 9, ordre: 40 },
-      { nom: "Côte d'Ivoire", code: "CI", indicatif: "+225", longueurTelephone: 10, ordre: 50 },
-      { nom: "Sierra Leone", code: "SL", indicatif: "+232", longueurTelephone: 8, ordre: 60 },
-      { nom: "Liberia", code: "LR", indicatif: "+231", longueurTelephone: 8, ordre: 70 },
-      { nom: "Mauritanie", code: "MR", indicatif: "+222", longueurTelephone: 8, ordre: 80 },
-    ],
-  });
+  await db.pays.createMany({ data: [...PAYS_INITIAUX] });
   const pays = Object.fromEntries(
     (await db.pays.findMany({ select: { id: true, code: true } })).map((p) => [p.code, p.id]),
   );

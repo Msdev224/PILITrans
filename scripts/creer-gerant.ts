@@ -109,6 +109,15 @@ async function main() {
     console.log(`✔ ${UNITES_INITIALES.length} unités de mesure créées.`);
   }
 
+  // Sans pays, aucun trajet ni numéro de téléphone n'est saisissable :
+  // les listes déroulantes sortiraient vides sur tous les écrans.
+  const nbPays = await db.pays.count();
+  if (nbPays === 0) {
+    const { PAYS_INITIAUX } = await import("../src/lib/pays-initiaux");
+    await db.pays.createMany({ data: [...PAYS_INITIAUX] });
+    console.log(`✔ ${PAYS_INITIAUX.length} pays créés — ajustez la liste dans l'application.`);
+  }
+
   console.log("\nConnectez-vous avec ce numéro et ce mot de passe.");
 }
 
