@@ -2006,9 +2006,16 @@
       -webkit-print-color-adjust: exact;
     }
 
+    /*
+     * Le fond d'écran gris n'a rien à faire sur du papier — et depuis que
+     * `print-color-adjust: exact` demande au navigateur de respecter les
+     * couleurs, il s'imprimait vraiment. Son `min-height: 100vh` poussait en
+     * prime un grand aplat vide sur une seconde page.
+     */
     .feuille-fond {
       background: #fff;
       padding: 0;
+      min-height: 0;
     }
     .barre-impression {
       display: none;
@@ -2049,6 +2056,28 @@
       border: 3px solid var(--accent);
       background: var(--accent);
       box-shadow: none;
+    }
+
+    /*
+     * --- Mise en page : le papier n'est pas un téléphone ---
+     *
+     * En A4 avec 12 mm de marge, la largeur imprimable vaut environ 703 px —
+     * juste sous le seuil de 720 px qui fait basculer la facture en colonne
+     * unique. Le document sortait donc empilé, alors qu'il s'affiche en deux
+     * colonnes à l'écran. On rétablit explicitement la présentation.
+     */
+    .fac-head,
+    .fac-bottom {
+      flex-direction: row;
+    }
+    .fac-doc {
+      text-align: right;
+    }
+    .fac-parties {
+      grid-template-columns: 1fr 1fr;
+    }
+    .fac-totaux {
+      width: 290px;
     }
 
     /* Une facture tient sur une page : rien ne doit se couper en deux. */
