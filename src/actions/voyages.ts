@@ -1,11 +1,14 @@
 "use server";
 
-import { MotifVoyage, StatutVoyage } from "@prisma/client";
+import { MotifVoyage, MoyenPaiement, Prisma, StatutVoyage, TypeDepense } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { suggestionTrajet, type Suggestion } from "@/lib/donnees/trajets";
 import { exigerPermission } from "@/lib/autorisation";
+import { observerTaux } from "@/lib/donnees/taux";
+import { lignesRemise, type LigneRemise } from "@/lib/remise";
+import { LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { notifierAffectationChauffeur, notifierEtapeVoyage } from "@/lib/sms/declencheurs";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
@@ -230,16 +233,159 @@ function rafraichir(voyageId?: string) {
   if (voyageId) revalidatePath(`/voyages/${voyageId}`);
 }
 
+
+// ------------------------------------------------------------
+//  Ce qui est remis au chauffeur au lancement de la mission
+// ------------------------------------------------------------
+
+/**
+ * Argent et carburant confiés au départ.
+ *
+ * Ils se saisissaient jusqu'ici sur deux écrans séparés, après coup : dans la
+ * pratique, le gérant remet l'argent au moment même où il crée la mission, et
+ * la saisie différée finissait par ne pas être faite. La trésorerie affichait
+ * alors plus d'argent en caisse qu'il n'y en avait réellement.
+ *
+ * Tout est facultatif : une mission peut partir sans rien avancer. Les
+ * compléments en cours de route — une avance qui monte, un reliquat rendu —
+ * se saisissent depuis l'écran Caisse, qui reste le seul endroit où les
+ * corriger.
+ */
+/** Réglages communs à la remise : un seul transfert couvre souvent le tout. */
+const schemaRemise = z.object({
+  avanceMoyen: z.nativeEnum(MoyenPaiement).default("ESPECES"),
+  avanceReference: texteOptionnel,
+  /** Commission de l'opérateur : elle sort de la caisse sans être remise. */
+  avanceFraisGnf: nombreOptionnel,
+  carburantLitres: nombreOptionnel,
+  carburantMontantGnf: nombreOptionnel,
+});
+
+type Remise = z.infer<typeof schemaRemise>;
+
+/** Les colonnes parallèles du formulaire, telles qu'elles arrivent. */
+function colonnesRemise(donnees: FormData) {
+  return {
+    objets: donnees.getAll("remiseObjet").map(String),
+    montants: donnees.getAll("remiseMontant").map(String),
+    devises: donnees.getAll("remiseDevise").map(String),
+    equivalents: donnees.getAll("remiseMontantGnf").map(String),
+  };
+}
+
+/**
+ * Contrôle la remise AVANT que la mission n'existe.
+ *
+ * Créer d'abord puis refuser la remise laisserait une mission orpheline à
+ * l'écran : le gérant la recréerait, et le camion partirait deux fois dans
+ * les comptes.
+ */
+function validerRemise(
+  donnees: FormData,
+): { erreur: string } | { remise: Remise; lignes: LigneRemise[] } {
+  const saisie = schemaRemise.safeParse(Object.fromEntries(donnees));
+  if (!saisie.success) {
+    return { erreur: saisie.error.issues[0]?.message ?? "Remise au chauffeur invalide." };
+  }
+
+  const lignes = lignesRemise(colonnesRemise(donnees));
+
+  const objetsValides = Object.values(TypeDepense) as string[];
+  for (const ligne of lignes) {
+    if (!objetsValides.includes(ligne.objet)) {
+      return { erreur: "Objet de remise inconnu." };
+    }
+    // Le taux GNF⇄CFA bouge : sans équivalent saisi, la caisse consoliderait
+    // au mauvais taux et le solde du chauffeur serait faux.
+    if (ligne.devise !== "GNF" && ligne.montantGnf <= 0) {
+      return { erreur: "Saisir l'équivalent en GNF de chaque somme remise en CFA." };
+    }
+  }
+
+  return { remise: saisie.data, lignes };
+}
+
+/**
+ * Écrit la remise dans la même transaction que la mission.
+ *
+ * Séparer les deux laisserait, au moindre échec, une mission sans l'argent
+ * qui l'accompagne : le gérant la recréerait, et le camion partirait deux
+ * fois dans les comptes. Ou l'inverse — de l'argent sorti de la caisse pour
+ * une mission qui n'existe pas.
+ */
+async function appliquerRemise(
+  tx: Prisma.TransactionClient,
+  voyage: { id: string; camionId: string; chauffeurId: string },
+  r: Remise,
+  lignes: LigneRemise[],
+): Promise<void> {
+  // --- Argent remis, ventilé par objet ---
+  for (const [index, ligne] of lignes.entries()) {
+    await tx.mouvementCaisse.create({
+      data: {
+        chauffeurId: voyage.chauffeurId,
+        voyageId: voyage.id,
+        type: "AVANCE",
+        objet: ligne.objet,
+        montant: ligne.montant,
+        devise: ligne.devise,
+        montantGnf: ligne.montantGnf,
+        moyen: r.avanceMoyen,
+        reference: r.avanceReference ?? null,
+        // La commission ne se paie qu'une fois pour l'ensemble du transfert :
+        // la répéter sur chaque ligne la compterait autant de fois.
+        fraisGnf: index === 0 ? (r.avanceFraisGnf ?? null) : null,
+        motif: LIBELLE_TYPE_DEPENSE[ligne.objet] ?? "Frais de voyage",
+      },
+    });
+  }
+
+  // --- Carburant remis ---
+  //
+  // C'est une dépense du camion, pas une avance : le gasoil est déjà
+  // consommé par le véhicule, le chauffeur n'a pas à le justifier. La
+  // rattacher à la mission la fait entrer dans la marge du bon camion.
+  if ((r.carburantMontantGnf ?? 0) > 0 || (r.carburantLitres ?? 0) > 0) {
+    await tx.depense.create({
+      data: {
+        type: "GASOIL_TRACTEUR",
+        montant: r.carburantMontantGnf ?? 0,
+        devise: "GNF",
+        montantGnf: r.carburantMontantGnf ?? 0,
+        litres: r.carburantLitres ?? null,
+        description: "Carburant remis au départ",
+        voyageId: voyage.id,
+        camionId: voyage.camionId,
+      },
+    });
+  }
+}
+
 export async function creerVoyage(_etat: EtatFormulaire, donnees: FormData): Promise<EtatFormulaire> {
   await droitEcriture();
 
   const saisie = schemaVoyage.safeParse(Object.fromEntries(donnees));
   if (!saisie.success) return erreursFormulaire<EtatFormulaire>(saisie.error, donnees);
 
+  // Ce que le gérant remet au chauffeur se contrôle avant toute écriture.
+  const remise = validerRemise(donnees);
+  if ("erreur" in remise) return { erreur: remise.erreur };
+
   const data = donneesVoyage(saisie.data);
   const reference = await referenceLibre(data.villeDepart, data.villeArrivee, data.dateDepart);
 
-  const cree = await prisma.voyage.create({ data: { ...data, reference } });
+  // La mission et ce qui est remis avec elle tiennent ou tombent ensemble.
+  const cree = await prisma.$transaction(async (tx) => {
+    const voyage = await tx.voyage.create({ data: { ...data, reference } });
+    await appliquerRemise(tx, voyage, remise.remise, remise.lignes);
+    return voyage;
+  });
+
+  // Hors transaction : le relevé de taux et la synchronisation ne doivent pas
+  // pouvoir annuler une mission déjà valide.
+  for (const ligne of remise.lignes) {
+    if (ligne.devise !== "GNF") await observerTaux(ligne.montant, ligne.montantGnf);
+  }
   await synchroniserLignes(cree.id, lignesDepuisFormulaire(donnees));
   // Le parc reflète la mission : statut et compteur suivent.
   await synchroniserCamion(data.camionId);

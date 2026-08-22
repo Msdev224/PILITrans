@@ -76,6 +76,7 @@ const schemaParametres = z.object({
   accueilMention: texteOptionnel,
   connexionSousTitre: texteOptionnel,
   accueilAfficherDemo: caseACocher,
+  afficherCodeLivraison: caseACocher,
 });
 
 export interface EtatParametres {
@@ -121,6 +122,7 @@ export async function enregistrerParametres(
     accueilMention: d.accueilMention ?? null,
     connexionSousTitre: d.connexionSousTitre ?? null,
     accueilAfficherDemo: d.accueilAfficherDemo,
+    afficherCodeLivraison: d.afficherCodeLivraison,
     whatsappActif: d.whatsappActif,
     consigneFroidDefaut: d.consigneFroidDefaut ?? null,
     toleranceFroid: d.toleranceFroid ?? null,

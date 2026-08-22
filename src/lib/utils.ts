@@ -315,6 +315,29 @@ export const LIBELLE_TYPE_ETAPE: Record<string, string> = {
   CHARGEMENT: "Chargement",
 };
 
+/**
+ * Ce pour quoi on remet de l'argent à un chauffeur au départ.
+ *
+ * Sous-ensemble volontaire des types de dépense : on n'avance pas de l'argent
+ * de poche pour un loyer ou une facture d'électricité. Une liste trop longue
+ * ferait choisir au hasard, et la ventilation ne voudrait plus rien dire.
+ */
+export const OBJETS_REMISE = [
+  "PER_DIEM",
+  "GASOIL_TRACTEUR",
+  "GASOIL_GROUPE_FROID",
+  "PEAGE",
+  "FRONTIERE",
+  "DOUANE",
+  "TRAVERSEE",
+  "STATIONNEMENT",
+  "CHARGEMENT_DECHARGEMENT",
+  "PIECES_RECHANGE",
+  "HEBERGEMENT",
+  "INTERNET",
+  "DIVERS",
+] as const;
+
 export const LIBELLE_MOYEN_PAIEMENT: Record<string, string> = {
   ESPECES: "Espèces",
   ORANGE_MONEY: "Orange Money",

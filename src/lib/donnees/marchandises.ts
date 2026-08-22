@@ -54,6 +54,15 @@ export interface LigneVue {
   /** Trop d'essais ratés : la saisie est bloquée jusqu'à un code neuf. */
   codeBloque: boolean;
   /**
+   * Le code en clair, pour dérouler une démonstration sans SMS réel.
+   *
+   * Vaut `null` sauf si l'exploitation a coché l'option correspondante dans
+   * les Paramètres. Le code est une preuve de livraison : le montrer au
+   * gérant lui permet de confirmer une livraison à la place du client, ce
+   * qui vide la protection de son sens.
+   */
+  codeVisible: string | null;
+  /**
    * Statut porté sur la facture. Une marchandise n'est « livrée » qu'une fois
    * le code confirmé ; conforme si aucun manquant ne subsiste après déduction
    * des prélèvements de douane.
@@ -104,7 +113,7 @@ interface LigneBrute {
  */
 export const TENTATIVES_MAX_CODE = 8;
 
-export function vueLignes(lignes: LigneBrute[]): LigneVue[] {
+export function vueLignes(lignes: LigneBrute[], montrerCode = false): LigneVue[] {
   return [...lignes]
     .sort((a, b) => a.ordre - b.ordre)
     .map((l) => {
@@ -151,6 +160,7 @@ export function vueLignes(lignes: LigneBrute[]): LigneVue[] {
         codeConfirme,
         codeEnvois: l.codeEnvois ?? 0,
         codeBloque: (l.codeTentatives ?? 0) >= TENTATIVES_MAX_CODE,
+        codeVisible: montrerCode ? (l.codeLivraison ?? null) : null,
         // Tant que le client n'a pas confirmé par son code, la livraison reste
         // en attente — même si le chauffeur a saisi une quantité.
         statutLivraison: !codeConfirme

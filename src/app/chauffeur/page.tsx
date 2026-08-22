@@ -48,6 +48,9 @@ export default async function EspaceChauffeurPage() {
 
   if (!espace) {
     return (
+      // Le fournisseur enveloppe aussi cette branche : la déconnexion vérifie
+      // la file avant de partir, et sans lui elle plante l'écran entier.
+      <FournisseurFile>
       <div className="ph-app">
         <EnregistrementServiceWorker />
         <div className="ph-top">
@@ -64,10 +67,11 @@ export default async function EspaceChauffeurPage() {
           <BoutonDeconnexion />
         </div>
       </div>
+      </FournisseurFile>
     );
   }
 
-  const { chauffeur, mission, prochaine, caisse, parametres } = espace;
+  const { chauffeur, mission, prochaine, caisse, avances, parametres } = espace;
   const tauxReferenceXof = parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null;
 
   // Consigne de froid : celle du dernier relevé, sinon celle des Paramètres.
@@ -122,6 +126,31 @@ export default async function EspaceChauffeurPage() {
           <p className="ph-aide">
             Solde détenu, par devise. Consolidé : {formatNombre(caisse.consolideGnf)} GNF.
           </p>
+
+          {/* Ce qu'il a reçu et pour quoi. Un solde global ne lui dit pas sur
+              quelle enveloppe il pioche ni ce qui lui reste à justifier. */}
+          {avances.length > 0 ? (
+            <>
+              <div className="ph-recu-tete">Ce que j&apos;ai reçu</div>
+              <ul className="ph-recu">
+                {avances.map((a) => (
+                  <li key={a.id}>
+                    <span>
+                      {a.objet}
+                      {/* Deux enveloppes du même objet sur deux missions ne
+                          doivent pas se confondre. */}
+                      {a.mission && !a.pourCetteMission ? (
+                        <em className="ph-recu-mission"> · {a.mission}</em>
+                      ) : null}
+                    </span>
+                    <b className="mono">
+                      {formatNombre(a.montant)} {a.devise === "GNF" ? "GNF" : "CFA"}
+                    </b>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </div>
 
         {mission ? (

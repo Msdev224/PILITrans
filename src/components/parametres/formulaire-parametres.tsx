@@ -39,6 +39,7 @@ export interface ParametresEditables {
   accueilMention: string | null;
   connexionSousTitre: string | null;
   accueilAfficherDemo: boolean;
+  afficherCodeLivraison: boolean;
   smsExpediteur: string | null;
   urlApplication: string | null;
   smsChauffeurAffectation: boolean;
@@ -385,6 +386,28 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
             <p className="aide-role">
               À laisser décoché en exploitation réelle : cette page est accessible sans être
               connecté, et y publier des identifiants valides revient à laisser la porte ouverte.
+            </p>
+          </div>
+
+          <div className="full">
+            <label className="case">
+              <input
+                type="checkbox"
+                name="afficherCodeLivraison"
+                value="true"
+                defaultChecked={
+                  etat.valeurs
+                    ? etat.valeurs.afficherCodeLivraison === "true"
+                    : parametres.afficherCodeLivraison
+                }
+              />
+              <span>Afficher le code de retrait sur la fiche mission (démonstration)</span>
+            </label>
+            <p className="aide-role">
+              Permet de dérouler une livraison complète sans envoi de SMS réel : le code
+              s&apos;affiche et se dicte au chauffeur. À décocher en exploitation réelle — ce code
+              est la preuve que le client a bien reçu sa marchandise, et le voir permet de
+              confirmer une livraison à sa place.
             </p>
           </div>
         </div>

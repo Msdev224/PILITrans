@@ -2548,6 +2548,65 @@
     background: #b37908;
     flex: 0 0 auto;
   }
+  /* Une somme remise au chauffeur, avec son objet. */
+  .ligne-remise {
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .ligne-remise .btn {
+    margin-top: 8px;
+  }
+
+  /* Code de retrait montré pour une démonstration sans SMS. */
+  .code-demo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 5px;
+    padding: 2px 7px;
+    border: 1px dashed var(--line);
+    border-radius: 7px;
+    font-size: 11px;
+  }
+  .code-demo span {
+    color: var(--muted-2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 9.5px;
+  }
+  .code-demo b {
+    letter-spacing: 0.12em;
+  }
+
+  /* Détail de ce que le chauffeur a reçu, par objet. */
+  .ph-recu-tete {
+    margin-top: 10px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+  }
+  .ph-recu {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ph-recu-mission {
+    color: var(--muted-2);
+    font-style: normal;
+    font-size: 11px;
+  }
+  .ph-recu li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12.5px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line-soft);
+  }
+
   /* --- File des saisies gardées faute de réseau --- */
   .ph-file {
     border: 1px solid var(--line);

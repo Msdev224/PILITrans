@@ -258,6 +258,15 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                           codeEnvois={l.codeEnvois}
                           bloque={l.codeBloque}
                         />
+                        {/* Démonstration : le code s'affiche pour être dicté au
+                            chauffeur sans passer par un SMS réel. Il reste
+                            masqué tant que l'option n'est pas cochée. */}
+                        {l.codeVisible ? (
+                          <div className="code-demo">
+                            <span>démo</span>
+                            <b className="mono">{l.codeVisible}</b>
+                          </div>
+                        ) : null}
                       </SiPeut>
                     </td>
                   </tr>

@@ -604,6 +604,15 @@ model MouvementCaisse {
   devise      Devise        @default(GNF)
   montantGnf  Decimal       @default(0) @db.Decimal(16, 2) // équivalent GNF figé
   motif       String?
+  /**
+   * Ce à quoi l'argent est destiné : gasoil, nourriture, réparation…
+   * Une avance n'est presque jamais une somme unique : le gérant remet un
+   * montant pour la route, un autre pour manger, un autre pour une réparation
+   * prévue. Sans cette ventilation, le chauffeur reçoit un total qu'il ne sait
+   * pas rattacher, et personne ne peut dire si ce qui était prévu pour la
+   * nourriture a servi au gasoil.
+   */
+  objet       TypeDepense?
   /// Comment l'argent a circulé : espèces de la main à la main, Orange Money,
   /// virement… Nécessaire pour retrouver une opération et la justifier.
   moyen       MoyenPaiement @default(ESPECES)
@@ -914,6 +923,7 @@ model Parametres {
 
   // --- Caisse de l'entreprise ---
   /**
+   * /**
    * /**
    * Argent déjà détenu au démarrage de l'application.
    * Sans lui, la trésorerie partirait de zéro et afficherait un solde négatif

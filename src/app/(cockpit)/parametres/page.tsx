@@ -69,6 +69,7 @@ export default async function ParametresPage() {
     accueilMention: parametres?.accueilMention ?? null,
     connexionSousTitre: parametres?.connexionSousTitre ?? null,
     accueilAfficherDemo: parametres?.accueilAfficherDemo ?? false,
+    afficherCodeLivraison: parametres?.afficherCodeLivraison ?? false,
   };
 
   return (

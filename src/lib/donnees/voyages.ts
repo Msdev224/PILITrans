@@ -97,6 +97,8 @@ function construireLigne(
   voyage: VoyageComplet,
   depenses: Depense[],
   aujourdhui: Date,
+  /** Démonstration : montre le code de retrait au lieu de le garder secret. */
+  montrerCode = false,
 ): LigneVoyage {
   const postes = depenses.filter((d) => d.voyageId === voyage.id);
   const recetteGnf = n(voyage.recetteGnf);
@@ -107,7 +109,7 @@ function construireLigne(
     ? joursEntre(voyage.dateArriveeChargement, voyage.dateChargement ?? debutDeJour(aujourdhui))
     : 0;
 
-  const marchandises = vueLignes(voyage.lignes);
+  const marchandises = vueLignes(voyage.lignes, montrerCode);
 
   return {
     voyage,
@@ -377,7 +379,11 @@ export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Pr
     }),
   ]);
 
-  const ligne = construireLigne(voyage, depenses, aujourdhui);
+  // Le code de retrait ne se montre que si l'exploitation l'a demandé dans
+  // les Paramètres — pour une démonstration sans SMS réel.
+  const parametres = await prisma.parametres.findFirst({ select: { afficherCodeLivraison: true } });
+
+  const ligne = construireLigne(voyage, depenses, aujourdhui, parametres?.afficherCodeLivraison ?? false);
   const troncons = etapes.map(construireTroncon);
 
   const exploitables = troncons.filter((t) => t.distance != null && t.distance > 0 && t.litresConsommes != null);

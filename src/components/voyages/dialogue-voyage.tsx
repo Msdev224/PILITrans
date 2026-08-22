@@ -21,7 +21,13 @@ import type { Suggestion } from "@/lib/donnees/trajets";
 import { formatDecimal, formatNombre } from "@/lib/utils";
 import { ChampRecherche } from "@/components/champ-recherche";
 import { formatTelephone } from "@/lib/telephone";
-import { LIBELLE_MOTIF_VOYAGE, MOTIFS_SANS_MARCHANDISE } from "@/lib/utils";
+import {
+  LIBELLE_MOTIF_VOYAGE,
+  LIBELLE_MOYEN_PAIEMENT,
+  LIBELLE_TYPE_DEPENSE,
+  MOTIFS_SANS_MARCHANDISE,
+  OBJETS_REMISE,
+} from "@/lib/utils";
 import { ChampMontant } from "@/components/champ-montant";
 
 
@@ -117,12 +123,37 @@ interface Props {
 
 const jour = (date: string | null | undefined) => date ?? new Date().toISOString().slice(0, 10);
 
+/** Une somme remise au chauffeur, telle qu'elle se saisit dans le formulaire. */
+interface LigneRemiseSaisie {
+  cle: string;
+  /** Ce que la somme doit couvrir : nourriture, gasoil, réparation… */
+  objet: string;
+  montant: string;
+  devise: string;
+  /** Équivalent GNF, saisi au taux réel quand la remise est en CFA. */
+  montantGnf: string;
+  /** Nourriture seulement : ce que coûte chaque jour de mission. */
+  parJour: string;
+}
+
 export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tauxReferenceXof, voyage, declencheur }: Props) {
   // Le pays du siège est en tête de liste : c'est le cas courant.
   const paysDefaut = pays[0]?.id ?? "";
 
   const [ouvert, setOuvert] = useState(false);
   const edition = !!voyage;
+  /**
+   * Sommes remises au chauffeur au départ, ventilées par objet.
+   *
+   * Une seule ligne au départ — la nourriture, qui est la remise la plus
+   * constante. Le gérant en ajoute autant qu'il en donne.
+   */
+  const [remises, setRemises] = useState<LigneRemiseSaisie[]>([
+    { cle: "r0", objet: "PER_DIEM", montant: "", devise: "GNF", montantGnf: "", parJour: "" },
+  ]);
+  const compteurRemise = useRef(1);
+  const majRemise = (index: number, champs: Partial<LigneRemiseSaisie>) =>
+    setRemises((l) => l.map((r, i) => (i === index ? { ...r, ...champs } : r)));
 
   const action = edition
     ? modifierVoyage.bind(null, voyage.id)
@@ -426,17 +457,22 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                     </select>
                   </Champ>
 
-                  <Champ
-                    label="Indemnité de nourriture (GNF/jour)"
-                    aide="Comptée par jour de mission. Vide : le barème du chauffeur s'applique."
-                  >
-                    <input
-                      name="perDiemJournalierGnf"
-                      inputMode="numeric"
-                      key={val("perDiemJournalierGnf", voyage?.perDiemJournalierGnf != null ? String(voyage.perDiemJournalierGnf) : "")}
-                      defaultValue={val("perDiemJournalierGnf", voyage?.perDiemJournalierGnf != null ? String(voyage.perDiemJournalierGnf) : "")}
-                    />
-                  </Champ>
+                  {/* À la création, ce montant se saisit sur la ligne de
+                      remise « nourriture », à côté du total remis : deux
+                      champs pour la même valeur finiraient par diverger. */}
+                  {edition ? (
+                    <Champ
+                      label="Indemnité de nourriture (GNF/jour)"
+                      aide="Comptée par jour de mission. Vide : le barème du chauffeur s'applique."
+                    >
+                      <input
+                        name="perDiemJournalierGnf"
+                        inputMode="numeric"
+                        key={val("perDiemJournalierGnf", voyage?.perDiemJournalierGnf != null ? String(voyage.perDiemJournalierGnf) : "")}
+                        defaultValue={val("perDiemJournalierGnf", voyage?.perDiemJournalierGnf != null ? String(voyage.perDiemJournalierGnf) : "")}
+                      />
+                    </Champ>
+                  ) : null}
 
                   <div className="full">
                     <label className="flex cursor-pointer items-center gap-2 text-[12.5px]">
@@ -498,6 +534,154 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                       </label>
                     ) : null}
                   </div>
+
+                  {/* Ce que le gérant remet de la main à la main en lançant
+                      la mission, ventilé par objet. Saisi ici parce que c'est
+                      là que ça se passe : renvoyé à plus tard, cet argent
+                      n'était jamais enregistré et la trésorerie affichait un
+                      solde trop élevé.
+                      À la création seulement — les compléments en cours de
+                      route se corrigent depuis l'écran Caisse. */}
+                  {!edition ? (
+                    <div className="full mt-1 border-t border-[var(--line-soft)] pt-3">
+                      <div className="lignes-tete">
+                        <span>Remis au chauffeur au départ</span>
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          onClick={() =>
+                            setRemises((l) => [
+                              ...l,
+                              { cle: `r${compteurRemise.current++}`, objet: "DIVERS", montant: "", devise: "GNF", montantGnf: "", parJour: "" },
+                            ])
+                          }
+                        >
+                          + Ajouter une somme
+                        </button>
+                      </div>
+
+                      <p className="mb-3 text-[11.5px] text-[var(--muted)]">
+                        Facultatif. Chaque somme est rattachée à ce qu&apos;elle doit couvrir :
+                        le chauffeur verra ce détail dans sa caisse et saura ce qu&apos;il a à
+                        justifier. L&apos;argent entre dans sa caisse ; le carburant est une
+                        dépense du camion.
+                      </p>
+
+                      {remises.map((r, i) => (
+                        <div key={r.cle} className="ligne-remise">
+                          <div className="form-grid">
+                            <Champ label="Pour quoi">
+                              <select
+                                name="remiseObjet"
+                                value={r.objet}
+                                onChange={(e) => majRemise(i, { objet: e.target.value })}
+                              >
+                                {OBJETS_REMISE.map((o) => (
+                                  <option key={o} value={o}>
+                                    {LIBELLE_TYPE_DEPENSE[o]}
+                                  </option>
+                                ))}
+                              </select>
+                            </Champ>
+
+                            <Champ label="Devise">
+                              <select
+                                name="remiseDevise"
+                                value={r.devise}
+                                onChange={(e) => majRemise(i, { devise: e.target.value })}
+                              >
+                                <option value="GNF">GNF</option>
+                                <option value="XOF">CFA (XOF)</option>
+                              </select>
+                            </Champ>
+
+                            <Champ label={`Montant remis (${r.devise === "GNF" ? "GNF" : "CFA"})`}>
+                              <ChampMontant
+                                nom="remiseMontant"
+                                devise={r.devise === "GNF" ? "GNF" : "XOF"}
+                                valeur={r.montant}
+                                onChange={(v) => majRemise(i, { montant: v })}
+                              />
+                            </Champ>
+
+                            {/* Le taux varie d'un jour à l'autre : l'équivalent réel
+                                est saisi, jamais calculé. */}
+                            {r.devise !== "GNF" ? (
+                              <Champ label="Équivalent en GNF" aide="Ce que cette somme vaut réellement aujourd'hui.">
+                                <ChampMontant
+                                  nom="remiseMontantGnf"
+                                  devise="GNF"
+                                  valeur={r.montantGnf}
+                                  onChange={(v) => majRemise(i, { montantGnf: v })}
+                                />
+                              </Champ>
+                            ) : (
+                              <input type="hidden" name="remiseMontantGnf" value="" />
+                            )}
+
+                            {/* La nourriture se remet en bloc mais se compte au
+                                jour : le total dit ce qu'il a reçu, le taux
+                                journalier ce que la mission supporte. */}
+                            {r.objet === "PER_DIEM" ? (
+                              <Champ
+                                label="Dont par jour (GNF)"
+                                aide="Le total ci-contre est ce qu'il emporte ; ce montant est ce que coûte chaque jour de mission."
+                              >
+                                <input
+                                  name="perDiemJournalierGnf"
+                                  inputMode="numeric"
+                                  value={r.parJour}
+                                  onChange={(e) => majRemise(i, { parJour: e.target.value })}
+                                />
+                              </Champ>
+                            ) : null}
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn ghost sm"
+                            onClick={() => setRemises((l) => l.filter((_, j) => j !== i))}
+                          >
+                            Retirer
+                          </button>
+                        </div>
+                      ))}
+
+                      <div className="form-grid mt-2">
+                        <Champ label="Comment l'argent a été remis">
+                          <select name="avanceMoyen" defaultValue="ESPECES">
+                            {Object.keys(LIBELLE_MOYEN_PAIEMENT).map((m) => (
+                              <option key={m} value={m}>
+                                {LIBELLE_MOYEN_PAIEMENT[m]}
+                              </option>
+                            ))}
+                          </select>
+                        </Champ>
+
+                        <Champ label="Référence du transfert" aide="Facultative.">
+                          <input name="avanceReference" />
+                        </Champ>
+
+                        <Champ
+                          label="Frais de transfert (GNF)"
+                          aide="Commission de l'opérateur, comptée une seule fois. Elle sort de la caisse sans être remise au chauffeur."
+                        >
+                          <input name="avanceFraisGnf" inputMode="numeric" />
+                        </Champ>
+
+                        <Champ label="Carburant remis (litres)">
+                          <input name="carburantLitres" inputMode="decimal" />
+                        </Champ>
+
+                        <Champ
+                          label="Valeur du carburant (GNF)"
+                          aide="Enregistré comme dépense de gasoil sur cette mission, pas comme argent à justifier."
+                        >
+                          <input name="carburantMontantGnf" inputMode="numeric" />
+                        </Champ>
+                      </div>
+                    </div>
+                  ) : null}
 
                   {/* Marchandises : un même trajet en porte souvent plusieurs,
                       dans des unités différentes et parfois pour des
