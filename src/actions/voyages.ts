@@ -38,7 +38,15 @@ const schemaVoyage = z
     dateDepart: z.coerce.date({ message: "Date de départ invalide" }),
     aVide: caseACocher,
     recette: nombreOptionnel,
-    devise: z.enum(["GNF", "XOF"]),
+    /**
+     * Devise de la recette.
+     *
+     * Valeur par défaut obligatoire : sur un trajet à vide, le champ est
+     * désactivé dans le formulaire et le navigateur ne l'envoie donc pas.
+     * L'exiger bloquait la création avec un message portant sur un champ
+     * que l'utilisateur ne pouvait même pas atteindre.
+     */
+    devise: z.enum(["GNF", "XOF"]).default("GNF"),
     /** Bennes : nombre de rotations sur le même trajet dans la journée. */
     nbRotations: nombreOptionnel,
     /** Si renseigné, la recette vaut tarifRotation × nbRotations. */

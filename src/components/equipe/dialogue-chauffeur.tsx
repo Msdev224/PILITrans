@@ -37,11 +37,10 @@ export interface ChauffeurEditable {
   actif: boolean;
 }
 
-export function DialogueChauffeur({
-  chauffeur,
-  declencheur,
-}: {
+export function DialogueChauffeur({ indicatifs, chauffeur, declencheur }: {
   chauffeur?: ChauffeurEditable | null;
+  /** Pays proposés pour les numéros, tenus dans l'écran Pays. */
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   declencheur: React.ReactNode;
 }) {
   const [ouvert, setOuvert] = useState(false);
@@ -96,6 +95,7 @@ export function DialogueChauffeur({
 
               <Champ label="Téléphone" erreur={err("telephone")}>
                 <ChampTelephone
+                  indicatifs={indicatifs}
                   nom="telephone"
                   key={val("telephone", chauffeur?.telephone ?? null) ?? ""}
                   valeur={val("telephone", chauffeur?.telephone ?? null)}

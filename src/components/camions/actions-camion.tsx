@@ -7,9 +7,10 @@ import { retirerCamion } from "@/actions/camions";
 import { IconeCorbeille, IconeCrayon } from "@/components/icones";
 import { DialogueCamion, type CamionEditable } from "@/components/camions/dialogue-camion";
 
-export function ActionsCamion({ camion, carrosseries, aRoule }: {
+export function ActionsCamion({ camion, indicatifs, carrosseries, aRoule }: {
   camion: CamionEditable;
   carrosseries: string[];
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   /** `true` si le camion porte des voyages, dépenses ou réparations. */
   aRoule: boolean;
 }) {
@@ -19,6 +20,7 @@ export function ActionsCamion({ camion, carrosseries, aRoule }: {
     <div className="acts">
       <DialogueCamion
         carrosseries={carrosseries}
+        indicatifs={indicatifs}
         camion={camion}
         declencheur={
           <button type="button" title="Modifier le camion">

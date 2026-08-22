@@ -15,7 +15,12 @@ function BoutonValider() {
   );
 }
 
-export function FormulaireConnexion() {
+export function FormulaireConnexion({
+  indicatifs,
+}: {
+  /** Pays proposés, tenus dans l'écran Pays. */
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
+}) {
   const [etat, action] = useActionState<EtatConnexion, FormData>(seConnecter, {});
 
   return (
@@ -27,7 +32,13 @@ export function FormulaireConnexion() {
           libre produit des « 620… » qui ne correspondent à aucun compte. */}
       <div className="field">
         <label htmlFor="telephone">Numéro de téléphone</label>
-        <ChampTelephone id="telephone" nom="telephone" requis autoComplete="username" />
+        <ChampTelephone
+          id="telephone"
+          nom="telephone"
+          requis
+          autoComplete="username"
+          indicatifs={indicatifs}
+        />
       </div>
 
       <div className="field">

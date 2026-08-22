@@ -8,6 +8,7 @@ import { IconeInfo, IconePlus } from "@/components/icones";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import { pnlFlotte } from "@/lib/donnees/camions";
 import { moisCourant } from "@/lib/periode";
+import { indicatifsPays } from "@/lib/donnees/pays";
 import { prisma } from "@/lib/prisma";
 import { LIBELLE_CARROSSERIE, LIBELLE_STATUT_CAMION, LIBELLE_TYPE_VEHICULE, carrosseriesDisponibles, formatSigne, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
@@ -23,7 +24,7 @@ const CLASSE_BADGE: Record<string, string> = {
 
 export default async function CamionsPage() {
   const periode = moisCourant();
-  const [session, camions, parametres, fil, ecritures] = await Promise.all([
+  const [session, camions, parametres, fil, ecritures, indicatifs] = await Promise.all([
     sessionRequise(),
     pnlFlotte(periode),
     prisma.parametres.findFirst(),
@@ -32,6 +33,7 @@ export default async function CamionsPage() {
       where: { actif: true },
       select: { id: true, _count: { select: { voyages: true, depenses: true, reparations: true } } },
     }),
+    indicatifsPays(),
   ]);
 
   // Bus et taxis n'apparaissent que si le module est activé dans les Paramètres.
@@ -66,6 +68,7 @@ export default async function CamionsPage() {
           </h3>
           <SiPeut droit="flotte.ecrire">
             <DialogueCamion
+              indicatifs={indicatifs}
               carrosseries={carrosseries}
               declencheur={
                 <button type="button" className="btn-add">
@@ -131,6 +134,7 @@ export default async function CamionsPage() {
                     </td>
                     <td>
                       <ActionsCamion
+              indicatifs={indicatifs}
                         camion={aplatir(camion)}
                         carrosseries={carrosseries}
                         aRoule={aRoule.get(camion.id) ?? false}

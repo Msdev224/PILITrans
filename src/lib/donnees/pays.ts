@@ -78,3 +78,20 @@ export async function paysParDefaut(): Promise<OptionPays | null> {
   const liste = await paysActifs();
   return liste[0] ?? null;
 }
+
+/**
+ * Indicatifs proposés à la saisie d'un numéro.
+ *
+ * Vient de la même table que les pays des voyages : ajouter un pays dans la
+ * configuration le rend aussitôt disponible pour les téléphones. Les deux
+ * listes ont divergé un temps, et on voyait dans les numéros des pays absents
+ * de la configuration.
+ */
+export async function indicatifsPays() {
+  const pays = await paysActifs();
+  return pays.map((p) => ({
+    code: p.indicatif,
+    libelle: p.nom,
+    longueur: p.longueurTelephone,
+  }));
+}

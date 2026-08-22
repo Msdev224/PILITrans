@@ -34,13 +34,11 @@ export interface OptionChauffeur {
   nom: string;
 }
 
-export function DialogueUtilisateur({
-  utilisateur,
-  chauffeurs,
-  declencheur,
-}: {
+export function DialogueUtilisateur({ indicatifs, utilisateur, chauffeurs, declencheur }: {
   utilisateur?: UtilisateurEditable | null;
   chauffeurs: OptionChauffeur[];
+  /** Pays proposés pour les numéros, tenus dans l'écran Pays. */
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   declencheur: React.ReactNode;
 }) {
   const [ouvert, setOuvert] = useState(false);
@@ -96,6 +94,7 @@ export function DialogueUtilisateur({
                   aide="C'est l'identifiant de connexion."
                 >
                   <ChampTelephone
+                  indicatifs={indicatifs}
                     nom="telephone"
                     requis
                     key={val("telephone", utilisateur?.telephone ?? "")}

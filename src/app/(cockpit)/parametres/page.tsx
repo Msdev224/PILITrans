@@ -8,6 +8,7 @@ import {
 import { SuiviSms } from "@/components/parametres/suivi-sms";
 import { smsConfigure } from "@/lib/sms/nimba";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
+import { indicatifsPays } from "@/lib/donnees/pays";
 import { prisma } from "@/lib/prisma";
 import { n, nOuNull } from "@/lib/utils";
 import { HistoriqueTaux } from "@/components/parametres/historique-taux";
@@ -16,12 +17,13 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Paramètres — PILITrans" };
 
 export default async function ParametresPage() {
-  const [session, parametres, fil, notifications, enAttente] = await Promise.all([
+  const [session, parametres, fil, notifications, enAttente, indicatifs] = await Promise.all([
     sessionRequise(),
     prisma.parametres.findFirst(),
     filAlertes(),
     prisma.notificationSms.findMany({ orderBy: { createdAt: "desc" }, take: 15 }),
     prisma.notificationSms.count({ where: { statut: { in: ["EN_ATTENTE", "ECHEC"] } } }),
+    indicatifsPays(),
   ]);
 
   // Première ouverture : la ligne de paramètres n'existe pas encore.
@@ -89,6 +91,7 @@ export default async function ParametresPage() {
         </div>
 
         <FormulaireParametres
+          indicatifs={indicatifs}
           historique={<HistoriqueTaux />} parametres={valeurs} identifiantsPresents={smsConfigure()} />
 
         <SuiviSms notifications={notifications} enAttente={enAttente} />

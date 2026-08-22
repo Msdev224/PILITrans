@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { textesAccueil } from "@/lib/donnees/accueil";
+import { indicatifsPays } from "@/lib/donnees/pays";
 
 import { FormulaireConnexion } from "./formulaire-connexion";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "Connexion — PILITrans" };
 export const dynamic = "force-dynamic";
 
 export default async function ConnexionPage() {
-  const t = await textesAccueil();
+  const [t, indicatifs] = await Promise.all([textesAccueil(), indicatifsPays()]);
 
   return (
     <div className="login">
@@ -36,7 +37,7 @@ export default async function ConnexionPage() {
         <h2>Connexion</h2>
         <p className="sub">{t.sousTitre}</p>
 
-        <FormulaireConnexion />
+        <FormulaireConnexion indicatifs={indicatifs} />
 
         {/* Les identifiants de démonstration ne s'affichent que si les
             Paramètres l'autorisent : sur une page ouverte à tous, les publier

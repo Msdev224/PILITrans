@@ -49,14 +49,11 @@ export interface ParametresEditables {
   smsClientRelance: boolean;
 }
 
-export function FormulaireParametres({
-  parametres,
-  identifiantsPresents,
-  historique,
-}: {
+export function FormulaireParametres({ indicatifs, parametres, identifiantsPresents, historique }: {
   parametres: ParametresEditables;
   /** Historique des taux observés, rendu côté serveur. */
   historique?: React.ReactNode;
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   /** Les clés API vivent dans l'environnement, pas en base. */
   identifiantsPresents: boolean;
 }) {
@@ -91,7 +88,7 @@ export function FormulaireParametres({
           </Champ>
         </div>
         <Champ label="Téléphone">
-          <ChampTelephone nom="telephone" valeur={val("telephone", parametres.telephone)} />
+          <ChampTelephone indicatifs={indicatifs} nom="telephone" valeur={val("telephone", parametres.telephone)} />
         </Champ>
         <Champ label="E-mail" erreur={err("email")}>
           <input name="email" type="email" defaultValue={val("email", parametres.email)} />

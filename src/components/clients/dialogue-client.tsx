@@ -27,11 +27,10 @@ export interface ClientEditable {
   whatsappNumero: string | null;
 }
 
-export function DialogueClient({
-  client,
-  declencheur,
-}: {
+export function DialogueClient({ indicatifs, client, declencheur }: {
   client?: ClientEditable | null;
+  /** Pays proposés pour les numéros, tenus dans l'écran Pays. */
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   declencheur: React.ReactNode;
 }) {
   const [ouvert, setOuvert] = useState(false);
@@ -75,6 +74,7 @@ export function DialogueClient({
 
               <Champ label="Téléphone" erreur={err("telephone")}>
                 <ChampTelephone
+                  indicatifs={indicatifs}
                   nom="telephone"
                   key={val("telephone", client?.telephone ?? "")}
                   valeur={val("telephone", client?.telephone ?? "")}
@@ -89,6 +89,7 @@ export function DialogueClient({
                 aide="Si différent du numéro principal."
               >
                 <ChampTelephone
+                  indicatifs={indicatifs}
                   nom="telephoneContact"
                   key={val("telephoneContact", client?.telephoneContact ?? "")}
                   valeur={val("telephoneContact", client?.telephoneContact ?? "")}
@@ -133,6 +134,7 @@ export function DialogueClient({
                     aide="À renseigner seulement si WhatsApp est sur une autre ligne que le téléphone principal."
                   >
                     <ChampTelephone
+                  indicatifs={indicatifs}
                       nom="whatsappNumero"
                       key={val("whatsappNumero", client?.whatsappNumero ?? "")}
                       valeur={val("whatsappNumero", client?.whatsappNumero ?? "")}

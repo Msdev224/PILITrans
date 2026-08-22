@@ -7,6 +7,7 @@ import { DialogueClient, type ClientEditable } from "@/components/clients/dialog
 import { IconePlus } from "@/components/icones";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import { vueClients, type LigneClient } from "@/lib/donnees/clients";
+import { indicatifsPays } from "@/lib/donnees/pays";
 import { prisma } from "@/lib/prisma";
 import { formatTelephone } from "@/lib/telephone";
 import { formatNombre, n } from "@/lib/utils";
@@ -23,11 +24,12 @@ export default async function ClientsPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const recherche = (q ?? "").trim().toLowerCase();
 
-  const [session, toutes, parametres, fil] = await Promise.all([
+  const [session, toutes, parametres, fil, indicatifs] = await Promise.all([
     sessionRequise(),
     vueClients(),
     prisma.parametres.findFirst(),
     filAlertes(),
+    indicatifsPays(),
   ]);
 
   // Recherche : sert aussi de cible aux liens venant des factures.
@@ -60,6 +62,7 @@ export default async function ClientsPage({ searchParams }: Props) {
           <h3>Clients</h3>
           <SiPeut droit="clients.ecrire">
             <DialogueClient
+              indicatifs={indicatifs}
               declencheur={
                 <button type="button" className="btn-add">
                   <IconePlus />
@@ -85,7 +88,7 @@ export default async function ClientsPage({ searchParams }: Props) {
               </thead>
               <tbody>
                 {lignes.map((ligne) => (
-                  <LigneTableau key={ligne.client.id} ligne={ligne} />
+                  <LigneTableau key={ligne.client.id} ligne={ligne} indicatifs={indicatifs} />
                 ))}
               </tbody>
             </table>
@@ -100,7 +103,13 @@ export default async function ClientsPage({ searchParams }: Props) {
   );
 }
 
-function LigneTableau({ ligne }: { ligne: LigneClient }) {
+function LigneTableau({
+  ligne,
+  indicatifs,
+}: {
+  ligne: LigneClient;
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
+}) {
   const { client } = ligne;
 
   return (
@@ -133,7 +142,11 @@ function LigneTableau({ ligne }: { ligne: LigneClient }) {
         ) : null}
       </td>
       <td>
-        <ActionsClient client={aplatir(client)} aDesFactures={ligne.nbFactures > 0} />
+        <ActionsClient
+          client={aplatir(client)}
+          indicatifs={indicatifs}
+          aDesFactures={ligne.nbFactures > 0}
+        />
       </td>
     </tr>
   );

@@ -18,6 +18,7 @@ export function ChampTelephone({
   valeur,
   requis,
   indicatifDefaut,
+  indicatifs,
   id,
   autoComplete = "tel-national",
 }: {
@@ -25,6 +26,14 @@ export function ChampTelephone({
   valeur?: string | null;
   requis?: boolean;
   indicatifDefaut?: string;
+  /**
+   * Pays proposés, tenus par l'exploitation dans l'écran Pays.
+   *
+   * À défaut, on retombe sur la liste interne du module téléphone — mais elle
+   * ne doit servir qu'en dépannage : c'est ce qui faisait apparaître ici des
+   * pays absents de la configuration.
+   */
+  indicatifs?: { code: string; libelle: string; longueur: number | null }[];
   /** Porté par le champ visible, pour qu'un `<label htmlFor>` l'atteigne. */
   id?: string;
   /** `username` sur l'écran de connexion : le numéro y sert d'identifiant. */
@@ -36,7 +45,8 @@ export function ChampTelephone({
   );
   const [national, setNational] = useState(initial.national);
 
-  const attendu = INDICATIFS.find((i) => i.code === indicatif)?.longueur;
+  const liste = indicatifs ?? INDICATIFS.map((i) => ({ ...i, longueur: i.longueur }));
+  const attendu = liste.find((i) => i.code === indicatif)?.longueur ?? null;
   const trop = attendu != null && national.length > 0 && national.length !== attendu;
 
   return (
@@ -50,7 +60,7 @@ export function ChampTelephone({
         className="tel-indicatif"
         aria-label="Indicatif du pays"
       >
-        {INDICATIFS.map((i) => (
+        {liste.map((i) => (
           <option key={i.code} value={i.code}>
             {i.code} · {i.libelle}
           </option>
@@ -74,7 +84,7 @@ export function ChampTelephone({
 
       {trop ? (
         <span className="tel-note">
-          {attendu} chiffres attendus pour {INDICATIFS.find((i) => i.code === indicatif)?.libelle}
+          {attendu} chiffres attendus pour {liste.find((i) => i.code === indicatif)?.libelle}
         </span>
       ) : null}
     </div>

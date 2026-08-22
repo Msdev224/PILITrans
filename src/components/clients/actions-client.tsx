@@ -7,11 +7,10 @@ import { supprimerClient } from "@/actions/clients";
 import { DialogueClient, type ClientEditable } from "@/components/clients/dialogue-client";
 import { IconeCorbeille, IconeCrayon } from "@/components/icones";
 
-export function ActionsClient({
-  client,
-  aDesFactures,
-}: {
+export function ActionsClient({ client, indicatifs, aDesFactures }: {
   client: ClientEditable;
+  /** Pays proposés pour les numéros, tenus dans l'écran Pays. */
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   aDesFactures: boolean;
 }) {
   const [confirmation, setConfirmation] = useState(false);
@@ -19,6 +18,7 @@ export function ActionsClient({
   return (
     <div className="acts">
       <DialogueClient
+        indicatifs={indicatifs}
         client={client}
         declencheur={
           <button type="button" title="Modifier le client">

@@ -41,10 +41,12 @@ interface Props {
   /** Carrosseries proposées : dépend du module transport de personnes. */
   carrosseries: string[];
   camion?: CamionEditable | null;
+  /** Pays proposés pour les numéros, tenus dans l'écran Pays. */
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   declencheur: React.ReactNode;
 }
 
-export function DialogueCamion({ carrosseries, camion, declencheur }: Props) {
+export function DialogueCamion({ indicatifs, carrosseries, camion, declencheur }: Props) {
   const [ouvert, setOuvert] = useState(false);
   const edition = !!camion;
 
@@ -135,6 +137,7 @@ export function DialogueCamion({ carrosseries, camion, declencheur }: Props) {
 
               <Champ label="Téléphone de bord 1">
                 <ChampTelephone
+                  indicatifs={indicatifs}
                   nom="telephoneBord1"
                   key={val("telephoneBord1", camion?.telephoneBord1 ?? "")}
                   valeur={val("telephoneBord1", camion?.telephoneBord1 ?? "")}
@@ -143,6 +146,7 @@ export function DialogueCamion({ carrosseries, camion, declencheur }: Props) {
 
               <Champ label="Téléphone de bord 2 (CFA)">
                 <ChampTelephone
+                  indicatifs={indicatifs}
                   nom="telephoneBord2"
                   key={val("telephoneBord2", camion?.telephoneBord2 ?? "")}
                   valeur={val("telephoneBord2", camion?.telephoneBord2 ?? "")}

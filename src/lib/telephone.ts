@@ -21,7 +21,15 @@ export interface Indicatif {
   longueur: number;
 }
 
-/** Pays du corridor, puis les destinations courantes du carnet d'adresses. */
+/**
+ * Indicatifs connus du module, utilisés pour **analyser** un numéro déjà
+ * enregistré : reconnaître « 224620… » comme guinéen, séparer l'indicatif de
+ * la partie nationale.
+ *
+ * Ce n'est PAS la liste proposée à la saisie : celle-ci vient de la table
+ * `Pays`, tenue par l'exploitation. Les deux ont divergé un temps — on voyait
+ * ici des pays absents de la configuration.
+ */
 export const INDICATIFS: Indicatif[] = [
   { cle: "GUINEE", libelle: "Guinée", code: "+224", longueur: 9 },
   { cle: "SENEGAL", libelle: "Sénégal", code: "+221", longueur: 9 },

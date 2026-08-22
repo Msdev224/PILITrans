@@ -7,11 +7,10 @@ import { retirerChauffeur } from "@/actions/chauffeurs";
 import { DialogueChauffeur, type ChauffeurEditable } from "@/components/equipe/dialogue-chauffeur";
 import { IconeCorbeille, IconeCrayon } from "@/components/icones";
 
-export function ActionsChauffeur({
-  chauffeur,
-  aRoule,
-}: {
+export function ActionsChauffeur({ chauffeur, indicatifs, aRoule }: {
   chauffeur: ChauffeurEditable;
+  /** Pays proposés pour les numéros, tenus dans l'écran Pays. */
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   aRoule: boolean;
 }) {
   const [confirmation, setConfirmation] = useState(false);
@@ -19,6 +18,7 @@ export function ActionsChauffeur({
   return (
     <div className="acts">
       <DialogueChauffeur
+        indicatifs={indicatifs}
         chauffeur={chauffeur}
         declencheur={
           <button type="button" title="Modifier le chauffeur">

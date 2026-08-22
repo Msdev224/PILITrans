@@ -10,6 +10,7 @@ import { IconeInfo, IconePlus, IconeDepense } from "@/components/icones";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import { vueChauffeurs, type LigneChauffeur } from "@/lib/donnees/equipe";
 import { moisCourant } from "@/lib/periode";
+import { indicatifsPays } from "@/lib/donnees/pays";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatNombre, LIBELLE_MODE_REMUNERATION, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
@@ -19,11 +20,12 @@ export const metadata = { title: "Chauffeurs — PILITrans" };
 
 export default async function ChauffeursPage() {
   const periode = moisCourant();
-  const [session, lignes, parametres, fil] = await Promise.all([
+  const [session, lignes, parametres, fil, indicatifs] = await Promise.all([
     sessionRequise(),
     vueChauffeurs(periode),
     prisma.parametres.findFirst(),
     filAlertes(),
+    indicatifsPays(),
   ]);
 
   const actifs = lignes.filter((l) => l.chauffeur.actif).length;
@@ -53,6 +55,7 @@ export default async function ChauffeursPage() {
           <h3>Chauffeurs</h3>
           <SiPeut droit="equipe.ecrire">
             <DialogueChauffeur
+              indicatifs={indicatifs}
               declencheur={
                 <button type="button" className="btn-add">
                   <IconePlus />
@@ -81,6 +84,7 @@ export default async function ChauffeursPage() {
                 <LigneTableau
                     key={ligne.chauffeur.id}
                     ligne={ligne}
+                    indicatifs={indicatifs}
                     tauxReferenceXof={tauxReferenceXof}
                   />
               ))}
@@ -94,9 +98,11 @@ export default async function ChauffeursPage() {
 
 function LigneTableau({
   ligne,
+  indicatifs,
   tauxReferenceXof,
 }: {
   ligne: LigneChauffeur;
+  indicatifs: { code: string; libelle: string; longueur: number | null }[];
   tauxReferenceXof: number | null;
 }) {
   const { chauffeur } = ligne;
@@ -193,7 +199,11 @@ function LigneTableau({
             }
           />
         </div>
-        <ActionsChauffeur chauffeur={aplatir(ligne)} aRoule={ligne.nbVoyages > 0} />
+        <ActionsChauffeur
+          chauffeur={aplatir(ligne)}
+          indicatifs={indicatifs}
+          aRoule={ligne.nbVoyages > 0}
+        />
       </td>
     </tr>
   );

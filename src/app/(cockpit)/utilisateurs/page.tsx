@@ -6,6 +6,7 @@ import { basculerActivation } from "@/actions/utilisateurs";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import { chauffeursSansCompte, listeUtilisateurs } from "@/lib/donnees/utilisateurs";
 import { DOMAINES, LIBELLE_ROLE, ROLES_COCKPIT, peut } from "@/lib/permissions";
+import { indicatifsPays } from "@/lib/donnees/pays";
 import { prisma } from "@/lib/prisma";
 import { formatTelephone } from "@/lib/telephone";
 import { formatDate, n } from "@/lib/utils";
@@ -26,12 +27,13 @@ const LIBELLE_DOMAINE: Record<string, string> = {
 };
 
 export default async function UtilisateursPage() {
-  const [session, comptes, chauffeurs, parametres, fil] = await Promise.all([
+  const [session, comptes, chauffeurs, parametres, fil, indicatifs] = await Promise.all([
     sessionRequise(),
     listeUtilisateurs(),
     chauffeursSansCompte(),
     prisma.parametres.findFirst(),
     filAlertes(),
+    indicatifsPays(),
   ]);
 
   const actifs = comptes.filter((c) => c.actif).length;
@@ -50,6 +52,7 @@ export default async function UtilisateursPage() {
         <div className="head-row">
           <h3>Comptes et accès</h3>
           <DialogueUtilisateur
+              indicatifs={indicatifs}
             chauffeurs={chauffeurs}
             declencheur={
               <button type="button" className="btn-add">
@@ -98,6 +101,7 @@ export default async function UtilisateursPage() {
                     </td>
                     <td className="actions-cell">
                       <DialogueUtilisateur
+              indicatifs={indicatifs}
                         utilisateur={{
                           id: c.id,
                           nom: c.nom,
