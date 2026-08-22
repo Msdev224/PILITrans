@@ -96,7 +96,12 @@ export function CarteCamion({ pnl, temperature, signal, destination, statutVoyag
           </div>
           <div>
             <div className="l">Marge exploit.</div>
-            <div className={`n ${pnl.margeExploitation >= 0 ? "pos" : "neg"}`}>{formatMillionsSigne(pnl.margeExploitation)} M</div>
+            <div
+              className={`n ${pnl.recetteManquante ? "" : pnl.margeExploitation >= 0 ? "pos" : "neg"}`}
+              title={pnl.recetteManquante ? "Recette non renseignée sur au moins une mission" : undefined}
+            >
+              {pnl.recetteManquante ? "à renseigner" : `${formatMillionsSigne(pnl.margeExploitation)} M`}
+            </div>
           </div>
         </div>
 

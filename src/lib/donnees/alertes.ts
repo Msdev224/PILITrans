@@ -326,6 +326,60 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
     });
   }
 
+  // --- Missions sans recette : à renseigner, pas des pertes ---
+  //
+  // Une mission terminée sans recette fait apparaître le camion déficitaire :
+  // la paie du chauffeur pèse sans rien en face. C'est presque toujours un
+  // oubli de saisie, pas une course à perte. On le dit plutôt que de laisser
+  // douter des chiffres.
+  const sansRecette = await prisma.voyage.findMany({
+    where: {
+      statut: { in: ["TERMINE", "EN_DECHARGEMENT", "ARRIVE_DESTINATION"] },
+      recetteGnf: { lte: 0 },
+      aVide: false,
+    },
+    include: { camion: { select: { nom: true } }, factures: { select: { numero: true } } },
+  });
+  for (const v of sansRecette) {
+    const facturee = v.factures.length > 0;
+    liste.push({
+      id: `recette-${v.id}`,
+      type: "AUTRE",
+      severite: "ATTENTION",
+      categorie: "finances",
+      lien: `/voyages/${v.id}`,
+      action: "Renseigner la recette",
+      titre: `Recette non renseignée — ${v.villeDepart} → ${v.villeArrivee}`,
+      detail: facturee
+        ? `Facturée ${v.factures[0].numero}, mais la mission reste à 0 : la marge du camion est faussée.`
+        : "La mission compte la paie du chauffeur sans recette en face : sa marge apparaît négative à tort.",
+      meta: [v.camion.nom, "Recette", v.reference],
+      camionId: v.camionId,
+      persistee: false,
+    });
+  }
+
+  // --- Missions terminées jamais facturées ---
+  const nonFacturees = await prisma.voyage.findMany({
+    where: { statut: "TERMINE", aVide: false, factures: { none: {} }, recetteGnf: { gt: 0 } },
+    include: { camion: { select: { nom: true } } },
+  });
+  for (const v of nonFacturees) {
+    liste.push({
+      id: `afacturer-${v.id}`,
+      type: "AUTRE",
+      severite: "ATTENTION",
+      categorie: "finances",
+      lien: `/voyages/${v.id}`,
+      action: "Facturer",
+      titre: `Mission terminée non facturée — ${v.villeDepart} → ${v.villeArrivee}`,
+      detail: `${formatNombre(n(v.recetteGnf))} GNF de recette sans facture émise.`,
+      meta: [v.camion.nom, "Facturation", v.reference],
+      camionId: v.camionId,
+      persistee: false,
+    });
+  }
+
   // --- Caisses chauffeurs non soldées ---
   for (const c of chauffeurs) {
     const solde = soldeCaisse(

@@ -98,8 +98,25 @@ export default async function RentabilitePage() {
                         <td className="num">{pnl.km > 0 ? formatNombre(pnl.km) : "—"}</td>
                         <td className="num">{formatNombre(pnl.recetteGnf)}</td>
                         <td className="num">{formatNombre(charges)}</td>
-                        <td className={`num ${pnl.margeExploitation >= 0 ? "pos" : "neg"}`}>
-                          {formatSigne(pnl.margeExploitation)}
+                        {/* Une marge négative faute de recette saisie n'est pas
+                            une perte : la signaler comme telle ferait douter de
+                            chiffres simplement incomplets. */}
+                        <td
+                          className={`num ${
+                            pnl.recetteManquante
+                              ? "vide"
+                              : pnl.margeExploitation >= 0
+                                ? "pos"
+                                : "neg"
+                          }`}
+                        >
+                          {pnl.recetteManquante ? (
+                            <span title="Des charges sans recette : renseignez la recette des missions">
+                              à renseigner
+                            </span>
+                          ) : (
+                            formatSigne(pnl.margeExploitation)
+                          )}
                         </td>
                         <td className={`num ${pnl.margeKm >= 0 ? "pos" : "neg"}`}>
                           {pnl.km > 0 ? formatSigne(pnl.margeKm) : "—"}

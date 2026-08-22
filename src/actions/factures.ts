@@ -81,6 +81,41 @@ function rafraichir(voyageId?: string | null) {
   if (voyageId) revalidatePath(`/voyages/${voyageId}`);
 }
 
+/**
+ * Reporte le montant facturé sur la recette de la mission, si elle est vide.
+ *
+ * Facture et recette sont deux notions distinctes — l'une est ce qu'on réclame
+ * au client, l'autre ce que la mission rapporte au camion — mais laisser la
+ * seconde à zéro rend le véhicule artificiellement déficitaire : la paie du
+ * chauffeur pèse sans rien en face. Une recette déjà saisie n'est jamais
+ * écrasée : c'est le gérant qui sait.
+ */
+async function reporterRecetteSurVoyage(factureId: string) {
+  const facture = await prisma.facture.findUnique({
+    where: { id: factureId },
+    select: { voyageId: true, montant: true, devise: true, montantGnf: true },
+  });
+  if (!facture?.voyageId) return;
+
+  const voyage = await prisma.voyage.findUnique({
+    where: { id: facture.voyageId },
+    select: { recetteGnf: true },
+  });
+  if (!voyage || Number(voyage.recetteGnf) > 0) return;
+
+  await prisma.voyage.update({
+    where: { id: facture.voyageId },
+    data: {
+      recette: facture.montant,
+      devise: facture.devise,
+      recetteGnf: facture.montantGnf,
+    },
+  });
+  revalidatePath(`/voyages/${facture.voyageId}`);
+  revalidatePath("/voyages");
+  revalidatePath("/rentabilite");
+}
+
 export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promise<EtatFacture> {
   await droitEcriture();
 
@@ -119,6 +154,7 @@ export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promi
   });
 
   // Le client reçoit sa facture et son lien de consultation.
+  await reporterRecetteSurVoyage(creee.id);
   await notifierFacture(creee.id);
 
   rafraichir(saisie.data.voyageId);

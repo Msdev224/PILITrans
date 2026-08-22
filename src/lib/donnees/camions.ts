@@ -88,6 +88,13 @@ export interface PnlCamion {
   /** Recette − charges d'exploitation. C'est LA marge du mois. */
   margeExploitation: number;
 
+  /**
+   * Vrai quand des charges existent sans aucune recette sur des missions qui
+   * en attendaient une. La marge est alors incomplète, pas négative : afficher
+   * une perte ferait douter de chiffres qui n'ont simplement pas été saisis.
+   */
+  recetteManquante: boolean;
+
   // Ratios
   km: number;
   kmAVide: number;
@@ -168,6 +175,10 @@ export function calculerPnl(camion: Camion, mvts: MouvementsCamion, periode: Per
     amortissementGnf,
     couts,
     margeExploitation,
+    // Des missions non à vide, des charges, et pas un franc de recette : c'est
+    // une saisie incomplète bien plus souvent qu'une course à perte.
+    recetteManquante:
+      recetteGnf === 0 && couts > 0 && voyages.some((v) => !v.aVide),
     km,
     kmAVide,
     tauxAVidePct: tauxAVide(kmAVide, km),

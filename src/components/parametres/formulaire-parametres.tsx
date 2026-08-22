@@ -256,14 +256,16 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
         </div>
 
         <Champ label="Nom d'expéditeur" aide="Sensible à la casse, tel que déclaré chez Nimba.">
-          <input name="smsExpediteur" defaultValue={val("smsExpediteur", parametres.smsExpediteur)} placeholder="PILITrans" disabled={!smsActif} />
+          {/* Volontairement pas `disabled` : un champ désactivé n'est pas envoyé,
+          et enregistrer avec les SMS coupés effaçait le nom d'expéditeur. */}
+      <input name="smsExpediteur" defaultValue={val("smsExpediteur", parametres.smsExpediteur)} placeholder="PILITrans" readOnly={!smsActif} />
         </Champ>
 
         <Champ
           label="URL publique de l'application"
           aide="Sert à composer le lien de facture envoyé au client."
         >
-          <input name="urlApplication" defaultValue={val("urlApplication", parametres.urlApplication)} placeholder="https://pilitrans.gn" disabled={!smsActif} />
+          <input name="urlApplication" defaultValue={val("urlApplication", parametres.urlApplication)} placeholder="https://pilitrans.gn" readOnly={!smsActif} />
         </Champ>
 
         <div className="full mt-1 border-t border-[var(--line-soft)] pt-3">
@@ -298,7 +300,6 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
                 type="checkbox"
                 name="whatsappActif"
                 value="true"
-                disabled={!smsActif}
                 defaultChecked={
                   etat.valeurs ? etat.valeurs.whatsappActif === "true" : parametres.whatsappActif
                 }
@@ -411,12 +412,17 @@ function Bascule({
 }) {
   return (
     <label className={`flex cursor-pointer items-center gap-2 text-[12.5px] ${actif ? "" : "opacity-50"}`}>
+      {/*
+        Pas de `disabled` ici. Un champ désactivé n'est pas soumis : couper les
+        SMS puis enregistrer remettait à zéro les six déclencheurs, et l'on
+        retrouvait tout éteint en les rallumant. L'opacité suffit à dire qu'ils
+        sont sans effet tant que les SMS sont coupés.
+      */}
       <input
         type="checkbox"
         name={nom}
         value="true"
         defaultChecked={etat.valeurs ? etat.valeurs[nom] === "true" : defaut}
-        disabled={!actif}
       />
       {children}
     </label>

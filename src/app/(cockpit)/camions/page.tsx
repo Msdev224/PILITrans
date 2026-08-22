@@ -129,8 +129,22 @@ export default async function CamionsPage() {
                         {LIBELLE_STATUT_CAMION[camion.statut]}
                       </span>
                     </td>
-                    <td className={`num ${pnl.margeExploitation > 0 ? "pos" : pnl.margeExploitation < 0 ? "neg" : "vide"}`}>
-                      {pnl.recetteGnf === 0 && pnl.couts === 0 ? "—" : formatSigne(pnl.margeExploitation)}
+                    <td
+                      className={`num ${
+                        pnl.recetteManquante
+                          ? "vide"
+                          : pnl.margeExploitation > 0
+                            ? "pos"
+                            : pnl.margeExploitation < 0
+                              ? "neg"
+                              : "vide"
+                      }`}
+                    >
+                      {pnl.recetteGnf === 0 && pnl.couts === 0
+                        ? "—"
+                        : pnl.recetteManquante
+                          ? "à renseigner"
+                          : formatSigne(pnl.margeExploitation)}
                     </td>
                     <td>
                       <ActionsCamion
