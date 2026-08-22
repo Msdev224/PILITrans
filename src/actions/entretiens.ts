@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
-import { dateOptionnelle, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
+import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -22,12 +22,12 @@ const schemaEntretien = z
   .object({
     camionId: z.string().min(1, "Camion requis"),
     type: z.nativeEnum(TypeEntretien),
-    dateFait: dateOptionnelle,
+    dateFait: dateBorneeOptionnelle,
     kmFait: nombreOptionnel,
     heuresFait: nombreOptionnel,
     prochainKm: nombreOptionnel,
     prochainHeures: nombreOptionnel,
-    prochaineDate: dateOptionnelle,
+    prochaineDate: dateBorneeOptionnelle,
     cout: nombreOptionnel,
     devise: z.nativeEnum(Devise),
     coutGnf: nombreOptionnel,

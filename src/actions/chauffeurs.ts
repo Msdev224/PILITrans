@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
-import { caseACocher, dateOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
+import { caseACocher, dateExpirationOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -27,7 +27,7 @@ const schemaChauffeur = z
     ),
     numeroPermis: texteOptionnel,
     categoriePermis: texteOptionnel,
-    permisExpire: dateOptionnelle,
+    permisExpire: dateExpirationOptionnelle,
     modeRemuneration: z.nativeEnum(ModeRemuneration),
     tauxRemuneration: nombreOptionnel,
     actif: caseACocher,

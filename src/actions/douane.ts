@@ -7,13 +7,7 @@ import { z } from "zod";
 import { sessionRequise } from "@/auth";
 import { peut } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import {
-  dateOptionnelle,
-  erreursFormulaire,
-  nombreOptionnel,
-  nombrePositif,
-  texteOptionnel,
-} from "@/lib/validation";
+import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /**
  * Le chauffeur déclare ce qui lui a été prélevé, le gérant peut corriger.
@@ -53,7 +47,7 @@ const schemaPrelevement = z
     devise: z.nativeEnum(Devise),
     montantGnf: nombreOptionnel,
     reference: texteOptionnel,
-    date: dateOptionnelle,
+    date: dateBorneeOptionnelle,
   })
   .refine((p) => p.devise === "GNF" || !((p.montant ?? 0) > 0) || (p.montantGnf ?? 0) > 0, {
     message: "Saisir l'équivalent en GNF du montant en CFA",

@@ -9,7 +9,7 @@ import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { notifierAffectationChauffeur, notifierEtapeVoyage } from "@/lib/sms/declencheurs";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
-import { caseACocher, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
+import { caseACocher, dateBornee, distanceKm, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -42,8 +42,8 @@ const schemaVoyage = z
     perDiemJournalierGnf: nombreOptionnel,
     /** Paie de la mission, si elle est déjà arrêtée. */
     remunerationChauffeur: nombreOptionnel,
-    distanceKm: nombreOptionnel,
-    dateDepart: z.coerce.date({ message: "Date de départ invalide" }),
+    distanceKm,
+    dateDepart: dateBornee,
     aVide: caseACocher,
     recette: nombreOptionnel,
     /**

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatDecimal, formatNombre } from "@/lib/utils";
 import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
+import { ChampMontant } from "@/components/champ-montant";
 
 /**
  * Mouvement de caisse. Jusqu'ici seules les dépenses du terrain existaient :
@@ -117,13 +118,7 @@ export function DialogueCaisse({
 
               <div className="field">
                 <label>Montant</label>
-                <input
-                  name="montant"
-                  inputMode="decimal"
-                  required
-                  value={montant}
-                  onChange={(e) => setMontant(e.target.value)}
-                />
+                <ChampMontant nom="montant" valeur={montant} devise={devise} requis onChange={setMontant} />
                 {etat.champs?.montant ? (
                   <span className="text-[11.5px] text-[var(--neg)]">{etat.champs.montant}</span>
                 ) : null}

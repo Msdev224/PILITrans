@@ -7,7 +7,7 @@ import { z } from "zod";
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
-import { dateOptionnelle, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
+import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -27,8 +27,8 @@ const schemaReparation = z
     coutTotalGnf: nombreOptionnel,
     kilometrage: nombreOptionnel,
     heuresGroupe: nombreOptionnel,
-    immobiliseDu: dateOptionnelle,
-    immobiliseAu: dateOptionnelle,
+    immobiliseDu: dateBorneeOptionnelle,
+    immobiliseAu: dateBorneeOptionnelle,
     statut: z.nativeEnum(StatutReparation),
   })
   .refine(

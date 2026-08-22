@@ -8,7 +8,7 @@ import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { estChargeDeStructure } from "@/lib/utils";
-import { erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
+import { dateBornee, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -27,7 +27,7 @@ const schemaDepense = z
     litres: nombreOptionnel,
     releveCompteur: nombreOptionnel,
     description: z.string().trim().optional(),
-    date: z.coerce.date({ message: "Date invalide" }),
+    date: dateBornee,
     voyageId: z.string().trim().optional(),
     camionId: z.string().trim().optional(),
     /**

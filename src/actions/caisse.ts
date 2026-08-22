@@ -6,13 +6,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
-import {
-  dateOptionnelle,
-  erreursFormulaire,
-  nombreOptionnel,
-  nombrePositif,
-  texteOptionnel,
-} from "@/lib/validation";
+import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -59,7 +53,7 @@ const schemaMouvement = z
      * jamais réclamée, mais elle sort bien de la caisse.
      */
     fraisGnf: nombreOptionnel,
-    date: dateOptionnelle,
+    date: dateBorneeOptionnelle,
   })
   .refine((m) => m.devise === "GNF" || (m.montantGnf ?? 0) > 0, {
     message: "Saisir l'équivalent en GNF du montant en CFA",

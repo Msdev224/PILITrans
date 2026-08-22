@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
-import { dateOptionnelle, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
+import { dateBorneeOptionnelle, dateExpiration, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -20,8 +20,8 @@ const schemaEcheance = z.object({
   numero: texteOptionnel,
   /** Compagnie d'assurance ou organisme émetteur. */
   organisme: texteOptionnel,
-  dateDebut: dateOptionnelle,
-  dateExpiration: z.coerce.date({ message: "Date d'expiration invalide" }),
+  dateDebut: dateBorneeOptionnelle,
+  dateExpiration: dateExpiration,
   /** Coût du document : il pèse sur la rentabilité du camion. */
   montantGnf: nombreOptionnel,
   rappelJours: nombreOptionnel.pipe(z.number().int().positive("Rappel requis").optional()),

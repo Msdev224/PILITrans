@@ -9,14 +9,7 @@ import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { numeroLibre } from "@/lib/donnees/facturation-auto";
 import { notifierFacture, notifierRelance } from "@/lib/sms/declencheurs";
-import {
-  caseACocher,
-  dateOptionnelle,
-  erreursFormulaire,
-  nombreOptionnel,
-  nombrePositif,
-  texteOptionnel,
-} from "@/lib/validation";
+import { caseACocher, dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -32,8 +25,8 @@ const schemaFacture = z
     /** Équivalent GNF au taux réel — figé, jamais recalculé. */
     montantGnf: nombreOptionnel,
     /** Date portée sur le document. Par défaut : aujourd'hui. */
-    dateEmission: dateOptionnelle,
-    echeance: dateOptionnelle,
+    dateEmission: dateBorneeOptionnelle,
+    echeance: dateBorneeOptionnelle,
     marchandiseAssuree: caseACocher,
     /** %/mois, propre à chaque facture (cf. CLAUDE.md). */
     tauxPenaliteRetard: nombreOptionnel,
@@ -209,7 +202,7 @@ const schemaPaiement = z
     devise: z.nativeEnum(Devise),
     /** Équivalent GNF figé au taux du jour du versement. */
     montantGnf: nombreOptionnel,
-    date: dateOptionnelle,
+    date: dateBorneeOptionnelle,
     moyen: z.nativeEnum(MoyenPaiement),
     reference: texteOptionnel,
   })

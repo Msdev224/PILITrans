@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { formatDecimal, formatNombre } from "@/lib/utils";
+import { ChampMontant } from "@/components/champ-montant";
 
 /** Voyage facturable : porte de quoi pré-remplir la facture. */
 export interface OptionVoyageFacturable {
@@ -197,7 +198,13 @@ export function DialogueFacture({
               </div>
 
               <Champ label="Montant" erreur={err("montant")}>
-                <input name="montant" inputMode="decimal" required value={montant} onChange={(e) => setMontant(e.target.value)} />
+                <ChampMontant
+                    nom="montant"
+                    valeur={montant}
+                    devise={devise}
+                    requis
+                    onChange={setMontant}
+                  />
               </Champ>
 
               <Champ label="Devise">

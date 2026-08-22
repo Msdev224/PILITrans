@@ -86,3 +86,70 @@ export const telephoneRequis = z.preprocess(
   (v) => (estVide(v) ? "" : (normaliserTelephone(String(v)) ?? String(v).trim())),
   z.string().refine((v) => telephoneValide(v), "Numéro invalide : indiquez l'indicatif du pays"),
 );
+
+// ------------------------------------------------------------
+//  Garde-fous de saisie
+//
+//  Une date ou un montant aberrant ne se voit pas : il se glisse dans les
+//  moyennes, fausse une marge, et personne ne se souvient de ce qui a été
+//  tapé. Mieux vaut refuser à la saisie que corriger six mois plus tard.
+// ------------------------------------------------------------
+
+/** L'exploitation n'a pas d'antériorité avant cette date. */
+const ANNEE_MIN = 2000;
+/** Deux ans devant : au-delà, c'est une faute de frappe sur l'année. */
+const ANNEES_AVANT = 2;
+
+export function dateRaisonnable(date: Date, aujourdhui = new Date()): boolean {
+  if (Number.isNaN(date.getTime())) return false;
+  const limite = new Date(aujourdhui.getFullYear() + ANNEES_AVANT, 11, 31);
+  return date.getFullYear() >= ANNEE_MIN && date <= limite;
+}
+
+/** Date obligatoire, bornée pour écarter les fautes de frappe sur l'année. */
+export const dateBornee = z.coerce
+  .date({ message: "Date invalide" })
+  .refine((d) => dateRaisonnable(d), {
+    message: `Date hors période plausible (entre ${ANNEE_MIN} et dans ${ANNEES_AVANT} ans)`,
+  });
+
+/** Idem, facultative. */
+export const dateBorneeOptionnelle = z.preprocess(
+  (v) => (estVide(v) ? undefined : v),
+  z.coerce
+    .date({ message: "Date invalide" })
+    .refine((d) => dateRaisonnable(d), { message: "Date hors période plausible" })
+    .optional(),
+);
+
+/**
+ * Date d'expiration d'un document.
+ *
+ * Horizon large : un permis, une assurance ou une autorisation courent
+ * couramment sur plusieurs années. La borne de deux ans, valable pour une
+ * opération, refuserait ici des saisies parfaitement justes.
+ */
+export const dateExpiration = z.coerce
+  .date({ message: "Date invalide" })
+  .refine((d) => !Number.isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= new Date().getFullYear() + 15, {
+    message: "Date d'expiration hors période plausible",
+  });
+
+export const dateExpirationOptionnelle = z.preprocess(
+  (v) => (estVide(v) ? undefined : v),
+  dateExpiration.optional(),
+);
+
+/**
+ * Distance d'une mission, en kilomètres.
+ *
+ * Le corridor le plus long de l'exploitation dépasse à peine 1 500 km. Un
+ * nombre à cinq chiffres vient d'une frappe, pas de la route — et il écrase
+ * tous les coûts au kilomètre de la période.
+ */
+export const distanceKm = nombreOptionnel.pipe(
+  z
+    .number()
+    .max(10_000, "Distance invraisemblable : vérifiez la saisie")
+    .optional(),
+);

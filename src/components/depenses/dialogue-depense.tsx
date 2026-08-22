@@ -18,6 +18,7 @@ import {
   estChargeDeStructure,
   LIBELLE_CATEGORIE_DEPENSE,
 } from "@/lib/utils";
+import { ChampMontant } from "@/components/champ-montant";
 
 const TYPES_GASOIL = ["GASOIL_TRACTEUR", "GASOIL_GROUPE_FROID"];
 
@@ -146,7 +147,7 @@ export function DialogueDepense({
               </Champ>
 
               <Champ label="Montant" erreur={err("montant")}>
-                <input name="montant" inputMode="decimal" required value={montant} onChange={(e) => setMontant(e.target.value)} />
+                <ChampMontant nom="montant" valeur={montant} devise={devise} requis onChange={setMontant} />
               </Champ>
 
               <Champ label="Devise">
