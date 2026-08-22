@@ -1842,6 +1842,106 @@
     margin-right: 4px;
   }
 
+  /* --- Sélection avec recherche et vignette --- */
+  .rech {
+    position: relative;
+  }
+  .rech-declencheur {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    text-align: left;
+    font-size: 13px;
+    min-height: 40px;
+  }
+  .rech-declencheur:hover {
+    border-color: var(--muted-2);
+  }
+  .rech-choix,
+  .rech-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+  .rech-texte {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+  }
+  .rech-texte .t-sub {
+    font-size: 11px;
+  }
+  .rech-vide {
+    color: var(--muted-2);
+  }
+  .rech-fleche {
+    color: var(--muted-2);
+    flex: 0 0 auto;
+  }
+  .rech-vignette {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    border: 1px solid var(--line);
+  }
+  .rech-initiales {
+    display: grid;
+    place-items: center;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .rech-panneau {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(16, 40, 48, 0.14);
+    padding: 8px;
+  }
+  .rech-saisie {
+    width: 100%;
+    margin-bottom: 6px;
+  }
+  .rech-liste {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .rech-option {
+    width: 100%;
+    padding: 7px 8px;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 13px;
+  }
+  .rech-option:hover,
+  .rech-option.on {
+    background: var(--accent-bg);
+  }
+  .rech-aucun {
+    padding: 10px 8px;
+    font-size: 12px;
+    color: var(--muted-2);
+  }
+
   /* Photo d'identité du chauffeur. */
   .photo-champ {
     display: flex;

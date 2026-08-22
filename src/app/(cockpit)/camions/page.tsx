@@ -9,13 +9,7 @@ import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes
 import { pnlFlotte } from "@/lib/donnees/camions";
 import { moisCourant } from "@/lib/periode";
 import { prisma } from "@/lib/prisma";
-import {
-  formatSigne,
-  LIBELLE_CARROSSERIE,
-  LIBELLE_STATUT_CAMION,
-  LIBELLE_TYPE_VEHICULE,
-  n,
-} from "@/lib/utils";
+import { LIBELLE_CARROSSERIE, LIBELLE_STATUT_CAMION, LIBELLE_TYPE_VEHICULE, carrosseriesDisponibles, formatSigne, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +33,9 @@ export default async function CamionsPage() {
       select: { id: true, _count: { select: { voyages: true, depenses: true, reparations: true } } },
     }),
   ]);
+
+  // Bus et taxis n'apparaissent que si le module est activé dans les Paramètres.
+  const carrosseries = carrosseriesDisponibles(parametres?.transportPersonnesActif ?? false);
 
   const aRoule = new Map(
     ecritures.map((c) => [c.id, c._count.voyages + c._count.depenses + c._count.reparations > 0]),
@@ -69,6 +66,7 @@ export default async function CamionsPage() {
           </h3>
           <SiPeut droit="flotte.ecrire">
             <DialogueCamion
+              carrosseries={carrosseries}
               declencheur={
                 <button type="button" className="btn-add">
                   <IconePlus />
@@ -132,7 +130,11 @@ export default async function CamionsPage() {
                       {pnl.recetteGnf === 0 && pnl.couts === 0 ? "—" : formatSigne(pnl.margeExploitation)}
                     </td>
                     <td>
-                      <ActionsCamion camion={aplatir(camion)} aRoule={aRoule.get(camion.id) ?? false} />
+                      <ActionsCamion
+                        camion={aplatir(camion)}
+                        carrosseries={carrosseries}
+                        aRoule={aRoule.get(camion.id) ?? false}
+                      />
                     </td>
                   </tr>
                 );
@@ -155,6 +157,7 @@ function aplatir(camion: {
   immatTracteur: string;
   immatRemorque: string | null;
   marqueTracteur: string | null;
+  photo: string | null;
   telephoneBord1: string | null;
   telephoneBord2: string | null;
   marqueGroupeFroid: string | null;
@@ -175,6 +178,7 @@ function aplatir(camion: {
     immatTracteur: camion.immatTracteur,
     immatRemorque: camion.immatRemorque,
     marqueTracteur: camion.marqueTracteur,
+    photo: camion.photo,
     telephoneBord1: camion.telephoneBord1,
     telephoneBord2: camion.telephoneBord2,
     marqueGroupeFroid: camion.marqueGroupeFroid,

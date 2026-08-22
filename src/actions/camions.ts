@@ -7,9 +7,32 @@ import { z } from "zod";
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { estTransportPersonnes } from "@/lib/utils";
-import { dateOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel } from "@/lib/validation";
+import { dateOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
+/**
+ * Le transport de personnes n'est ouvert que si les Paramètres l'autorisent.
+ *
+ * Le contrôle est fait ici, pas seulement dans le menu déroulant : un
+ * formulaire modifié à la main enregistrerait sinon un véhicule que
+ * l'application ne sait pas suivre.
+ */
+async function verifierCarrosserie(carrosserie: string) {
+  if (!estTransportPersonnes(carrosserie)) return null;
+
+  const parametres = await prisma.parametres.findFirst({
+    select: { transportPersonnesActif: true },
+  });
+  if (parametres?.transportPersonnesActif) return null;
+
+  return {
+    champs: {
+      carrosserie:
+        "Le transport de personnes n'est pas activé. Cochez-le dans Paramètres → Modules.",
+    },
+  };
+}
+
 async function droitEcriture() {
   return exigerPermission("flotte.ecrire");
 }
@@ -21,9 +44,9 @@ const schemaCamion = z
     // Le transport de personnes n'est pas encore exploité : refuser la valeur
     // ici, et pas seulement dans le menu déroulant, évite d'enregistrer un
     // véhicule que l'application ne sait pas suivre.
-    carrosserie: z.nativeEnum(Carrosserie).refine((c) => !estTransportPersonnes(c), {
-      message: "Le transport de personnes n'est pas encore pris en charge.",
-    }),
+    carrosserie: z.nativeEnum(Carrosserie),
+    /** Photo du véhicule, déjà réduite par le navigateur. */
+    photo: texteOptionnel.pipe(z.string().max(600_000, "Photo trop lourde").optional()),
     immatTracteur: z.string().trim().min(1, "Immatriculation requise"),
     immatRemorque: z.string().trim().optional(),
     marqueTracteur: z.string().trim().optional(),
@@ -69,6 +92,7 @@ function donneesCamion(saisie: z.infer<typeof schemaCamion>) {
     immatTracteur: saisie.immatTracteur,
     immatRemorque: saisie.typeVehicule === "TRACTEUR_REMORQUE" ? saisie.immatRemorque || null : null,
     marqueTracteur: saisie.marqueTracteur || null,
+    photo: saisie.photo ?? null,
     telephoneBord1: saisie.telephoneBord1 || null,
     telephoneBord2: saisie.telephoneBord2 || null,
     marqueGroupeFroid: froid ? saisie.marqueGroupeFroid || null : null,
@@ -114,6 +138,9 @@ export async function creerCamion(_etat: EtatCamion, donnees: FormData): Promise
   const saisie = schemaCamion.safeParse(Object.fromEntries(donnees));
   if (!saisie.success) return erreursFormulaire<EtatCamion>(saisie.error, donnees);
 
+  const refus = await verifierCarrosserie(saisie.data.carrosserie);
+  if (refus) return refus;
+
   try {
     await prisma.camion.create({ data: donneesCamion(saisie.data) });
   } catch (e) {
@@ -135,6 +162,9 @@ export async function modifierCamion(
 
   const saisie = schemaCamion.safeParse(Object.fromEntries(donnees));
   if (!saisie.success) return erreursFormulaire<EtatCamion>(saisie.error, donnees);
+
+  const refus = await verifierCarrosserie(saisie.data.carrosserie);
+  if (refus) return refus;
 
   try {
     await prisma.camion.update({ where: { id }, data: donneesCamion(saisie.data) });

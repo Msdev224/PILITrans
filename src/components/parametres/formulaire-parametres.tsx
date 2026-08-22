@@ -23,6 +23,7 @@ export interface ParametresEditables {
   delaiPaiementJours: number;
   conditionsPaiement: string | null;
   deviseBase: string;
+  transportPersonnesActif: boolean;
   soldeCaisseInitial: number | null;
   dateSoldeInitial: string | null;
   tauxReferenceXof: number | null;
@@ -140,6 +141,33 @@ export function FormulaireParametres({
           <Champ label="Conditions de paiement">
             <input name="conditionsPaiement" defaultValue={val("conditionsPaiement", parametres.conditionsPaiement)} />
           </Champ>
+        </div>
+      </Section>
+
+      <Section
+        titre="Modules"
+        aide="Fonctionnalités ouvertes selon ce que l'exploitation possède réellement."
+      >
+        <div className="full">
+          <label className="case">
+            <input
+              type="checkbox"
+              name="transportPersonnesActif"
+              value="true"
+              defaultChecked={
+                etat.valeurs
+                  ? etat.valeurs.transportPersonnesActif === "true"
+                  : parametres.transportPersonnesActif
+              }
+            />
+            <span>Transport de personnes — autoriser les bus et les taxis</span>
+          </label>
+          <p className="aide-role">
+            À cocher le jour où ces véhicules entrent dans la flotte. Ils deviendront
+            enregistrables comme carrosseries. Attention : le suivi des passagers — places,
+            billets, recette au voyageur — reste à construire. Le tonnage, l&apos;écart de
+            livraison et la chaîne du froid n&apos;ont aucun sens pour eux.
+          </p>
         </div>
       </Section>
 

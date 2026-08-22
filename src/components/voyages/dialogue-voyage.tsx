@@ -19,6 +19,8 @@ import {
 import { IconeInfo } from "@/components/icones";
 import type { Suggestion } from "@/lib/donnees/trajets";
 import { formatDecimal, formatNombre } from "@/lib/utils";
+import { ChampRecherche } from "@/components/champ-recherche";
+import { formatTelephone } from "@/lib/telephone";
 
 
 // Les objets Prisma portent des Decimal, qui ne traversent pas la frontière
@@ -27,11 +29,14 @@ export interface OptionCamion {
   id: string;
   nom: string;
   immatTracteur: string;
+  photo?: string | null;
 }
 
 export interface OptionChauffeur {
   id: string;
   nom: string;
+  telephone?: string | null;
+  photo?: string | null;
 }
 
 interface SaisieLigne {
@@ -51,6 +56,8 @@ export interface OptionUnite {
 export interface OptionClientVoyage {
   id: string;
   nom: string;
+  ville?: string | null;
+  telephone?: string | null;
 }
 
 export interface LigneEditable {
@@ -221,29 +228,35 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
 
                 <div className="form-grid">
                   <Champ label="Camion" erreur={err("camionId")}>
-                    <select name="camionId" key={val("camionId", voyage?.camionId ?? "")} defaultValue={val("camionId", voyage?.camionId ?? "")} required>
-                      <option value="" disabled>
-                        Choisir…
-                      </option>
-                      {camions.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nom} — {c.immatTracteur}
-                        </option>
-                      ))}
-                    </select>
+                    <ChampRecherche
+                      nom="camionId"
+                      requis
+                      placeholder="Nom ou immatriculation…"
+                      valeur={val("camionId", voyage?.camionId ?? "")}
+                      options={camions.map((c) => ({
+                        id: c.id,
+                        libelle: c.nom,
+                        detail: c.immatTracteur,
+                        recherche: c.immatTracteur,
+                        photo: c.photo,
+                      }))}
+                    />
                   </Champ>
 
                   <Champ label="Chauffeur" erreur={err("chauffeurId")}>
-                    <select name="chauffeurId" key={val("chauffeurId", voyage?.chauffeurId ?? "")} defaultValue={val("chauffeurId", voyage?.chauffeurId ?? "")} required>
-                      <option value="" disabled>
-                        Choisir…
-                      </option>
-                      {chauffeurs.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nom}
-                        </option>
-                      ))}
-                    </select>
+                    <ChampRecherche
+                      nom="chauffeurId"
+                      requis
+                      placeholder="Nom ou téléphone…"
+                      valeur={val("chauffeurId", voyage?.chauffeurId ?? "")}
+                      options={chauffeurs.map((c) => ({
+                        id: c.id,
+                        libelle: c.nom,
+                        detail: c.telephone ? formatTelephone(c.telephone) : null,
+                        recherche: c.telephone,
+                        photo: c.photo,
+                      }))}
+                    />
                   </Champ>
 
                   <Champ label="Pays de départ">
@@ -326,18 +339,20 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                       deux orthographes créaient deux clients, et la fiche
                       client ne retrouvait plus ses missions. */}
                   <Champ label="Client" erreur={err("clientId")}>
-                    <select
-                      name="clientId"
-                      key={val("clientId", voyage?.clientId ?? "")}
-                      defaultValue={val("clientId", voyage?.clientId ?? "")}
-                    >
-                      <option value="">— Aucun —</option>
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nom}
-                        </option>
-                      ))}
-                    </select>
+                    <ChampRecherche
+                      nom="clientId"
+                      placeholder="Raison sociale, ville ou numéro…"
+                      vide="— Aucun client —"
+                      valeur={val("clientId", voyage?.clientId ?? "")}
+                      options={clients.map((c) => ({
+                        id: c.id,
+                        libelle: c.nom,
+                        detail: [c.ville, c.telephone ? formatTelephone(c.telephone) : null]
+                          .filter(Boolean)
+                          .join(" · "),
+                        recherche: c.telephone,
+                      }))}
+                    />
                     {clients.length === 0 ? (
                       <span className="text-[11px] text-[var(--muted-2)]">
                         Aucun client enregistré : créez-le d&apos;abord depuis l&apos;écran Clients.

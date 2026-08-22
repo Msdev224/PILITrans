@@ -41,6 +41,7 @@ export default async function ParametresPage() {
     delaiPaiementJours: parametres?.delaiPaiementJours ?? 14,
     conditionsPaiement: parametres?.conditionsPaiement ?? null,
     deviseBase: parametres?.deviseBase ?? "GNF",
+    transportPersonnesActif: parametres?.transportPersonnesActif ?? false,
     soldeCaisseInitial: nOuNull(parametres?.soldeCaisseInitial) ?? null,
     dateSoldeInitial: parametres?.dateSoldeInitial
       ? parametres.dateSoldeInitial.toISOString().slice(0, 10)

@@ -122,6 +122,10 @@ model Camion {
   immatRemorque  String?      @unique
   marqueTracteur String?
   // Téléphone de bord propre au camion, utilisé par le chauffeur (2 SIM : GN + SN/CFA)
+  /// Photo du véhicule, en data URI (image redimensionnée à la saisie).
+  /// Un chauffeur reconnaît son camion plus vite sur une image que sur une
+  /// immatriculation, et le gérant repère une confusion d'un coup d'œil.
+  photo          String?
   telephoneBord1 String?
   telephoneBord2 String?
   // Groupe froid (reefer) — seulement si refrigere=true ; suivi en HEURES, pas en km
@@ -805,6 +809,16 @@ model Parametres {
   smsClientRelance        Boolean  @default(false)
   /// Privilégier WhatsApp quand le destinataire y est joignable.
   whatsappActif           Boolean  @default(false)
+
+  /**
+   * Ouvre les carrosseries de transport de personnes (bus, taxi).
+   *
+   * Décoché tant que ces véhicules ne sont pas acquis : les proposer
+   * laisserait croire que l'application sait les suivre, alors que tout le
+   * modèle repose sur une marchandise et un client. Le tonnage, l'écart de
+   * livraison et la chaîne du froid n'ont aucun sens pour des passagers.
+   */
+  transportPersonnesActif Boolean @default(false)
 
   // --- Caisse de l'entreprise ---
   /**

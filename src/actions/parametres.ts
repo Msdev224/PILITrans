@@ -40,6 +40,9 @@ const schemaParametres = z.object({
   delaiPaiementJours: nombreOptionnel.pipe(z.number().int().positive("Délai requis").optional()),
   conditionsPaiement: texteOptionnel,
 
+  // Modules
+  transportPersonnesActif: caseACocher,
+
   // Caisse
   soldeCaisseInitial: nombreOptionnel,
   dateSoldeInitial: dateOptionnelle,
@@ -107,6 +110,7 @@ export async function enregistrerParametres(
     tvaTaux: d.tvaTaux ?? 0,
     delaiPaiementJours: d.delaiPaiementJours ?? 14,
     conditionsPaiement: d.conditionsPaiement ?? null,
+    transportPersonnesActif: d.transportPersonnesActif,
     soldeCaisseInitial: d.soldeCaisseInitial ?? null,
     dateSoldeInitial: d.dateSoldeInitial ?? null,
     deviseBase: d.deviseBase,
@@ -147,5 +151,6 @@ export async function enregistrerParametres(
   // cockpit : sans cette invalidation, elle garderait l'ancienne version.
   revalidatePath("/connexion");
   revalidatePath("/caisse");
+  revalidatePath("/camions");
   return { ok: true };
 }

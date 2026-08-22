@@ -69,17 +69,20 @@ export default async function VoyagesPage({ searchParams }: Props) {
     filAlertes(),
     prisma.camion.findMany({
       where: { actif: true },
-      select: { id: true, nom: true, immatTracteur: true },
+      select: { id: true, nom: true, immatTracteur: true, photo: true },
       orderBy: { nom: "asc" },
     }),
     prisma.chauffeur.findMany({
       where: { actif: true },
-      select: { id: true, nom: true },
+      select: { id: true, nom: true, telephone: true, photo: true },
       orderBy: { nom: "asc" },
     }),
     unitesActives(),
     paysActifs(),
-    prisma.client.findMany({ select: { id: true, nom: true }, orderBy: { nom: "asc" } }),
+    prisma.client.findMany({
+      select: { id: true, nom: true, ville: true, telephone: true },
+      orderBy: { nom: "asc" },
+    }),
   ]);
 
   const tauxReferenceXof = parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null;

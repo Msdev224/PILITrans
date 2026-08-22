@@ -214,9 +214,18 @@ export const LIBELLE_CARROSSERIE: Record<string, string> = {
  */
 export const CARROSSERIES_PERSONNES = ["BUS", "TAXI"] as const;
 
-export const CARROSSERIES_DISPONIBLES = Object.keys(LIBELLE_CARROSSERIE).filter(
-  (c) => !(CARROSSERIES_PERSONNES as readonly string[]).includes(c),
-);
+/**
+ * Carrosseries proposées à la saisie.
+ *
+ * Bus et taxi n'apparaissent que si le module « transport de personnes » est
+ * activé dans les Paramètres : les proposer avant laisserait croire que
+ * l'application sait suivre des passagers.
+ */
+export function carrosseriesDisponibles(transportPersonnesActif = false): string[] {
+  return Object.keys(LIBELLE_CARROSSERIE).filter(
+    (c) => transportPersonnesActif || !(CARROSSERIES_PERSONNES as readonly string[]).includes(c),
+  );
+}
 
 /** Vrai pour un véhicule de transport de personnes (module non actif). */
 export function estTransportPersonnes(carrosserie: string): boolean {

@@ -12,12 +12,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  CARROSSERIES_DISPONIBLES,
-  LIBELLE_CARROSSERIE,
-  LIBELLE_STATUT_CAMION,
-  LIBELLE_TYPE_VEHICULE,
-} from "@/lib/utils";
+import { LIBELLE_CARROSSERIE, LIBELLE_STATUT_CAMION, LIBELLE_TYPE_VEHICULE } from "@/lib/utils";
+import { ChampPhoto } from "@/components/equipe/champ-photo";
 
 export interface CamionEditable {
   id: string;
@@ -28,6 +24,7 @@ export interface CamionEditable {
   immatTracteur: string;
   immatRemorque: string | null;
   marqueTracteur: string | null;
+  photo: string | null;
   telephoneBord1: string | null;
   telephoneBord2: string | null;
   marqueGroupeFroid: string | null;
@@ -41,11 +38,13 @@ export interface CamionEditable {
 }
 
 interface Props {
+  /** Carrosseries proposées : dépend du module transport de personnes. */
+  carrosseries: string[];
   camion?: CamionEditable | null;
   declencheur: React.ReactNode;
 }
 
-export function DialogueCamion({ camion, declencheur }: Props) {
+export function DialogueCamion({ carrosseries, camion, declencheur }: Props) {
   const [ouvert, setOuvert] = useState(false);
   const edition = !!camion;
 
@@ -126,6 +125,14 @@ export function DialogueCamion({ camion, declencheur }: Props) {
                 </select>
               </Champ>
 
+              {/* Un chauffeur reconnaît son camion plus vite sur une image que
+                  sur une immatriculation. */}
+              <div className="full">
+                <Champ label="Photo du véhicule" aide="Facultative. Réduite automatiquement.">
+                  <ChampPhoto nom="photo" valeur={camion?.photo ?? null} />
+                </Champ>
+              </div>
+
               <Champ label="Téléphone de bord 1">
                 <ChampTelephone
                   nom="telephoneBord1"
@@ -157,7 +164,7 @@ export function DialogueCamion({ camion, declencheur }: Props) {
                   defaultValue={carrosserie}
                   onChange={(e) => setCarrosserie(e.target.value)}
                 >
-                  {CARROSSERIES_DISPONIBLES.map((c) => (
+                  {carrosseries.map((c) => (
                     <option key={c} value={c}>
                       {LIBELLE_CARROSSERIE[c]}
                     </option>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  CARROSSERIES_DISPONIBLES,
+  carrosseriesDisponibles,
   debutDeJour,
   estTransportPersonnes,
   formatDate,
@@ -105,17 +105,23 @@ describe("initiales", () => {
 });
 
 describe("carrosseries", () => {
-  it("ne propose pas le transport de personnes à la saisie", () => {
+  it("ne propose pas le transport de personnes tant que le module est fermé", () => {
     // Bus et taxi sont prévus mais pas acquis : les proposer laisserait croire
     // que l'application sait les suivre, alors que tout le modèle repose sur
     // une marchandise et un client.
-    expect(CARROSSERIES_DISPONIBLES).not.toContain("BUS");
-    expect(CARROSSERIES_DISPONIBLES).not.toContain("TAXI");
+    expect(carrosseriesDisponibles(false)).not.toContain("BUS");
+    expect(carrosseriesDisponibles(false)).not.toContain("TAXI");
   });
 
   it("propose bien les carrosseries de marchandises", () => {
-    expect(CARROSSERIES_DISPONIBLES).toEqual(
+    expect(carrosseriesDisponibles(false)).toEqual(
       expect.arrayContaining(["FRIGO", "BENNE", "PLATEAU", "BACHE", "CITERNE"]),
+    );
+  });
+
+  it("les ouvre une fois le module activé dans les Paramètres", () => {
+    expect(carrosseriesDisponibles(true)).toEqual(
+      expect.arrayContaining(["BUS", "TAXI", "FRIGO"]),
     );
   });
 
