@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 import { sessionRequise } from "@/auth";
 import { BarreHaut } from "@/components/barre-haut";
 import { ActionsEntretien } from "@/components/camions/actions-entretien";
+import { SiPeut } from "@/components/si-peut";
 import { ActionsReparation } from "@/components/camions/actions-reparation";
 import { DialogueEntretien } from "@/components/camions/dialogue-entretien";
 import { DialogueReparation } from "@/components/camions/dialogue-reparation";
-import { IconeInfo } from "@/components/icones";
+import { IconeInfo, IconePlus } from "@/components/icones";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import { ficheCamion, recuperationCapital } from "@/lib/donnees/camions";
 import { moisCourant } from "@/lib/periode";
@@ -25,10 +26,13 @@ import {
   LIBELLE_STATUT_REPARATION,
   LIBELLE_STATUT_VOYAGE,
   LIBELLE_TYPE_DEPENSE,
+  LIBELLE_TYPE_ECHEANCE,
   LIBELLE_TYPE_ENTRETIEN,
   LIBELLE_TYPE_VEHICULE,
   n,
 } from "@/lib/utils";
+import { ActionsEcheance } from "@/components/flotte/actions-echeance";
+import { DialogueEcheance } from "@/components/flotte/dialogue-echeance";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +71,8 @@ export default async function FicheCamionPage({ params }: { params: Promise<{ id
 
   const { camion } = fiche;
   const tauxReferenceXof = parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null;
+  // Seuil de rappel par défaut, réglé dans les Paramètres.
+  const rappelDefaut = parametres?.rappelEcheanceJours ?? 30;
   const enMission = fiche.voyageEnCours !== null && camion.statut !== "IMMOBILISE" && camion.statut !== "HORS_SERVICE";
   const coutAcquisition = camion.coutAcquisition ? n(camion.coutAcquisition) : null;
 
@@ -431,6 +437,114 @@ export default async function FicheCamionPage({ params }: { params: Promise<{ id
             </div>
           ) : (
             <p className="vide-msg">Aucune réparation enregistrée pour ce camion.</p>
+          )}
+        </div>
+
+        {/* ---------- Documents du véhicule ---------- */}
+        {/* Tenus ici plutôt que seulement dans la liste générale : c'est en
+            regardant un camion qu'on se demande s'il est en règle. */}
+        <div className="card panel mb-5">
+          <div className="head-row !mb-3">
+            <h3>
+              Documents &amp; assurances{" "}
+              <span className="sec-sub">— alerte automatique à l&apos;approche de l&apos;expiration</span>
+            </h3>
+            <SiPeut droit="flotte.ecrire">
+              <DialogueEcheance
+                camions={[{ id: camion.id, nom: camion.nom }]}
+                rappelDefaut={rappelDefaut}
+                declencheur={
+                  <button type="button" className="btn-add">
+                    <IconePlus />
+                    Ajouter un document
+                  </button>
+                }
+              />
+            </SiPeut>
+          </div>
+
+          {fiche.echeances.length > 0 ? (
+            <table className="tbl mt-0.5">
+              <thead>
+                <tr>
+                  <th>Document</th>
+                  <th>N° / organisme</th>
+                  <th>Expire le</th>
+                  <th className="num">Coût</th>
+                  <th>État</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {fiche.echeances.map((e) => {
+                  const restants = Math.ceil(
+                    (e.dateExpiration.getTime() - Date.now()) / 86_400_000,
+                  );
+                  const seuil = e.rappelJours || rappelDefaut;
+                  const carteBrune = e.type === "CARTE_BRUNE_CEDEAO";
+
+                  return (
+                    <tr key={e.id}>
+                      <td className="t-title">
+                        {LIBELLE_TYPE_ECHEANCE[e.type] ?? e.type}
+                        {carteBrune ? (
+                          <div className="t-sub">Bloquant pour tout départ international</div>
+                        ) : null}
+                      </td>
+                      <td className="t-sub">
+                        {[e.numero, e.organisme].filter(Boolean).join(" · ") || "—"}
+                      </td>
+                      <td className={restants < 0 ? "font-semibold text-[var(--neg)]" : undefined}>
+                        {formatDate(e.dateExpiration)}
+                        {e.dateDebut ? (
+                          <div className="t-sub">depuis {formatDate(e.dateDebut)}</div>
+                        ) : null}
+                      </td>
+                      <td className={`num ${e.montantGnf != null ? "" : "vide"}`}>
+                        {e.montantGnf != null ? formatNombre(n(e.montantGnf)) : "—"}
+                      </td>
+                      <td>
+                        {restants < 0 ? (
+                          <span className="badge b-down">Expiré</span>
+                        ) : restants <= 7 ? (
+                          <span className="badge b-down">Urgent · {restants} j</span>
+                        ) : restants <= seuil ? (
+                          <span className="badge b-warn">À renouveler · {restants} j</span>
+                        ) : (
+                          <span className="badge b-go">Valide</span>
+                        )}
+                      </td>
+                      <td>
+                        <SiPeut droit="flotte.ecrire">
+                          <ActionsEcheance
+                            echeance={{
+                              id: e.id,
+                              camionId: e.camionId,
+                              type: e.type,
+                              numero: e.numero,
+                              organisme: e.organisme,
+                              dateDebut: e.dateDebut
+                                ? e.dateDebut.toISOString().slice(0, 10)
+                                : null,
+                              montantGnf: e.montantGnf != null ? n(e.montantGnf) : null,
+                              dateExpiration: e.dateExpiration.toISOString().slice(0, 10),
+                              rappelJours: e.rappelJours,
+                            }}
+                            camions={[{ id: camion.id, nom: camion.nom }]}
+                            rappelDefaut={rappelDefaut}
+                          />
+                        </SiPeut>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <p className="vide-msg">
+              Aucun document enregistré. Assurance, visite technique, vignette, autorisation de
+              transport, carte brune CEDEAO : ajoutez-les pour être prévenu avant expiration.
+            </p>
           )}
         </div>
 

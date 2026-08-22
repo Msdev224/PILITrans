@@ -1,4 +1,4 @@
-import type { Camion, Chauffeur, Depense, Entretien, Reparation, Voyage } from "@prisma/client";
+import type { Camion, Chauffeur, Depense, Echeance, Entretien, Reparation, Voyage } from "@prisma/client";
 
 import {
   amortissementMensuel,
@@ -436,6 +436,12 @@ export interface FicheCamion extends PnlCamion {
   /** Toutes les réparations du camion, pas seulement celles de la période. */
   reparations: Reparation[];
   entretiens: Entretien[];
+  /**
+   * Papiers du véhicule : assurance, visite technique, carte brune…
+   * Rassemblés sur la fiche pour qu'un camion se tienne à jour depuis un seul
+   * écran, sans passer par la liste générale des échéances.
+   */
+  echeances: Echeance[];
   /** Voyage actuellement en cours, s'il y en a un. */
   voyageEnCours: VoyageAvecChauffeur | null;
   /** Nombre de mois d'amortissement déjà écoulés depuis l'acquisition. */
@@ -483,11 +489,16 @@ export async function ficheCamion(camionId: string, periode: Periode): Promise<F
     coutAcquisition !== undefined ? paybackMois(coutAcquisition, pnl.margeExploitation) : Number.POSITIVE_INFINITY;
 
   const froid = camion.refrigere ? await etatFroid(mvts.voyages.map((v) => v.id)) : null;
+  const echeances = await prisma.echeance.findMany({
+    where: { camionId },
+    orderBy: { dateExpiration: "asc" },
+  });
 
   return {
     ...pnl,
     reparations: mvts.reparations,
     entretiens: mvts.entretiens,
+    echeances,
     voyageEnCours,
     moisAmortis,
     dureeAmortissementMois,
