@@ -83,6 +83,16 @@ export function DialogueFacture({
   const [devise, setDevise] = useState<"GNF" | "XOF">(facture?.devise ?? "GNF");
   const [montant, setMontant] = useState(facture ? String(facture.montant) : "");
   const [montantGnf, setMontantGnf] = useState(facture ? String(facture.montantGnf) : "");
+  const [confirme, setConfirme] = useState(false);
+
+  // Toute retouche annule la confirmation : on ne valide jamais un montant
+  // différent de celui qu'on vient de lire.
+  useEffect(() => {
+    setConfirme(false);
+  }, [montant, montantGnf, devise, clientId, voyageId]);
+
+  /** Nom du destinataire, pour que la confirmation dise à qui la facture part. */
+  const nomClient = clients.find((c) => c.id === clientId)?.nom ?? null;
 
   useEffect(() => {
     if (etat.ok) setOuvert(false);
@@ -318,11 +328,43 @@ export function DialogueFacture({
             </div>
           </div>
 
+          {/* Une facture part chez le client et porte un numéro qui ne se
+              réutilise pas. On montre donc ce qui va être émis — montant,
+              destinataire, échéance — avant de valider, et pas après. */}
+          {confirme ? (
+            <div className="confirme-bloc mx-5 mb-4">
+              <p>
+                {edition ? "Enregistrer ces modifications" : "Émettre cette facture"} de{" "}
+                <b>
+                  {formatNombre(Number(montant.replace(/\s/g, "").replace(",", ".")) || 0)}{" "}
+                  {devise === "XOF" ? "CFA" : "GNF"}
+                </b>
+                {nomClient ? (
+                  <>
+                    {" "}
+                    pour <b>{nomClient}</b>
+                  </>
+                ) : null}
+                &nbsp;?
+              </p>
+              <div className="confirme-btns">
+                <button type="button" className="btn ghost" onClick={() => setConfirme(false)}>
+                  Revenir
+                </button>
+                <BoutonEnvoyer edition={edition} />
+              </div>
+            </div>
+          ) : null}
+
           <footer className="modal-pied">
             <button type="button" className="btn ghost" onClick={() => setOuvert(false)}>
               Annuler
             </button>
-            <BoutonEnvoyer edition={edition} />
+            {!confirme ? (
+              <button type="button" className="btn primary" onClick={() => setConfirme(true)}>
+                {edition ? "Enregistrer" : "Créer la facture"}
+              </button>
+            ) : null}
           </footer>
         </form>
       </DialogContent>

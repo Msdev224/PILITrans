@@ -64,6 +64,8 @@ export function DialoguePaiement({
   const [montant, setMontant] = useState(String(Math.round(resteGnf)));
   const [devise, setDevise] = useState<"GNF" | "XOF">("GNF");
   const [confirme, setConfirme] = useState(false);
+  /** Versement dont l'annulation attend une confirmation. */
+  const [aAnnuler, setAAnnuler] = useState<string | null>(null);
   const [montantGnfSaisi, setMontantGnfSaisi] = useState("");
 
   useEffect(() => {
@@ -148,9 +150,19 @@ export function DialoguePaiement({
                       {v.reference ? ` · ${v.reference}` : ""}
                     </div>
                   </div>
-                  {/* Annuler un versement recalcule le cumul et le statut. */}
+                  {/* Annuler un versement efface un encaissement réel et
+                      remet la facture au découvert. Deux temps, comme partout
+                      ailleurs : on ne défait pas un règlement d'un clic. */}
                   <form action={supprimerPaiement.bind(null, v.id)}>
-                    <BoutonAnnuler />
+                    <BoutonAnnuler
+                      arme={aAnnuler === v.id}
+                      armer={() => {
+                        setAAnnuler(v.id);
+                        // Le désarmement automatique évite qu'un bouton reste
+                        // prêt à effacer pendant qu'on regarde ailleurs.
+                        setTimeout(() => setAAnnuler(null), 4000);
+                      }}
+                    />
                   </form>
                 </div>
               ))}
@@ -355,16 +367,17 @@ function BoutonValider() {
   );
 }
 
-function BoutonAnnuler() {
+function BoutonAnnuler({ arme, armer }: { arme: boolean; armer: () => void }) {
   const { pending } = useFormStatus();
   return (
     <button
-      type="submit"
+      type={arme ? "submit" : "button"}
+      onClick={arme ? undefined : armer}
       className="del grid h-[26px] w-[26px] place-items-center rounded-lg border border-[var(--line)] bg-white text-[var(--muted)] hover:border-[var(--neg)] hover:text-[var(--neg)]"
-      title="Annuler ce versement"
+      title={arme ? "Confirmer l'annulation de ce versement" : "Annuler ce versement"}
       disabled={pending}
     >
-      <IconeCorbeille width={13} height={13} />
+      {arme ? <span className="text-[10px] font-bold">OK ?</span> : <IconeCorbeille width={13} height={13} />}
     </button>
   );
 }
