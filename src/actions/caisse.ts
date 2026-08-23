@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { journaliser } from "@/lib/journal";
+import { refusMissionAnnulee } from "@/lib/mission-active";
 import { prisma } from "@/lib/prisma";
 import { formatNombre, LIBELLE_MOUVEMENT, n } from "@/lib/utils";
 import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
@@ -89,6 +90,9 @@ export async function enregistrerMouvementCaisse(
 
   const montantGnf =
     saisie.data.devise === "GNF" ? saisie.data.montant : (saisie.data.montantGnf ?? 0);
+
+  const refus = await refusMissionAnnulee(saisie.data.voyageId || null);
+  if (refus) return { erreur: refus };
 
   const chauffeur = await prisma.chauffeur.findUnique({
     where: { id: saisie.data.chauffeurId },

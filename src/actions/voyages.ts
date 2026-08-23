@@ -123,12 +123,20 @@ async function referenceLibre(villeDepart: string, villeArrivee: string, date: D
 
 function donneesVoyage(saisie: z.infer<typeof schemaVoyage>) {
   const nbRotations = Math.max(Math.round(saisie.nbRotations ?? 1), 1);
-  // Avec un tarif par rotation, la recette se déduit — saisir les deux
-  // séparément finirait par les faire diverger.
+  /*
+   * Le montant convenu prime toujours sur le barème.
+   *
+   * Le tarif par rotation sert à pré-remplir, pas à décider : un forfait se
+   * négocie, et il s'écarte parfois du barème. Imposer le calcul obligeait à
+   * noter le vrai montant hors de l'application. Le barème ne s'applique donc
+   * que si rien n'a été saisi.
+   */
   const recette =
-    saisie.tarifRotation != null && saisie.tarifRotation > 0
-      ? saisie.tarifRotation * nbRotations
-      : (saisie.recette ?? 0);
+    saisie.recette != null && saisie.recette > 0
+      ? saisie.recette
+      : saisie.tarifRotation != null && saisie.tarifRotation > 0
+        ? saisie.tarifRotation * nbRotations
+        : 0;
   // En GNF, l'équivalent est le montant lui-même ; en devise, c'est la valeur
   // saisie par l'utilisateur au taux réel — jamais un taux recalculé.
   // En GNF l'équivalent est le montant lui-même ; en devise, c'est la valeur

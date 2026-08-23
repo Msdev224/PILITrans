@@ -7,6 +7,7 @@ import { z } from "zod";
 import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
 import { journaliser } from "@/lib/journal";
+import { refusMissionAnnulee } from "@/lib/mission-active";
 import { prisma } from "@/lib/prisma";
 import { LIBELLE_TYPE_DEPENSE, estChargeDeStructure, formatNombre, n } from "@/lib/utils";
 import { caseACocher, dateBornee, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
@@ -149,6 +150,9 @@ export async function creerDepense(_etat: EtatDepense, donnees: FormData): Promi
 
   const saisie = schemaDepense.safeParse(Object.fromEntries(donnees));
   if (!saisie.success) return erreursFormulaire<EtatDepense>(saisie.error, donnees);
+
+  const refus = await refusMissionAnnulee(saisie.data.voyageId);
+  if (refus) return { erreur: refus };
 
   const data = await donneesDepense(saisie.data);
   const depense = await prisma.depense.create({ data });

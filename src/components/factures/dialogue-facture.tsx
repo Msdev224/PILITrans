@@ -362,7 +362,7 @@ export function DialogueFacture({
 
               {montant && devise === "GNF" ? (
                 <div className="full text-[11.5px] text-[var(--muted-2)]">
-                  Montant facturé : <b className="mono">{formatNombre(Number(montant.replace(",", ".")) || 0)} GNF</b>
+                  Montant convenu : <b className="mono">{formatNombre(Number(montant.replace(",", ".")) || 0)} GNF</b>
                 </div>
               ) : null}
             </div>

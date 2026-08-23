@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { refusMissionAnnulee } from "@/lib/mission-active";
 import { prisma } from "@/lib/prisma";
 import { synchroniserCamionDuVoyage } from "@/lib/donnees/synchronisation";
 import { dateOptionnelle, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
@@ -87,6 +88,9 @@ export async function creerEtape(_etat: EtatEtape, donnees: FormData): Promise<E
 
   const saisie = schemaEtape.safeParse(lire(donnees));
   if (!saisie.success) return erreursFormulaire<EtatEtape>(saisie.error, donnees);
+
+  const refus = await refusMissionAnnulee(saisie.data.voyageId);
+  if (refus) return { erreur: refus };
 
   // L'ordre suit la saisie : le tronçon s'ajoute en fin de trajet.
   const dernier = await prisma.etapeVoyage.findFirst({

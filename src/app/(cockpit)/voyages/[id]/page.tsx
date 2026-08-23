@@ -60,6 +60,15 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
   const { voyage } = fiche;
 
   /*
+   * Une mission annulée se consulte, mais n'accepte plus rien.
+   *
+   * Le serveur refuse déjà toute écriture ; masquer les boutons évite de
+   * proposer une action qui échouera, et rend visible qu'il faut d'abord
+   * rétablir la mission.
+   */
+  const annulee = voyage.statut === "ANNULE";
+
+  /*
    * Solde de caisse du chauffeur, toutes missions confondues.
    *
    * Il sert de contexte au moment de lui remettre de l'argent : recharger
@@ -179,7 +188,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
               ici évite d'aller la chercher ailleurs et de ressaisir des
               chiffres déjà connus — donc de les saisir différemment. */}
           <SiPeut droit="facturation.ecrire">
-            {factureExistante ? (
+            {annulee ? null : factureExistante ? (
               <Link href={`/factures?q=${encodeURIComponent(factureExistante.numero)}`} className="btn ghost sm">
                 <IconeFacture width={14} height={14} />
                 Facture {factureExistante.numero}
@@ -201,11 +210,26 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
             ) : (
               // Sans montant facturé, une facture partirait à zéro.
               <span className="text-[11.5px] text-[var(--muted-2)]">
-                Renseigne le montant facturé au client pour pouvoir facturer.
+                Renseigne le montant convenu avec le client pour pouvoir facturer.
               </span>
             )}
           </SiPeut>
         </div>
+
+        {/* Sans ce bandeau, une fiche sans aucun bouton passerait pour un
+            écran cassé plutôt que pour une mission volontairement figée. */}
+        {annulee ? (
+          <div className="bandeau-annule mb-5">
+            <b>Mission annulée{voyage.annuleLe ? ` le ${formatDate(voyage.annuleLe)}` : ""}.</b>
+            <p>
+              {voyage.motifAnnulation
+                ? `Motif : ${voyage.motifAnnulation}.`
+                : "Aucun motif n'a été noté."}{" "}
+              Elle reste consultable, mais n&apos;accepte plus aucune saisie — ni dépense, ni
+              étape, ni facture, ni remise d&apos;argent. Rétablis-la pour reprendre la main.
+            </p>
+          </div>
+        ) : null}
 
         {/* ---------- Résumé de la mission ---------- */}
         <div className="vstats">
@@ -340,7 +364,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
             </span>
           </h3>
           <SiPeut droit="depenses.ecrire">
-            <DialogueCaisse
+            {annulee ? null : <DialogueCaisse
               chauffeurId={fiche.voyage.chauffeurId}
               nom={fiche.voyage.chauffeur.nom}
               soldeGnf={caisseChauffeur.parDevise.GNF}
@@ -354,7 +378,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                   Remettre de l&apos;argent
                 </button>
               }
-            />
+            />}
           </SiPeut>
         </div>
 
@@ -633,7 +657,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
             {fiche.troncons.length > 1 ? "s" : ""}</span>
           </h3>
           <SiPeut droit="voyages.ecrire">
-            <DialogueEtape
+            {annulee ? null : <DialogueEtape
               voyageId={voyage.id}
               pays={pays}
               ravitaillements={ravitaillements}
@@ -643,7 +667,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                   Ajouter une étape
                 </button>
               }
-            />
+            />}
           </SiPeut>
         </div>
 

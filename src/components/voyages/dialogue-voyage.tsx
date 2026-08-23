@@ -833,11 +833,11 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                       en millions, ce champ attend des francs, et 46,5 saisi à
                       la place de 50 000 000 passait inaperçu. */}
                   <Champ
-                    label="Montant facturé au client"
+                    label="Montant convenu avec le client"
                     aide={
                       recetteCalculee !== null
                         ? "Calculé : tarif par rotation × nombre de rotations."
-                        : "Le forfait convenu. C'est la recette de la mission, et le montant repris sur la facture."
+                        : "Le forfait négocié avec le client. C'est la recette de la mission, et le montant que reprendra la facture."
                     }
                   >
                     <ChampMontant
@@ -845,7 +845,14 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                       key={`recette-${recetteCalculee ?? ""}`}
                       valeur={recetteCalculee ?? recette}
                       devise={devise}
-                      desactive={aVide || recetteCalculee !== null}
+                      /*
+                       * Toujours saisissable.
+                       * Le tarif par rotation ne fait que PRÉ-REMPLIR : un
+                       * accord se négocie, et il arrive qu'il s'écarte du
+                       * barème. Verrouiller le champ obligeait à sortir de
+                       * l'application pour noter le vrai montant — ou à ne
+                       * pas le noter du tout.
+                       */
                       onChange={setRecette}
                     />
                   </Champ>

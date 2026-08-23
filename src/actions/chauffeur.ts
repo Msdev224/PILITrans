@@ -30,6 +30,20 @@ async function missionDuChauffeur(voyageId: string) {
     throw new Error("Cette mission ne vous est pas attribuée.");
   }
 
+  /*
+   * Une mission annulée n'accepte plus rien, du chauffeur comme du gérant.
+   *
+   * Le chauffeur peut être parti avant l'annulation : son téléphone garde des
+   * saisies en file, qui remonteront plus tard. Les refuser ici les fait
+   * ressortir dans sa liste de saisies refusées, avec le motif — plutôt que
+   * de les enregistrer en silence sur une course abandonnée.
+   */
+  if (voyage.statut === "ANNULE") {
+    throw new Error(
+      `La mission ${voyage.reference} a été annulée : plus rien ne peut y être saisi.`,
+    );
+  }
+
   return { voyage, chauffeurId };
 }
 

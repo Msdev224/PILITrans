@@ -7,6 +7,7 @@ import { z } from "zod";
 import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
 import { journaliser } from "@/lib/journal";
+import { refusMissionAnnulee } from "@/lib/mission-active";
 import { prisma } from "@/lib/prisma";
 import { formatNombre, n } from "@/lib/utils";
 import { numeroLibre } from "@/lib/donnees/facturation-auto";
@@ -130,6 +131,11 @@ export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promi
   const echeance =
     saisie.data.echeance ??
     new Date(dateEmission.getTime() + (parametres?.delaiPaiementJours ?? 14) * 86_400_000);
+
+  // Facturer une mission annulée créerait une créance sur une course qui
+  // n'a pas eu lieu.
+  const refus = await refusMissionAnnulee(saisie.data.voyageId);
+  if (refus) return { erreur: refus };
 
   const numero = await numeroLibre(parametres?.prefixeFacture ?? "FAC", echeance.getFullYear());
 
