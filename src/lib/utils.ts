@@ -322,6 +322,13 @@ export const LIBELLE_TYPE_ETAPE: Record<string, string> = {
  * de poche pour un loyer ou une facture d'électricité. Une liste trop longue
  * ferait choisir au hasard, et la ventilation ne voudrait plus rien dire.
  */
+/** Segment du trajet auquel une dépense se rapporte. */
+export const LIBELLE_SEGMENT: Record<string, string> = {
+  ALLER: "L'aller",
+  RETOUR: "Le retour",
+  ALLER_RETOUR: "L'aller et le retour",
+};
+
 export const OBJETS_REMISE = [
   "PER_DIEM",
   "GASOIL_TRACTEUR",

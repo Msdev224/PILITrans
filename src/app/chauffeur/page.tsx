@@ -15,11 +15,12 @@ import {
 } from "@/components/chauffeur/formulaires";
 import { espaceChauffeur } from "@/lib/donnees/chauffeur";
 import {
-  formatDate,
-  formatNombre,
   LIBELLE_STATUT_VOYAGE,
   LIBELLE_TYPE_DEPENSE,
   LIBELLE_TYPE_ETAPE,
+  formatDate,
+  formatDecimal,
+  formatNombre,
   n,
 } from "@/lib/utils";
 import { vueLignes } from "@/lib/donnees/marchandises";
@@ -97,7 +98,7 @@ export default async function EspaceChauffeurPage() {
     );
   }
 
-  const { chauffeur, mission, prochaine, caisse, avances, parametres } = espace;
+  const { chauffeur, mission, carburantFourni, pasEncorePartie, caisse, avances, parametres } = espace;
   const tauxReferenceXof = parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null;
 
   // Consigne de froid : celle du dernier relevé, sinon celle des Paramètres.
@@ -130,10 +131,14 @@ export default async function EspaceChauffeurPage() {
         <div className="hi">Bonjour, {chauffeur.nom.split(" ")[0]}</div>
         <div className="tk">
           {mission
-            ? [mission.camion.nom, mission.camion.marqueGroupeFroid].filter(Boolean).join(" · ")
-            : prochaine
-              ? `Prochaine mission · ${prochaine.camion.nom}`
-              : "Aucune mission en cours"}
+            ? [
+                pasEncorePartie ? "À venir" : null,
+                mission.camion.nom,
+                mission.camion.marqueGroupeFroid,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            : "Aucune mission en cours"}
         </div>
       </div>
 
@@ -152,6 +157,28 @@ export default async function EspaceChauffeurPage() {
           <p className="ph-aide">
             Solde détenu, par devise. Consolidé : {formatNombre(caisse.consolideGnf)} GNF.
           </p>
+
+          {/* Carburant payé directement par l'entreprise.
+              Ce n'est pas son argent et il n'a rien à justifier dessus — mais
+              il doit savoir que le plein est fait, sinon il le repaie sur sa
+              propre caisse en croyant qu'on ne lui a rien donné. */}
+          {carburantFourni.length > 0 ? (
+            <>
+              <div className="ph-recu-tete">Carburant payé par l&apos;entreprise</div>
+              <ul className="ph-recu">
+                {carburantFourni.map((d) => (
+                  <li key={d.id}>
+                    <span>
+                      {LIBELLE_TYPE_DEPENSE[d.type] ?? d.type}
+                      {d.litres != null ? <em className="ph-recu-mission"> · {formatDecimal(n(d.litres))} L</em> : null}
+                    </span>
+                    <b className="mono">{formatNombre(n(d.montantGnf))} GNF</b>
+                  </li>
+                ))}
+              </ul>
+              <p className="ph-aide">Réglé directement — rien à justifier là-dessus.</p>
+            </>
+          ) : null}
 
           {/* Ce qu'il a reçu et pour quoi. Un solde global ne lui dit pas sur
               quelle enveloppe il pioche ni ce qui lui reste à justifier. */}
@@ -357,19 +384,6 @@ export default async function EspaceChauffeurPage() {
               </div>
             ) : null}
           </>
-        ) : prochaine ? (
-          <div className="ph-card">
-            <div className="lab">Prochaine mission</div>
-            <div className="ph-trajet">
-              {prochaine.villeDepart} → {prochaine.villeArrivee}
-            </div>
-            <p className="ph-aide">Départ prévu le {formatDate(prochaine.dateDepart)}.</p>
-            <BoutonAvancer
-              voyageId={prochaine.id}
-              libelle="Je suis arrivé au chargement"
-              dernierKm={dernierCompteur(prochaine)}
-            />
-          </div>
         ) : (
           <div className="ph-card">
             <p className="text-[12.5px] text-[var(--muted)]">

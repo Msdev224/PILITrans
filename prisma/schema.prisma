@@ -366,6 +366,13 @@ model Voyage {
   /// `distanceKm` et les quantités valent alors POUR UNE rotation ; les totaux
   /// se multiplient par `nbRotations`. Vaut 1 pour un transport classique.
   nbRotations   Int      @default(1)
+  /**
+   * La mission comporte-t-elle un retour en charge ou à vide ?
+   * Un aller-retour ne se déduit pas du trajet : Conakry → Dakar → Conakry
+   * s'enregistre comme une seule mission, et c'est le carburant du retour qui
+   * fait la différence entre une course rentable et une course à perte.
+   */
+  allerRetour   Boolean  @default(false)
   /// Si renseigné, la recette vaut tarifRotation × nbRotations.
   tarifRotation Decimal? @db.Decimal(14, 2)
 
@@ -421,6 +428,16 @@ model Voyage {
   kmChargement         Int?
   kmArriveeDestination Int?
   kmDechargement       Int?
+
+  /**
+   * Annulation : pourquoi, et quand.
+   * Une mission annulée n'est pas effacée — le client a pu se désister après
+   * qu'on ait engagé du gasoil et une avance, et ces montants doivent rester
+   * traçables. Sans motif écrit, personne ne se souvient trois semaines plus
+   * tard si c'est le client qui a renoncé ou le camion qui est tombé en panne.
+   */
+  motifAnnulation String?
+  annuleLe        DateTime?
 
   // recette dans la devise réelle + équivalent GNF figé
   recette               Decimal  @default(0) @db.Decimal(14, 2)
@@ -520,7 +537,7 @@ model Depense {
   reference      String?
   date           DateTime         @default(now())
 
-  voyage          Voyage?      @relation(fields: [voyageId], references: [id])
+  voyage          Voyage?        @relation(fields: [voyageId], references: [id])
   voyageId        String?
   /**
    * Cette dépense pèse-t-elle sur la marge de la mission ?
@@ -530,14 +547,20 @@ model Depense {
    * croire que la ligne n'est pas rentable. Les dépenses de catégorie
    * véhicule arrivent donc à `false`, sauf indication contraire à la saisie.
    */
-  imputerAMission Boolean      @default(true)
-  camion          Camion?      @relation(fields: [camionId], references: [id])
+  imputerAMission Boolean        @default(true)
+  /**
+   * Segment concerné, pour le carburant surtout.
+   * Renseigné, il permet de comparer ce que l'aller et le retour ont coûté.
+   * Laissé vide sur une mission simple, où la question ne se pose pas.
+   */
+  segment         SegmentTrajet?
+  camion          Camion?        @relation(fields: [camionId], references: [id])
   camionId        String?
-  etape           EtapeVoyage? @relation(fields: [etapeId], references: [id]) // plein rattaché à une étape
+  etape           EtapeVoyage?   @relation(fields: [etapeId], references: [id]) // plein rattaché à une étape
   /// Rattachements analytiques facultatifs, pour ventiler au-delà du camion.
-  chauffeur       Chauffeur?   @relation(fields: [chauffeurId], references: [id], onDelete: SetNull)
+  chauffeur       Chauffeur?     @relation(fields: [chauffeurId], references: [id], onDelete: SetNull)
   chauffeurId     String?
-  client          Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  client          Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientId        String?
   etapeId         String?
 
@@ -749,6 +772,19 @@ model Alerte {
 //  Ex. Koundara → Rosso en passant d'abord par Dakar.
 // ------------------------------------------------------------
 
+/**
+ * Segment du trajet auquel une dépense se rapporte.
+ * Le gasoil ne se donne pas toujours en une fois : on carbure pour l'aller,
+ * puis on recharge au retour — ou on fait le plein une seule fois pour les
+ * deux. Sans cette distinction, impossible de dire si le retour a coûté plus
+ * cher que l'aller, ni de vérifier un plein annoncé pour l'aller-retour.
+ */
+enum SegmentTrajet {
+  ALLER
+  RETOUR
+  ALLER_RETOUR
+}
+
 enum TypeEtape {
   ETAPE // point de passage
   ARRET // arrêt signalé (pause, contrôle, autre motif)
@@ -952,6 +988,9 @@ model Parametres {
 
   // --- Caisse de l'entreprise ---
   /**
+   * /**
+   * /**
+   * /**
    * /**
    * /**
    * /**

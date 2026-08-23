@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { formatDecimal, formatNombre } from "@/lib/utils";
+import { LIBELLE_TYPE_DEPENSE, OBJETS_REMISE, formatDecimal, formatNombre } from "@/lib/utils";
 import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
 import { ChampMontant } from "@/components/champ-montant";
 
@@ -202,6 +202,22 @@ export function DialogueCaisse({
 
               {/* Rattacher l'avance à la mission qu'elle finance : sans cela,
                   impossible de dire ce qu'un voyage a coûté en trésorerie. */}
+              {/* Ventiler la remise par objet : le chauffeur doit savoir sur
+                  quelle enveloppe il pioche, et l'exploitation pouvoir dire si
+                  ce qui était prévu pour manger a servi au gasoil. */}
+              {type === "AVANCE" ? (
+                <div className="field">
+                  <label>Objet de la remise</label>
+                  <select name="objet" defaultValue="PER_DIEM">
+                    {OBJETS_REMISE.map((o) => (
+                      <option key={o} value={o}>
+                        {LIBELLE_TYPE_DEPENSE[o] ?? o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
               {/* Champ caché plutôt que liste désactivée : un champ désactivé
                   n'est pas envoyé par le navigateur, et l'avance repartirait
                   sans mission — invisible dans le coût du voyage. */}

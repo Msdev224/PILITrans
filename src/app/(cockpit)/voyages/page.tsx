@@ -399,6 +399,7 @@ function aplatir(ligne: LigneVoyage): VoyageEditable {
     })),
     dateDepart: voyage.dateDepart.toISOString().slice(0, 10),
     aVide: voyage.aVide,
+    allerRetour: voyage.allerRetour,
     motif: voyage.motif,
     remunererChauffeur: voyage.remunererChauffeur,
     perDiemJournalierGnf:

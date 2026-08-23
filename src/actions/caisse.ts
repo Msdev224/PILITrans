@@ -1,6 +1,6 @@
 "use server";
 
-import { Devise, MoyenPaiement, TypeMouvement } from "@prisma/client";
+import { Devise, MoyenPaiement, TypeDepense, TypeMouvement } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -33,6 +33,15 @@ const schemaMouvement = z
       message:
         "Une dépense se saisit depuis l'écran Dépenses, en cochant « payée sur la caisse du chauffeur » : sans cela, elle n'entrerait dans la marge d'aucun camion.",
     }),
+    /**
+     * Ce à quoi l'argent est destiné.
+     *
+     * Une remise n'est presque jamais une somme unique : tant pour la route,
+     * tant pour manger, tant pour le gasoil. Sans cette ventilation, le
+     * chauffeur reçoit un total qu'il ne sait pas rattacher, et personne ne
+     * peut dire si ce qui était prévu pour la nourriture a servi au carburant.
+     */
+    objet: texteOptionnel,
     montant: nombrePositif("Montant requis"),
     devise: z.nativeEnum(Devise),
     montantGnf: nombreOptionnel,
@@ -87,6 +96,12 @@ export async function enregistrerMouvementCaisse(
       devise: saisie.data.devise,
       montantGnf,
       motif: saisie.data.motif ?? null,
+      // L'objet ne vaut que pour une remise : une dépense porte déjà son type,
+      // et un remboursement rend de l'argent sans objet particulier.
+      objet:
+        saisie.data.type === "AVANCE" && saisie.data.objet
+          ? (saisie.data.objet as TypeDepense)
+          : null,
       voyageId: saisie.data.voyageId || null,
       moyen: saisie.data.moyen,
       reference: saisie.data.reference ?? null,

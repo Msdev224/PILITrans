@@ -1,6 +1,6 @@
 "use server";
 
-import { CategorieDepense, Devise, MoyenPaiement, TypeDepense } from "@prisma/client";
+import { CategorieDepense, Devise, MoyenPaiement, SegmentTrajet, TypeDepense } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -48,6 +48,8 @@ const schemaDepense = z
      * coût appartient bien à cette course-là.
      */
     imputerAMission: caseACocher,
+    /** Aller, retour, ou les deux — surtout pour le carburant. */
+    segment: texteOptionnel,
     /** Ventilations analytiques facultatives. */
     chauffeurId: texteOptionnel,
     clientId: texteOptionnel,
@@ -118,6 +120,12 @@ async function donneesDepense(saisie: z.infer<typeof schemaDepense>) {
      * véhicule sortent donc de la marge de mission, sauf case cochée.
      */
     imputerAMission: saisie.categorie === "VEHICULE" ? saisie.imputerAMission : true,
+    // Le segment ne vaut que rattaché à une mission : hors voyage, il n'y a ni
+    // aller ni retour à distinguer.
+    segment:
+      saisie.voyageId && saisie.segment && (Object.values(SegmentTrajet) as string[]).includes(saisie.segment)
+        ? (saisie.segment as SegmentTrajet)
+        : null,
     chauffeurId: saisie.chauffeurId || null,
     clientId: saisie.clientId || null,
     moyen: saisie.moyen,

@@ -1,6 +1,13 @@
 "use server";
 
-import { MotifVoyage, MoyenPaiement, Prisma, StatutVoyage, TypeDepense } from "@prisma/client";
+import {
+  MotifVoyage,
+  MoyenPaiement,
+  Prisma,
+  SegmentTrajet,
+  StatutVoyage,
+  TypeDepense,
+} from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -48,6 +55,7 @@ const schemaVoyage = z
     distanceKm,
     dateDepart: dateBornee,
     aVide: caseACocher,
+    allerRetour: caseACocher,
     recette: nombreOptionnel,
     /**
      * Devise de la recette.
@@ -150,6 +158,7 @@ function donneesVoyage(saisie: z.infer<typeof schemaVoyage>) {
     ...(saisie.distanceKm != null ? { distanceKm: Math.round(saisie.distanceKm) } : {}),
     dateDepart: saisie.dateDepart,
     aVide: saisie.aVide,
+    allerRetour: saisie.allerRetour,
     recette,
     devise: saisie.devise,
     recetteGnf,
@@ -265,6 +274,8 @@ const schemaRemise = z.object({
   avanceFraisGnf: nombreOptionnel,
   carburantLitres: nombreOptionnel,
   carburantMontantGnf: nombreOptionnel,
+  /** Aller, retour, ou les deux : sur un aller-retour, la question se pose. */
+  carburantSegment: texteOptionnel,
 });
 
 type Remise = z.infer<typeof schemaRemise>;
@@ -309,6 +320,14 @@ function validerRemise(
   }
 
   return { remise: saisie.data, lignes };
+}
+
+/** Segment reçu du formulaire, ignoré s'il ne correspond à rien de connu. */
+function segmentValide(valeur: string | null | undefined): SegmentTrajet | null {
+  if (!valeur) return null;
+  return (Object.values(SegmentTrajet) as string[]).includes(valeur)
+    ? (valeur as SegmentTrajet)
+    : null;
 }
 
 /**
@@ -359,6 +378,9 @@ async function appliquerRemise(
         devise: "GNF",
         montantGnf: r.carburantMontantGnf ?? 0,
         litres: r.carburantLitres ?? null,
+        // Sur un aller-retour, c'est ce qui permettra de dire après coup si le
+        // retour a coûté plus cher que l'aller.
+        segment: segmentValide(r.carburantSegment),
         description: "Carburant remis au départ",
         voyageId: voyage.id,
         camionId: voyage.camionId,
@@ -457,6 +479,70 @@ export async function changerStatutVoyage(id: string, statut: StatutVoyage) {
   rafraichir(id);
 }
 
+/**
+ * Annule une mission sans rien effacer.
+ *
+ * Le client se désiste, le camion tombe en panne, la marchandise n'arrive
+ * pas : la mission n'aura pas lieu, mais le gasoil déjà mis et l'avance déjà
+ * remise au chauffeur restent des sorties d'argent réelles. Les supprimer
+ * ferait disparaître ces montants de la trésorerie sans contrepartie.
+ *
+ * Une mission annulée sort des recettes, des classements et des analyses ;
+ * les dépenses engagées restent au compte du camion, où elles ont bien pesé.
+ */
+export async function annulerVoyage(id: string, donnees?: FormData): Promise<void> {
+  await droitEcriture();
+
+  const voyage = await prisma.voyage.findUnique({
+    where: { id },
+    select: { camionId: true, statut: true },
+  });
+  if (!voyage) throw new Error("Mission introuvable.");
+  if (voyage.statut === "ANNULE") throw new Error("Cette mission est déjà annulée.");
+
+  const brut = donnees?.get("motifAnnulation");
+  const motif = typeof brut === "string" ? brut.trim() : "";
+
+  await prisma.voyage.update({
+    where: { id },
+    data: {
+      statut: "ANNULE",
+      motifAnnulation: motif || null,
+      annuleLe: new Date(),
+    },
+  });
+
+  // Le camion redevient disponible : il n'est plus retenu par cette mission.
+  await synchroniserCamion(voyage.camionId);
+  rafraichir();
+}
+
+/**
+ * Rétablit une mission annulée par erreur.
+ *
+ * Elle repart de l'état planifié plutôt que de son état d'avant : les dates
+ * d'étape déjà posées restent, mais c'est au gérant de reprendre la main sur
+ * l'avancement — rien ne dit que le camion est encore là où il était.
+ */
+export async function retablirVoyage(id: string): Promise<void> {
+  await droitEcriture();
+
+  const voyage = await prisma.voyage.findUnique({
+    where: { id },
+    select: { camionId: true, statut: true },
+  });
+  if (!voyage) throw new Error("Mission introuvable.");
+  if (voyage.statut !== "ANNULE") throw new Error("Cette mission n'est pas annulée.");
+
+  await prisma.voyage.update({
+    where: { id },
+    data: { statut: "PLANIFIE", motifAnnulation: null, annuleLe: null },
+  });
+
+  await synchroniserCamion(voyage.camionId);
+  rafraichir();
+}
+
 export async function supprimerVoyage(id: string) {
   await droitEcriture();
 
@@ -466,14 +552,22 @@ export async function supprimerVoyage(id: string) {
   });
   if (!liens) throw new Error("Voyage introuvable.");
 
-  // Un voyage facturé ou déjà chiffré est annulé, pas effacé : les montants
-  // engagés doivent rester traçables.
+  /*
+   * Une mission déjà chiffrée ne s'efface pas.
+   *
+   * Elle s'annule — et l'annulation est désormais une action à part, avec son
+   * motif. La refuser ici plutôt que de la faire en douce évite qu'un clic sur
+   * « Supprimer » produise, selon le contenu de la mission, tantôt une
+   * suppression tantôt une annulation muette.
+   */
   const { factures, depenses, etapes } = liens._count;
   if (factures + depenses + etapes > 0) {
-    await prisma.voyage.update({ where: { id }, data: { statut: "ANNULE" } });
-  } else {
-    await prisma.voyage.delete({ where: { id } });
+    throw new Error(
+      "Cette mission porte des écritures : annule-la depuis sa fiche plutôt que de la supprimer, pour garder la trace des montants engagés.",
+    );
   }
+
+  await prisma.voyage.delete({ where: { id } });
   await synchroniserCamion(liens.camionId);
   rafraichir();
 }

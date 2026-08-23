@@ -18,7 +18,11 @@ import {
 } from "@/actions/voyages";
 import { IconeInfo } from "@/components/icones";
 import type { Suggestion } from "@/lib/donnees/trajets";
-import { formatDecimal, formatNombre } from "@/lib/utils";
+import {
+  LIBELLE_SEGMENT,
+  formatDecimal,
+  formatNombre,
+} from "@/lib/utils";
 import { ChampRecherche } from "@/components/champ-recherche";
 import { formatTelephone } from "@/lib/telephone";
 import {
@@ -95,6 +99,7 @@ export interface VoyageEditable {
   marchandises: LigneEditable[];
   dateDepart: string;
   aVide: boolean;
+  allerRetour: boolean;
   motif: string;
   remunererChauffeur: boolean;
   perDiemJournalierGnf: number | null;
@@ -166,6 +171,7 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
   const [recette, setRecette] = useState(voyage ? String(voyage.recette) : "");
   const [recetteGnf, setRecetteGnf] = useState(voyage ? String(voyage.recetteGnf) : "");
   const [aVide, setAVide] = useState(voyage?.aVide ?? false);
+  const [allerRetour, setAllerRetour] = useState(voyage?.allerRetour ?? false);
   const [motif, setMotif] = useState(voyage?.motif ?? "TRANSPORT");
   const [remunerer, setRemunerer] = useState(voyage?.remunererChauffeur ?? true);
   const [vaChercher, setVaChercher] = useState(voyage?.vaChercher ?? false);
@@ -495,6 +501,23 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                     )}
                   </div>
 
+                  {/* Un aller-retour ne se déduit pas du trajet : Conakry →
+                      Dakar → Conakry s'enregistre comme une seule mission, et
+                      c'est le carburant du retour qui décide si la course est
+                      rentable. */}
+                  <div className="full">
+                    <label className="flex cursor-pointer items-center gap-2 text-[12.5px]">
+                      <input
+                        type="checkbox"
+                        name="allerRetour"
+                        value="true"
+                        checked={allerRetour}
+                        onChange={(e) => setAllerRetour(e.target.checked)}
+                      />
+                      Mission <b>aller-retour</b> (le camion revient sur cette même mission)
+                    </label>
+                  </div>
+
                   <div className="full">
                     <label className="flex cursor-pointer items-center gap-2 text-[12.5px]">
                       <input
@@ -668,6 +691,21 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                         >
                           <input name="carburantMontantGnf" inputMode="numeric" />
                         </Champ>
+
+                        {/* Sur un aller-retour, savoir si le plein couvre
+                            l'aller seul ou les deux sens est ce qui permet de
+                            dire, après coup, si le retour a coûté plus cher. */}
+                        {allerRetour ? (
+                          <Champ label="Ce carburant couvre">
+                            <select name="carburantSegment" defaultValue="ALLER">
+                              {Object.entries(LIBELLE_SEGMENT).map(([cle, libelle]) => (
+                                <option key={cle} value={cle}>
+                                  {libelle}
+                                </option>
+                              ))}
+                            </select>
+                          </Champ>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}

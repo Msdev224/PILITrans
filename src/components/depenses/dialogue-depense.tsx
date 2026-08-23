@@ -11,7 +11,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { formatDecimal, LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
+import {
+  LIBELLE_SEGMENT,
+  LIBELLE_TYPE_DEPENSE,
+  formatDecimal,
+} from "@/lib/utils";
 import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
 import {
   CATEGORIE_PAR_TYPE_DEPENSE,
@@ -43,6 +47,7 @@ export interface DepenseEditable {
   description: string | null;
   categorie: string;
   imputerAMission: boolean;
+  segment: string | null;
   moyen: string;
   reference: string | null;
   date: string;
@@ -208,6 +213,22 @@ export function DialogueDepense({
                   ))}
                 </select>
               </Champ>
+
+              {/* Sur un aller-retour, préciser ce que le plein couvre est ce
+                  qui permet de dire après coup si le retour a coûté plus cher
+                  que l'aller. Laissé vide sur une mission simple. */}
+              {estGasoil && voyageId ? (
+                <Champ label="Ce carburant couvre" aide="Facultatif — utile sur un aller-retour.">
+                  <select name="segment" defaultValue={depense?.segment ?? ""}>
+                    <option value="">— non précisé —</option>
+                    {Object.entries(LIBELLE_SEGMENT).map(([cle, libelle]) => (
+                      <option key={cle} value={cle}>
+                        {libelle}
+                      </option>
+                    ))}
+                  </select>
+                </Champ>
+              ) : null}
 
               {/* Une charge de véhicule rattachée à une mission sort par
                   défaut de sa marge : la pièce sert au camion pendant des

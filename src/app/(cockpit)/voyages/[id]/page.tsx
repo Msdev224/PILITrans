@@ -11,12 +11,16 @@ import {
 } from "@/components/voyages/dialogue-etape";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import { soldeCaisse } from "@/lib/calculs";
+import { retablirVoyage } from "@/actions/voyages";
+import { BoutonConfirme } from "@/components/bouton-confirme";
 import { DialogueCaisse } from "@/components/equipe/dialogue-caisse";
+import { DialogueAnnulation } from "@/components/voyages/dialogue-annulation";
 import { ficheVoyage, type TronconVue } from "@/lib/donnees/voyages";
 import { prisma } from "@/lib/prisma";
 import {
   LIBELLE_MOUVEMENT,
   LIBELLE_MOYEN_PAIEMENT,
+  LIBELLE_SEGMENT,
   LIBELLE_STATUT_VOYAGE,
   LIBELLE_TYPE_DEPENSE,
   LIBELLE_TYPE_ETAPE,
@@ -90,6 +94,26 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
     dejaFacture: fiche.facture,
   };
 
+  /*
+   * Carburant de la mission, ventilé par segment.
+   *
+   * Sur un aller-retour, un total unique ne dit rien : c'est en comparant ce
+   * que l'aller et le retour ont coûté qu'on voit un retour à vide trop cher
+   * ou un plein annoncé pour les deux sens qui n'a servi qu'à l'aller. Les
+   * dépenses sans segment renseigné restent comptées à part, sans être
+   * réparties arbitrairement.
+   */
+  const carburantParSegment = fiche.postes
+    .filter((d) => d.type === "GASOIL_TRACTEUR" || d.type === "GASOIL_GROUPE_FROID")
+    .reduce<Record<string, { litres: number; montantGnf: number }>>((acc, d) => {
+      const cle = d.segment ?? "NON_PRECISE";
+      acc[cle] ??= { litres: 0, montantGnf: 0 };
+      acc[cle].litres += n(d.litres);
+      acc[cle].montantGnf += n(d.montantGnf);
+      return acc;
+    }, {});
+  const segmentsCarburant = Object.entries(carburantParSegment);
+
   // Pleins saisis en litres : rattachables à un tronçon.
   const dejaRattaches = new Set(
     fiche.troncons.flatMap((t) => t.etape.ravitaillements.map((r) => r.id)),
@@ -118,6 +142,37 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
           <Link href="/voyages" className="link text-[13px]">
             ← Retour aux voyages
           </Link>
+
+          {/* Annuler n'efface rien : les frais engagés et l'argent déjà remis
+              restent au compte du camion. Seule la recette attendue disparaît.
+              Une mission rétablie repart de l'état planifié. */}
+          <SiPeut droit="voyages.ecrire">
+            {voyage.statut === "ANNULE" ? (
+              <BoutonConfirme
+                action={retablirVoyage.bind(null, voyage.id)}
+                titre={`Rétablir la mission ${voyage.reference} ?`}
+                detail="Elle repart de l'état planifié : à toi de reprendre son avancement, rien ne dit que le camion est encore où il était."
+                confirmer="Oui, rétablir"
+                declencheur={
+                  <button type="button" className="btn ghost sm">
+                    Rétablir la mission
+                  </button>
+                }
+              />
+            ) : (
+              <DialogueAnnulation
+                voyageId={voyage.id}
+                reference={voyage.reference}
+                trajet={`${voyage.villeDepart} → ${voyage.villeArrivee}`}
+                aDesEcritures={fiche.postes.length > 0 || fiche.facture || fiche.troncons.length > 0}
+                declencheur={
+                  <button type="button" className="btn ghost sm">
+                    Annuler la mission
+                  </button>
+                }
+              />
+            )}
+          </SiPeut>
 
           {/* La facture se crée DEPUIS la mission (CLAUDE.md) : le client, la
               marchandise et le montant en sont repris tels quels. La proposer
@@ -332,7 +387,13 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                   <div className="corps">
                     <div className="t">
                       {LIBELLE_MOUVEMENT[m.type] ?? m.type}
-                      {m.motif ? <span className="s"> — {m.motif}</span> : null}
+                      {/* L'objet prime sur le motif libre : c'est lui qui dit
+                          sur quelle enveloppe le chauffeur pioche. */}
+                      {m.objet ? (
+                        <span className="s"> — {LIBELLE_TYPE_DEPENSE[m.objet] ?? m.objet}</span>
+                      ) : m.motif ? (
+                        <span className="s"> — {m.motif}</span>
+                      ) : null}
                     </div>
                     <div className="s">
                       {formatDate(m.date)} · {LIBELLE_MOYEN_PAIEMENT[m.moyen] ?? m.moyen}
@@ -529,6 +590,42 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
             restant départ + pleins − restant arrivée.
           </span>
         </div>
+
+        {/* Carburant par segment : seulement quand il y a quelque chose à
+            comparer — un aller-retour, ou un segment explicitement renseigné. */}
+        {segmentsCarburant.length > 0 && (voyage.allerRetour || segmentsCarburant.some(([c]) => c !== "NON_PRECISE")) ? (
+          <div className="card panel mb-5">
+            <h3>Carburant {voyage.allerRetour ? "· aller-retour" : ""}</h3>
+            <div className="flex flex-wrap gap-x-8 gap-y-3 text-xs">
+              {segmentsCarburant.map(([cle, v]) => (
+                <div key={cle}>
+                  <div className="text-[var(--muted)]">
+                    {cle === "NON_PRECISE" ? "Segment non précisé" : (LIBELLE_SEGMENT[cle] ?? cle)}
+                  </div>
+                  <b className="mono mt-0.5 block text-[13px]">
+                    {formatNombre(v.montantGnf)} GNF
+                    {v.litres > 0 ? (
+                      <span className="text-[var(--muted-2)]"> · {formatDecimal(v.litres)} L</span>
+                    ) : null}
+                  </b>
+                </div>
+              ))}
+            </div>
+            {/* La consommation réelle ne se saisit pas : elle se déduit des
+                niveaux relevés dans le réservoir, tronçon par tronçon. */}
+            {fiche.consoMoyenneL100 != null ? (
+              <p className="mt-3 text-[11.5px] text-[var(--muted)]">
+                Consommation réelle calculée sur les relevés de réservoir :{" "}
+                <b>{formatDecimal(fiche.consoMoyenneL100)} L/100 km</b>.
+              </p>
+            ) : (
+              <p className="mt-3 text-[11.5px] text-[var(--muted-2)]">
+                Renseigne le niveau du réservoir au départ et à l&apos;arrivée de chaque tronçon :
+                la consommation se calcule toute seule.
+              </p>
+            )}
+          </div>
+        ) : null}
 
         <div className="head-row">
           <h3>

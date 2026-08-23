@@ -12,7 +12,17 @@ export async function espaceChauffeur(chauffeurId: string) {
   const chauffeur = await prisma.chauffeur.findUnique({ where: { id: chauffeurId } });
   if (!chauffeur) return null;
 
-  const [mission, mouvements, parametres] = await Promise.all([
+  const INCLURE_MISSION = {
+    camion: true,
+    etapes: { orderBy: { ordre: "asc" } },
+    depenses: { orderBy: { date: "desc" }, take: 5 },
+    relevesTemp: { orderBy: { releveLe: "desc" }, take: 1 },
+    lignes: INCLURE_LIGNES,
+    paysDepart: { select: { nom: true, code: true } },
+    paysArrivee: { select: { nom: true, code: true } },
+  } as const;
+
+  const [enRoute, mouvements, parametres] = await Promise.all([
     prisma.voyage.findFirst({
       where: { chauffeurId, statut: { in: [...STATUTS_EN_ROUTE] } },
       include: {
@@ -30,14 +40,42 @@ export async function espaceChauffeur(chauffeurId: string) {
     prisma.parametres.findFirst(),
   ]);
 
-  // Prochaine mission planifiée, s'il n'y a rien en cours.
-  const prochaine = mission
-    ? null
-    : await prisma.voyage.findFirst({
-        where: { chauffeurId, statut: "PLANIFIE" },
-        include: { camion: true },
-        orderBy: { dateDepart: "asc" },
-      });
+  /*
+   * À défaut de mission en route, la prochaine mission planifiée.
+   *
+   * Elle est traitée comme la mission du chauffeur, avec les mêmes écrans de
+   * saisie : rejoindre le point de chargement fait souvent des centaines de
+   * kilomètres, pendant lesquels il met du gasoil, paie des péages et mange.
+   * Ne lui ouvrir la saisie qu'une fois arrivé lui faisait perdre toutes ces
+   * dépenses, ou l'obligeait à les ressaisir de mémoire des jours plus tard.
+   *
+   * L'ordre compte : une mission en route prime toujours sur une planifiée.
+   */
+  const mission =
+    enRoute ??
+    (await prisma.voyage.findFirst({
+      where: { chauffeurId, statut: "PLANIFIE" },
+      include: INCLURE_MISSION,
+      orderBy: { dateDepart: "asc" },
+    }));
+
+  /*
+   * Carburant fourni par l'entreprise pour cette mission, en entier.
+   *
+   * Il ne peut pas se lire dans les cinq dernières dépenses de la mission :
+   * un plein fait au départ sort de cette fenêtre dès que le chauffeur saisit
+   * quelques frais de route, et il croirait alors n'avoir rien reçu pour
+   * rouler — puis paierait le gasoil sur sa propre caisse.
+   */
+  const carburantFourni = mission
+    ? await prisma.depense.findMany({
+        where: {
+          voyageId: mission.id,
+          type: { in: ["GASOIL_TRACTEUR", "GASOIL_GROUPE_FROID"] },
+        },
+        orderBy: { date: "asc" },
+      })
+    : [];
 
   const caisse = soldeCaisse(
     mouvements.map((m) => ({
@@ -85,7 +123,20 @@ export async function espaceChauffeur(chauffeurId: string) {
       pourCetteMission: !!mission && m.voyageId === mission.id,
     }));
 
-  return { chauffeur, mission, prochaine, caisse, avances, parametres };
+  /*
+   * `mission` couvre désormais la mission planifiée : il n'y a plus de
+   * « prochaine mission » distincte à afficher. On expose seulement si elle
+   * n'est pas encore partie, pour adapter le ton de l'écran.
+   */
+  return {
+    chauffeur,
+    mission,
+    carburantFourni,
+    pasEncorePartie: mission?.statut === "PLANIFIE",
+    caisse,
+    avances,
+    parametres,
+  };
 }
 
 export type EspaceChauffeur = NonNullable<Awaited<ReturnType<typeof espaceChauffeur>>>;

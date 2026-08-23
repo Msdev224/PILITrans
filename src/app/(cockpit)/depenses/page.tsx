@@ -283,6 +283,7 @@ function aplatir(ligne: LigneDepense): DepenseEditable {
     description: depense.description,
     categorie: depense.categorie,
     imputerAMission: depense.imputerAMission,
+    segment: depense.segment,
     moyen: depense.moyen,
     reference: depense.reference,
     date: depense.date.toISOString().slice(0, 10),
