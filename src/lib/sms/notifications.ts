@@ -1,8 +1,8 @@
 import type { EvenementSms, Parametres } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { assainirGsm7, dateSms, montantSms } from "@/lib/sms/gsm7";
 import { envoyerSms, envoyerWhatsApp, normaliserNumero, smsConfigure } from "@/lib/sms/nimba";
-import { formatDate, formatNombre } from "@/lib/utils";
 
 /**
  * Mise en file et envoi des notifications SMS.
@@ -140,10 +140,30 @@ export async function tenterEnvoi(id: string, expediteur: string): Promise<boole
 
 // ------------------------------------------------------------
 //  Rédaction des messages
-//  Courts et concrets : un SMS se lit sur un téléphone de bord.
+//
+//  Trois règles, dans cet ordre :
+//
+//  1. Rester dans l'alphabet GSM. Un seul caractère en dehors — flèche, tiret
+//     cadratin, « À » majuscule, espace fine d'un montant — double le prix du
+//     message. Les dates sont donc numériques : « août » contient un û.
+//  2. Tenir en un segment, soit 160 caractères. Les valeurs insérées viennent
+//     de la saisie et peuvent être longues : les tests bornent les cas réels.
+//  3. Dire ce que le destinataire doit savoir ou faire, rien de plus. Un SMS
+//     se lit d'un coup d'œil sur un téléphone de bord.
 // ------------------------------------------------------------
 
-const enseigne = (p: Parametres | null) => p?.raisonSociale ?? "PILITrans";
+const enseigne = (p: Parametres | null) => assainirGsm7(p?.raisonSociale ?? "PILITrans");
+
+/** Numéro à rappeler, quand il est renseigné : sans lui, le client ne peut rien faire. */
+function rappel(p: Parametres | null): string {
+  const tel = p?.telephone?.trim();
+  return tel ? ` Info : ${tel}.` : "";
+}
+
+/** Trajet sans flèche : le « > » coûte un septet, la flèche fait basculer tout le message. */
+function trajetSms(trajet: string): string {
+  return assainirGsm7(trajet.replace(/\s*(?:→|->)\s*/g, " > "));
+}
 
 export function messageAffectation(
   parametres: Parametres | null,
@@ -151,16 +171,32 @@ export function messageAffectation(
   camion: string,
   date: Date,
 ): string {
-  return `${enseigne(parametres)} : nouvelle mission ${trajet} avec ${camion}, départ le ${formatDate(date)}.`;
+  return assainirGsm7(
+    `${enseigne(parametres)} : nouvelle mission ${trajetSms(trajet)} avec ${camion}, ` +
+      `départ prévu le ${dateSms(date)}. Détails dans ton espace chauffeur.`,
+  );
 }
 
-export function messageDepart(parametres: Parametres | null, trajet: string, marchandise: string | null): string {
-  const quoi = marchandise ? ` (${marchandise})` : "";
-  return `${enseigne(parametres)} : votre marchandise${quoi} est chargée. Trajet ${trajet} en cours. Nous vous tenons informé.`;
+export function messageDepart(
+  parametres: Parametres | null,
+  trajet: string,
+  marchandise: string | null,
+): string {
+  // La désignation entre parenthèses : « votre Produits frais est chargée »
+  // ne s'accorde avec rien. Le nom commun porte la phrase, la marchandise
+  // vient la préciser.
+  const quoi = marchandise ? ` (${assainirGsm7(marchandise)})` : "";
+  return assainirGsm7(
+    `${enseigne(parametres)} : votre marchandise${quoi} est chargée, en route ${trajetSms(trajet)}. ` +
+      `Nous vous prévenons à l'arrivée.${rappel(parametres)}`,
+  );
 }
 
 export function messageArrivee(parametres: Parametres | null, ville: string): string {
-  return `${enseigne(parametres)} : votre marchandise est arrivée à ${ville}. Le déchargement va commencer.`;
+  return assainirGsm7(
+    `${enseigne(parametres)} : votre marchandise est arrivée à ${assainirGsm7(ville)}. ` +
+      `Le déchargement commence. Merci de prévoir sa réception.${rappel(parametres)}`,
+  );
 }
 
 export function messageLivraison(
@@ -169,22 +205,31 @@ export function messageLivraison(
   /** Déjà mis en forme avec son unité : « 12 t », « 12 t + 240 sacs ». */
   quantiteLivree: string | null,
 ): string {
-  const quantite = quantiteLivree ? ` ${quantiteLivree}` : "";
-  return `${enseigne(parametres)} : livraison effectuée à ${ville}${quantite}. Merci de votre confiance.`;
+  const quantite = quantiteLivree ? ` de ${assainirGsm7(quantiteLivree)}` : "";
+  return assainirGsm7(
+    `${enseigne(parametres)} : livraison${quantite} effectuée à ${assainirGsm7(ville)}. ` +
+      `Merci de votre confiance.${rappel(parametres)}`,
+  );
 }
 
 /**
  * Code de retrait envoyé au client.
  *
  * Volontairement sec : ce message circule sur un téléphone qui peut être lu
- * par d'autres. Il ne dit ni le montant ni la valeur de la marchandise.
+ * par d'autres. Il ne dit ni le montant, ni la valeur de la marchandise, ni
+ * même d'où elle vient. Il dit en revanche explicitement à qui remettre le
+ * code — c'est la seule protection contre une livraison à la mauvaise
+ * personne, et elle ne tient que si le client comprend la règle.
  */
 export function messageCodeLivraison(
   parametres: Parametres | null,
   code: string,
   marchandise: string,
 ): string {
-  return `${enseigne(parametres)} : code de retrait pour ${marchandise} — ${code}. À communiquer au chauffeur au moment de la remise, à personne d'autre.`;
+  return assainirGsm7(
+    `${enseigne(parametres)} : code de retrait ${code} pour ${assainirGsm7(marchandise)}. ` +
+      `Donnez-le au chauffeur au moment de la remise, à personne d'autre.`,
+  );
 }
 
 export function messageFacture(
@@ -194,9 +239,12 @@ export function messageFacture(
   echeance: Date | null,
   lien: string | null,
 ): string {
-  const quand = echeance ? ` Échéance : ${formatDate(echeance)}.` : "";
-  const url = lien ? ` Facture : ${lien}` : "";
-  return `${enseigne(parametres)} : facture ${numero} de ${formatNombre(montantGnf)} GNF.${quand}${url}`;
+  const quand = echeance ? ` à régler avant le ${dateSms(echeance)}.` : ".";
+  const url = lien ? ` ${lien}` : "";
+  return assainirGsm7(
+    `${enseigne(parametres)} : facture ${numero} de ${montantSms(montantGnf)} GNF${quand}` +
+      `${url}${url ? "" : rappel(parametres)}`,
+  );
 }
 
 export function messageRelance(
@@ -207,7 +255,10 @@ export function messageRelance(
   lien: string | null,
 ): string {
   const url = lien ? ` ${lien}` : "";
-  return `${enseigne(parametres)} : facture ${numero}, ${formatNombre(resteGnf)} GNF restant dû, en retard de ${joursRetard} j. Merci de régulariser.${url}`;
+  return assainirGsm7(
+    `${enseigne(parametres)} : il reste ${montantSms(resteGnf)} GNF à régler sur la facture ` +
+      `${numero}, échéance dépassée de ${joursRetard} j. Merci de régulariser.${url}`,
+  );
 }
 
 /** Lien public vers une facture, si l'URL de l'application est renseignée. */
