@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
+import { formatNombre, LIBELLE_MOUVEMENT, n } from "@/lib/utils";
 import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
@@ -88,7 +90,12 @@ export async function enregistrerMouvementCaisse(
   const montantGnf =
     saisie.data.devise === "GNF" ? saisie.data.montant : (saisie.data.montantGnf ?? 0);
 
-  await prisma.mouvementCaisse.create({
+  const chauffeur = await prisma.chauffeur.findUnique({
+    where: { id: saisie.data.chauffeurId },
+    select: { nom: true },
+  });
+
+  const mouvement = await prisma.mouvementCaisse.create({
     data: {
       chauffeurId: saisie.data.chauffeurId,
       type: saisie.data.type,
@@ -110,6 +117,19 @@ export async function enregistrerMouvementCaisse(
     },
   });
 
+  await journaliser({
+    action: `caisse.${saisie.data.type.toLowerCase()}`,
+    objet: "MouvementCaisse",
+    objetId: mouvement.id,
+    libelle: `${LIBELLE_MOUVEMENT[saisie.data.type] ?? saisie.data.type} de ${formatNombre(montantGnf)} GNF — ${chauffeur?.nom ?? "chauffeur"}`,
+    montantGnf,
+    apres: {
+      moyen: saisie.data.moyen,
+      objetRemise: saisie.data.objet ?? null,
+      voyageId: saisie.data.voyageId || null,
+    },
+  });
+
   revalidatePath("/chauffeurs");
   revalidatePath("/voyages");
   revalidatePath("/caisse");
@@ -124,7 +144,12 @@ export async function supprimerMouvementCaisse(id: string) {
 
   const mouvement = await prisma.mouvementCaisse.findUnique({
     where: { id },
-    select: { depenseId: true },
+    select: {
+      depenseId: true,
+      type: true,
+      montantGnf: true,
+      chauffeur: { select: { nom: true } },
+    },
   });
   if (!mouvement) throw new Error("Mouvement introuvable.");
 
@@ -137,6 +162,15 @@ export async function supprimerMouvementCaisse(id: string) {
   }
 
   await prisma.mouvementCaisse.delete({ where: { id } });
+
+  await journaliser({
+    action: "caisse.mouvement.supprime",
+    objet: "MouvementCaisse",
+    objetId: id,
+    libelle: `${LIBELLE_MOUVEMENT[mouvement.type] ?? mouvement.type} de ${formatNombre(n(mouvement.montantGnf))} GNF annulée — ${mouvement.chauffeur.nom}`,
+    montantGnf: n(mouvement.montantGnf),
+  });
+
   revalidatePath("/chauffeurs");
   revalidatePath("/voyages");
   revalidatePath("/caisse");

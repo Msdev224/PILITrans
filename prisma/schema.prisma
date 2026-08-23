@@ -186,6 +186,8 @@ model Utilisateur {
   // un compte CHAUFFEUR est rattaché à une fiche Chauffeur
   chauffeur   Chauffeur? @relation(fields: [chauffeurId], references: [id])
   chauffeurId String?    @unique
+  /// Opérations tracées à son nom.
+  journal     Journal[]
 }
 
 // ------------------------------------------------------------
@@ -1001,6 +1003,7 @@ model Parametres {
    * /**
    * /**
    * /**
+   * /**
    * Argent déjà détenu au démarrage de l'application.
    * Sans lui, la trésorerie partirait de zéro et afficherait un solde négatif
    * dès la première dépense, alors que l'exploitation tournait avant.
@@ -1228,4 +1231,49 @@ model OperationChauffeur {
   traiteeLe   DateTime  @default(now())
 
   @@index([chauffeurId, traiteeLe])
+}
+
+/**
+ * Journal des opérations : qui a fait quoi, quand.
+ * Sans lui, personne ne peut dire qui a saisi un règlement, modifié un montant
+ * ou supprimé une avance. Dans une exploitation où l'argent circule de la main
+ * à la main, c'est la seule pièce qui permet de remonter une opération
+ * contestée — et la première qu'un comptable externe ou un bailleur réclame.
+ * Les lignes ne se modifient ni ne se suppriment : un journal qu'on peut
+ * réécrire ne prouve rien.
+ */
+model Journal {
+  id String @id @default(cuid())
+
+  date DateTime @default(now())
+
+  /**
+   * Auteur de l'opération.
+   * Le lien peut se rompre — un compte se supprime — mais le nom reste figé :
+   * une trace qui perd son auteur ne sert plus à rien.
+   */
+  auteur     Utilisateur? @relation(fields: [auteurId], references: [id], onDelete: SetNull)
+  auteurId   String?
+  auteurNom  String
+  auteurRole String
+
+  /// Identifiant technique de l'action : `facture.paiement.enregistre`.
+  action  String
+  /// Type d'objet touché, pour filtrer : `Facture`, `MouvementCaisse`…
+  objet   String
+  objetId String?
+
+  /// Phrase lisible telle qu'elle s'affiche dans l'historique.
+  libelle String
+
+  /// Montant concerné, s'il y en a un : permet de retrouver une somme précise.
+  montantGnf Decimal? @db.Decimal(16, 2)
+
+  /// État avant et après, pour les modifications de valeurs sensibles.
+  avant Json?
+  apres Json?
+
+  @@index([date])
+  @@index([objet, objetId])
+  @@index([auteurId, date])
 }

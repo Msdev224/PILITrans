@@ -6,8 +6,9 @@ import { z } from "zod";
 
 import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
-import { estChargeDeStructure } from "@/lib/utils";
+import { LIBELLE_TYPE_DEPENSE, estChargeDeStructure, formatNombre, n } from "@/lib/utils";
 import { caseACocher, dateBornee, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
@@ -177,6 +178,15 @@ export async function creerDepense(_etat: EtatDepense, donnees: FormData): Promi
   // Le taux réellement pratiqué alimente la référence de pré-remplissage.
   if (data.devise !== "GNF") await observerTaux(Number(data.montant), data.montantGnf);
 
+  await journaliser({
+    action: "depense.creee",
+    objet: "Depense",
+    objetId: depense.id,
+    libelle: `Dépense ${LIBELLE_TYPE_DEPENSE[data.type] ?? data.type} de ${formatNombre(data.montantGnf)} GNF`,
+    montantGnf: data.montantGnf,
+    apres: { voyageId: data.voyageId, camionId: data.camionId, surCaisse: !!chauffeurId },
+  });
+
   rafraichir(data.camionId, data.voyageId);
   return { ok: true };
 }
@@ -224,7 +234,13 @@ export async function supprimerDepense(id: string) {
 
   const depense = await prisma.depense.findUnique({
     where: { id },
-    select: { camionId: true, voyageId: true, mouvementCaisse: { select: { id: true } } },
+    select: {
+      camionId: true,
+      voyageId: true,
+      type: true,
+      montantGnf: true,
+      mouvementCaisse: { select: { id: true } },
+    },
   });
   if (!depense) throw new Error("Dépense introuvable.");
 
@@ -237,5 +253,14 @@ export async function supprimerDepense(id: string) {
   }
 
   await prisma.depense.delete({ where: { id } });
+
+  await journaliser({
+    action: "depense.supprimee",
+    objet: "Depense",
+    objetId: id,
+    libelle: `Dépense ${LIBELLE_TYPE_DEPENSE[depense.type] ?? depense.type} de ${formatNombre(n(depense.montantGnf))} GNF supprimée`,
+    montantGnf: n(depense.montantGnf),
+  });
+
   rafraichir(depense.camionId, depense.voyageId);
 }

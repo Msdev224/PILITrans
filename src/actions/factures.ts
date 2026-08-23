@@ -6,8 +6,9 @@ import { z } from "zod";
 
 import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
-import { formatNombre } from "@/lib/utils";
+import { formatNombre, n } from "@/lib/utils";
 import { numeroLibre } from "@/lib/donnees/facturation-auto";
 import { notifierFacture, notifierRelance } from "@/lib/sms/declencheurs";
 import { caseACocher, dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
@@ -287,6 +288,16 @@ export async function enregistrerPaiement(
   });
 
   await recalculerFacture(factureId);
+
+  await journaliser({
+    action: "facture.paiement.enregistre",
+    objet: "Facture",
+    objetId: factureId,
+    libelle: `Règlement de ${formatNombre(montantGnf)} GNF sur ${facture.numero}`,
+    montantGnf,
+    apres: { moyen: saisie.data.moyen, reference: saisie.data.reference ?? null },
+  });
+
   rafraichir(facture.voyageId);
   return { ok: true };
 }
@@ -297,12 +308,33 @@ export async function supprimerPaiement(paiementId: string) {
 
   const paiement = await prisma.paiement.findUnique({
     where: { id: paiementId },
-    select: { factureId: true, facture: { select: { voyageId: true } } },
+    select: {
+      factureId: true,
+      montantGnf: true,
+      moyen: true,
+      date: true,
+      facture: { select: { voyageId: true, numero: true } },
+    },
   });
   if (!paiement) throw new Error("Versement introuvable.");
 
   await prisma.paiement.delete({ where: { id: paiementId } });
   await recalculerFacture(paiement.factureId);
+
+  /*
+   * La suppression d'un encaissement est l'opération la plus sensible de
+   * l'application : elle fait disparaître de l'argent reçu. Sans trace, elle
+   * est indétectable.
+   */
+  await journaliser({
+    action: "facture.paiement.supprime",
+    objet: "Facture",
+    objetId: paiement.factureId,
+    libelle: `Versement de ${formatNombre(n(paiement.montantGnf))} GNF annulé sur ${paiement.facture.numero}`,
+    montantGnf: n(paiement.montantGnf),
+    avant: { moyen: paiement.moyen, date: paiement.date.toISOString() },
+  });
+
   rafraichir(paiement.facture.voyageId);
 }
 

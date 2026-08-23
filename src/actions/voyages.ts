@@ -16,6 +16,7 @@ import { exigerPermission } from "@/lib/autorisation";
 import { observerTaux } from "@/lib/donnees/taux";
 import { lignesRemise, type LigneRemise } from "@/lib/remise";
 import { LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { notifierAffectationChauffeur, notifierEtapeVoyage } from "@/lib/sms/declencheurs";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
@@ -495,7 +496,7 @@ export async function annulerVoyage(id: string, donnees?: FormData): Promise<voi
 
   const voyage = await prisma.voyage.findUnique({
     where: { id },
-    select: { camionId: true, statut: true },
+    select: { camionId: true, statut: true, reference: true },
   });
   if (!voyage) throw new Error("Mission introuvable.");
   if (voyage.statut === "ANNULE") throw new Error("Cette mission est déjà annulée.");
@@ -510,6 +511,15 @@ export async function annulerVoyage(id: string, donnees?: FormData): Promise<voi
       motifAnnulation: motif || null,
       annuleLe: new Date(),
     },
+  });
+
+  await journaliser({
+    action: "voyage.annule",
+    objet: "Voyage",
+    objetId: id,
+    libelle: `Mission ${voyage.reference} annulée${motif ? ` — ${motif}` : ""}`,
+    avant: { statut: voyage.statut },
+    apres: { statut: "ANNULE", motif: motif || null },
   });
 
   // Le camion redevient disponible : il n'est plus retenu par cette mission.
@@ -529,7 +539,7 @@ export async function retablirVoyage(id: string): Promise<void> {
 
   const voyage = await prisma.voyage.findUnique({
     where: { id },
-    select: { camionId: true, statut: true },
+    select: { camionId: true, statut: true, reference: true },
   });
   if (!voyage) throw new Error("Mission introuvable.");
   if (voyage.statut !== "ANNULE") throw new Error("Cette mission n'est pas annulée.");
@@ -537,6 +547,15 @@ export async function retablirVoyage(id: string): Promise<void> {
   await prisma.voyage.update({
     where: { id },
     data: { statut: "PLANIFIE", motifAnnulation: null, annuleLe: null },
+  });
+
+  await journaliser({
+    action: "voyage.retabli",
+    objet: "Voyage",
+    objetId: id,
+    libelle: `Mission ${voyage.reference} rétablie`,
+    avant: { statut: "ANNULE" },
+    apres: { statut: "PLANIFIE" },
   });
 
   await synchroniserCamion(voyage.camionId);
