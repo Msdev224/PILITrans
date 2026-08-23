@@ -256,10 +256,19 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
           </label>
         </div>
 
-        <Champ label="Nom d'expéditeur" aide="Sensible à la casse, tel que déclaré chez Nimba.">
+        <Champ
+          label="Nom d'expéditeur"
+          aide="11 caractères maximum, sans espace ni accent. Il doit correspondre EXACTEMENT à un nom validé chez Nimba, casse comprise — sinon tous les envois sont refusés."
+        >
           {/* Volontairement pas `disabled` : un champ désactivé n'est pas envoyé,
           et enregistrer avec les SMS coupés effaçait le nom d'expéditeur. */}
-      <input name="smsExpediteur" defaultValue={val("smsExpediteur", parametres.smsExpediteur)} placeholder="PILITrans" readOnly={!smsActif} />
+      <input
+            name="smsExpediteur"
+            defaultValue={val("smsExpediteur", parametres.smsExpediteur)}
+            placeholder="PILITRANS"
+            maxLength={11}
+            readOnly={!smsActif}
+          />
         </Champ>
 
         <Champ

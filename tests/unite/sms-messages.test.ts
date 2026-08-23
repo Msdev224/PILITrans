@@ -116,3 +116,23 @@ describe("segmentsSms", () => {
     expect(segmentsSms("→" + "a".repeat(70))).toBe(2);
   });
 });
+
+describe("nom d'expéditeur Nimba", () => {
+  // La règle est côté opérateur : onze caractères alphanumériques au plus.
+  // La valider à la saisie évite un refus qui n'arrive qu'à l'envoi, parfois
+  // des heures plus tard, sur un message qu'on croyait parti.
+  const valide = (v: string) => v.length <= 11 && /^[A-Za-z0-9]+$/.test(v);
+
+  it("accepte un nom court et alphanumérique", () => {
+    expect(valide("PILITRANS")).toBe(true);
+    expect(valide("PiliTrans")).toBe(true);
+  });
+
+  it("refuse ce que Nimba refuse", () => {
+    expect(valide("Mamadou Saidou Bah")).toBe(false); // trop long, et espaces
+    expect(valide("PILITRANS SARL")).toBe(false); // espace
+    expect(valide("PILITRÂNS")).toBe(false); // accent
+    expect(valide("PILITRANS12")).toBe(true); // 11 exactement
+    expect(valide("PILITRANS123")).toBe(false); // 12
+  });
+});

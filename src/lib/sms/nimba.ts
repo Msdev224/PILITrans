@@ -43,6 +43,58 @@ export function normaliserNumero(numero: string, indicatifDefaut = "+224"): stri
 }
 
 /**
+ * Traduit un refus de l'API en phrase actionnable.
+ *
+ * Nimba répond par un objet dont les clés sont les champs fautifs :
+ * `{"sender_name":"Sender Name invalid."}`. Affiché tel quel dans le suivi des
+ * SMS, c'est illisible pour un gérant — et surtout, ça ne dit pas quoi faire.
+ * Or ces refus ont presque toujours la même poignée de causes, et chacune a
+ * une correction précise.
+ */
+function traduireErreur(statut: number, charge: Record<string, unknown>, brut: string): string {
+  const champ = (cle: string) => {
+    const v = charge[cle];
+    return typeof v === "string" ? v : Array.isArray(v) ? String(v[0]) : null;
+  };
+
+  if (champ("sender_name")) {
+    return (
+      "Nom d'expéditeur refusé par Nimba. Il doit correspondre exactement à un nom " +
+      "validé chez eux — casse comprise, 11 caractères maximum. " +
+      "Corrigez-le dans Paramètres, Notifications SMS."
+    );
+  }
+
+  if (champ("to")) {
+    return `Numéro refusé par Nimba : ${champ("to")}. Vérifiez l'indicatif du destinataire.`;
+  }
+
+  if (statut === 401 || statut === 403) {
+    return (
+      "Identifiants Nimba refusés. Vérifiez NIMBA_SMS_SERVICE_ID et " +
+      "NIMBA_SMS_SECRET_TOKEN dans les variables d'environnement."
+    );
+  }
+
+  if (statut === 402 || /credit|solde|balance/i.test(brut)) {
+    return "Crédit SMS épuisé chez Nimba. Rechargez le compte, la file repartira seule.";
+  }
+
+  if (statut === 429) {
+    return "Trop d'envois d'un coup : Nimba a temporisé. Le message reste en file.";
+  }
+
+  const detail =
+    (charge.message as string) ??
+    (charge.detail as string) ??
+    // Dernier recours : la première valeur lisible de la réponse.
+    Object.values(charge).find((v) => typeof v === "string") ??
+    brut.slice(0, 160);
+
+  return `Refus de Nimba (HTTP ${statut}) : ${detail || "raison non précisée"}`;
+}
+
+/**
  * Envoie un SMS. Ne lève jamais : un échec de notification ne doit pas faire
  * échouer l'opération métier qui l'a déclenchée (un voyage reste enregistré
  * même si le SMS ne part pas).
@@ -87,9 +139,7 @@ export async function envoyerSms(
     }
 
     if (!reponse.ok) {
-      const detail =
-        (charge.message as string) ?? (charge.detail as string) ?? brut.slice(0, 200);
-      return { ok: false, erreur: `HTTP ${reponse.status} — ${detail || "erreur inconnue"}` };
+      return { ok: false, erreur: traduireErreur(reponse.status, charge, brut) };
     }
 
     return {

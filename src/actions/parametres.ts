@@ -59,7 +59,18 @@ const schemaParametres = z.object({
 
   // Notifications SMS
   smsActif: caseACocher,
-  smsExpediteur: texteOptionnel,
+  /*
+   * Nom d'expéditeur Nimba.
+   *
+   * Onze caractères alphanumériques au plus, sans espace ni accent : c'est la
+   * limite de la norme, et Nimba refuse tout l'envoi si elle est dépassée. Le
+   * refus arrive côté opérateur, longtemps après la saisie — autant le dire
+   * ici, où la correction est immédiate.
+   */
+  smsExpediteur: texteOptionnel.refine(
+    (v) => !v || (v.length <= 11 && /^[A-Za-z0-9]+$/.test(v)),
+    { message: "11 caractères maximum, lettres et chiffres uniquement, sans espace ni accent." },
+  ),
   urlApplication: texteOptionnel,
   smsChauffeurAffectation: caseACocher,
   smsClientDepart: caseACocher,
