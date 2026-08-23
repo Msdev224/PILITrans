@@ -157,6 +157,9 @@ export async function creerDepense(_etat: EtatDepense, donnees: FormData): Promi
         montantGnf: data.montantGnf,
         motif: data.description,
         date: data.date,
+        // Rattachée à la mission comme l'avance qu'elle justifie : sans cela,
+        // la fiche mission montrerait un reste à justifier jamais soldé.
+        voyageId: data.voyageId,
         depenseId: depense.id,
       },
     });
@@ -196,6 +199,9 @@ export async function modifierDepense(
         montantGnf: data.montantGnf,
         motif: data.description,
         date: data.date,
+        // La dépense a pu changer de mission : le mouvement la suit, sinon il
+        // resterait rattaché au voyage précédent.
+        voyageId: data.voyageId,
       },
     });
     revalidatePath("/chauffeurs");

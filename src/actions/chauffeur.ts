@@ -373,6 +373,10 @@ export async function saisirDepense(
         montantGnf,
         motif: saisie.data.description ?? null,
         date: quand(donnees),
+        // La mission suit le mouvement : c'est elle qui dit quelle avance
+        // cette dépense justifie. Sans ce rattachement, l'argent remis pour
+        // ce voyage paraîtrait éternellement non justifié.
+        voyageId: voyage.id,
         depenseId: depense.id,
       },
     });

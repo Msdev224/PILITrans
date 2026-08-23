@@ -42,6 +42,7 @@ export function DialogueCaisse({
   soldeXof,
   tauxReferenceXof,
   missions,
+  voyageImpose,
   declencheur,
 }: {
   chauffeurId: string;
@@ -51,6 +52,11 @@ export function DialogueCaisse({
   tauxReferenceXof: number | null;
   /** Missions en cours de ce chauffeur, pour rattacher l'avance. */
   missions: { id: string; libelle: string }[];
+  /**
+   * Mission imposée : ouvert depuis une fiche mission, le rattachement est
+   * déjà connu et ne se choisit pas.
+   */
+  voyageImpose?: string;
   declencheur: React.ReactNode;
 }) {
   const [ouvert, setOuvert] = useState(false);
@@ -196,7 +202,12 @@ export function DialogueCaisse({
 
               {/* Rattacher l'avance à la mission qu'elle finance : sans cela,
                   impossible de dire ce qu'un voyage a coûté en trésorerie. */}
-              {missions.length > 0 ? (
+              {/* Champ caché plutôt que liste désactivée : un champ désactivé
+                  n'est pas envoyé par le navigateur, et l'avance repartirait
+                  sans mission — invisible dans le coût du voyage. */}
+              {voyageImpose ? (
+                <input type="hidden" name="voyageId" value={voyageImpose} />
+              ) : missions.length > 0 ? (
                 <div className="field">
                   <label>Mission financée</label>
                   <select name="voyageId" defaultValue="">

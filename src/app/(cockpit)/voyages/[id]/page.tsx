@@ -10,9 +10,13 @@ import {
   type RavitaillementOption,
 } from "@/components/voyages/dialogue-etape";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
+import { soldeCaisse } from "@/lib/calculs";
+import { DialogueCaisse } from "@/components/equipe/dialogue-caisse";
 import { ficheVoyage, type TronconVue } from "@/lib/donnees/voyages";
 import { prisma } from "@/lib/prisma";
 import {
+  LIBELLE_MOUVEMENT,
+  LIBELLE_MOYEN_PAIEMENT,
   LIBELLE_STATUT_VOYAGE,
   LIBELLE_TYPE_DEPENSE,
   LIBELLE_TYPE_ETAPE,
@@ -50,6 +54,26 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
 
   if (!fiche) notFound();
   const { voyage } = fiche;
+
+  /*
+   * Solde de caisse du chauffeur, toutes missions confondues.
+   *
+   * Il sert de contexte au moment de lui remettre de l'argent : recharger
+   * quelqu'un qui détient déjà de quoi finir la route n'a pas le même sens
+   * que recharger une caisse à sec.
+   */
+  const mouvementsChauffeur = await prisma.mouvementCaisse.findMany({
+    where: { chauffeurId: voyage.chauffeurId },
+    select: { type: true, montant: true, devise: true, montantGnf: true },
+  });
+  const caisseChauffeur = soldeCaisse(
+    mouvementsChauffeur.map((m) => ({
+      type: m.type,
+      montant: n(m.montant),
+      devise: m.devise,
+      montantGnf: n(m.montantGnf),
+    })),
+  );
 
   // Une mission déjà facturée mène à sa facture ; sinon on propose de la
   // créer, avec ce que la mission sait déjà.
@@ -247,6 +271,88 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
             </div>
           </div>
         ) : null}
+
+        {/* ---------- Argent remis au chauffeur ---------- */}
+        {/* Une mission ne se finance pas en une fois : on remet une somme au
+            départ, puis on recharge en route quand un poste coûte plus cher
+            que prévu. Les remises s'ajoutent, elles ne se corrigent pas — et
+            le reste à justifier doit se lire sans quitter la mission. */}
+        <div className="head-row">
+          <h3>
+            Remis au chauffeur{" "}
+            <span className="sec-sub">
+              — {fiche.avances.length} mouvement{fiche.avances.length > 1 ? "s" : ""}
+            </span>
+          </h3>
+          <SiPeut droit="depenses.ecrire">
+            <DialogueCaisse
+              chauffeurId={fiche.voyage.chauffeurId}
+              nom={fiche.voyage.chauffeur.nom}
+              soldeGnf={caisseChauffeur.parDevise.GNF}
+              soldeXof={caisseChauffeur.parDevise.XOF}
+              tauxReferenceXof={parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null}
+              missions={[]}
+              voyageImpose={fiche.voyage.id}
+              declencheur={
+                <button type="button" className="btn-add">
+                  <IconePlus />
+                  Remettre de l&apos;argent
+                </button>
+              }
+            />
+          </SiPeut>
+        </div>
+
+        <div className="card panel mb-5">
+          <div className="grid grid-cols-3 gap-4 text-xs">
+            <div>
+              Remis en tout
+              <b className="mono mt-0.5 block text-[13px]">{formatNombre(fiche.remisGnf)} GNF</b>
+            </div>
+            <div>
+              Justifié ou rendu
+              <b className="mono mt-0.5 block text-[13px]">{formatNombre(fiche.justifieGnf)} GNF</b>
+            </div>
+            <div>
+              Reste à justifier
+              <b
+                className={`mono mt-0.5 block text-[13px] ${
+                  fiche.resteAJustifierGnf > 0 ? "text-[var(--warn-ink,#8a5d06)]" : "text-[var(--pos)]"
+                }`}
+              >
+                {formatNombre(fiche.resteAJustifierGnf)} GNF
+              </b>
+            </div>
+          </div>
+
+          {fiche.avances.length > 0 ? (
+            <div className="mt-3 border-t border-[var(--line-soft)] pt-2">
+              {fiche.avances.map((m) => (
+                <div key={m.id} className="row !py-2">
+                  <div className="corps">
+                    <div className="t">
+                      {LIBELLE_MOUVEMENT[m.type] ?? m.type}
+                      {m.motif ? <span className="s"> — {m.motif}</span> : null}
+                    </div>
+                    <div className="s">
+                      {formatDate(m.date)} · {LIBELLE_MOYEN_PAIEMENT[m.moyen] ?? m.moyen}
+                      {m.devise === "XOF" ? ` · ${formatNombre(n(m.montant))} CFA` : ""}
+                      {m.fraisGnf ? ` · frais ${formatNombre(n(m.fraisGnf))} GNF` : ""}
+                    </div>
+                  </div>
+                  <b className={`mono ${m.type === "AVANCE" ? "" : "text-[var(--pos)]"}`}>
+                    {m.type === "AVANCE" ? "" : "−"}
+                    {formatNombre(n(m.montantGnf))}
+                  </b>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="vide-msg mt-2">
+              Rien n&apos;a encore été remis au chauffeur pour cette mission.
+            </p>
+          )}
+        </div>
 
         {/* ---------- Marchandises ---------- */}
         {/* Un voyage groupe souvent plusieurs marchandises, dans des unités

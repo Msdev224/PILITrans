@@ -338,6 +338,13 @@ export const OBJETS_REMISE = [
   "DIVERS",
 ] as const;
 
+/** Nature d'un mouvement de caisse chauffeur. */
+export const LIBELLE_MOUVEMENT: Record<string, string> = {
+  AVANCE: "Avance",
+  DEPENSE: "Dépense",
+  REMBOURSEMENT: "Remboursement",
+};
+
 export const LIBELLE_MOYEN_PAIEMENT: Record<string, string> = {
   ESPECES: "Espèces",
   ORANGE_MONEY: "Orange Money",

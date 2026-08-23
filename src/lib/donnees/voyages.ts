@@ -1,4 +1,12 @@
-import type { Camion, Chauffeur, Depense, EtapeVoyage, Facture, Voyage } from "@prisma/client";
+import type {
+  Camion,
+  Chauffeur,
+  Depense,
+  EtapeVoyage,
+  Facture,
+  MouvementCaisse,
+  Voyage,
+} from "@prisma/client";
 
 import { consoTroncon, joursEntre, tauxAVide } from "@/lib/calculs";
 import {
@@ -277,6 +285,20 @@ export interface FicheVoyage extends LigneVoyage {
    * réellement en cause.
    */
   lignesEnEcart: LigneVue[];
+  /**
+   * Argent remis au chauffeur pour cette mission, mouvement par mouvement.
+   *
+   * Une mission ne se finance pas en une fois : on remet une somme au départ,
+   * puis on recharge en route — un poste plus cher que prévu, une panne, un
+   * détour. Les mouvements s'ajoutent donc, ils ne se remplacent pas.
+   */
+  avances: MouvementCaisse[];
+  /** Total remis, rechargements compris. */
+  remisGnf: number;
+  /** Part déjà justifiée par des dépenses, ou rendue en reliquat. */
+  justifieGnf: number;
+  /** Ce que le chauffeur détient encore sur cette mission. */
+  resteAJustifierGnf: number;
   /** Contrepartie en argent des retenues de douane, tous articles confondus. */
   prelevementGnf: number;
   /**
@@ -378,7 +400,7 @@ export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Pr
   });
   if (!voyage) return null;
 
-  const [depenses, etapes] = await Promise.all([
+  const [depenses, etapes, avances] = await Promise.all([
     prisma.depense.findMany({ where: { voyageId: id }, orderBy: { date: "asc" } }),
     prisma.etapeVoyage.findMany({
       where: { voyageId: id },
@@ -389,7 +411,23 @@ export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Pr
       },
       orderBy: { ordre: "asc" },
     }),
+    prisma.mouvementCaisse.findMany({ where: { voyageId: id }, orderBy: { date: "asc" } }),
   ]);
+
+  /*
+   * Ce qui a été remis, et ce qu'il en reste à justifier.
+   *
+   * Les avances s'additionnent : recharger en route ajoute une ligne, elle ne
+   * corrige pas la première. Les dépenses payées sur la caisse et le reliquat
+   * rendu viennent en déduction — le solde est ce que le chauffeur détient
+   * encore pour cette mission.
+   */
+  const remisGnf = avances
+    .filter((m) => m.type === "AVANCE")
+    .reduce((total, m) => total + n(m.montantGnf), 0);
+  const justifieGnf = avances
+    .filter((m) => m.type !== "AVANCE")
+    .reduce((total, m) => total + n(m.montantGnf), 0);
 
   // Le code de retrait ne se montre que si l'exploitation l'a demandé dans
   // les Paramètres — pour une démonstration sans SMS réel.
@@ -415,6 +453,10 @@ export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Pr
     lignes: ligne.marchandises,
     lignesEnEcart: lignesEnEcart(ligne.marchandises),
     prelevementGnf: ligne.marchandises.reduce((t, l) => t + l.prelevementGnf, 0),
+    avances,
+    remisGnf,
+    justifieGnf,
+    resteAJustifierGnf: remisGnf - justifieGnf,
     coutComplet: await coutCompletDuVoyage(voyage, ligne),
   };
 }

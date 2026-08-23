@@ -4,13 +4,7 @@ import { useState } from "react";
 
 import { supprimerMouvementCaisse } from "@/actions/caisse";
 import type { MouvementVue } from "@/lib/donnees/equipe";
-import { formatDate, formatDevise } from "@/lib/utils";
-
-const LIBELLE: Record<string, string> = {
-  AVANCE: "Avance",
-  DEPENSE: "Dépense",
-  REMBOURSEMENT: "Remboursement",
-};
+import { formatDate, formatDevise, LIBELLE_MOUVEMENT as LIBELLE } from "@/lib/utils";
 
 /**
  * Historique de caisse d'un chauffeur.
