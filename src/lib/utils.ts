@@ -151,6 +151,7 @@ export const LIBELLE_STATUT_CAMION: Record<string, string> = {
 
 export const LIBELLE_STATUT_VOYAGE: Record<string, string> = {
   PLANIFIE: "Planifié",
+  EN_ROUTE_CHARGEMENT: "En route vers le chargement",
   EN_ATTENTE_CHARGEMENT: "En attente de chargement",
   EN_COURS: "En cours",
   ARRIVE_DESTINATION: "Arrivé à destination",

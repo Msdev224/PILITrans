@@ -29,6 +29,8 @@ import { debutDeJour, n } from "@/lib/utils";
 
 /** Un voyage est « en route » tant qu'il n'est ni terminé ni annulé. */
 export const STATUTS_EN_ROUTE = [
+  // Départ déclaré : le camion roule, il n'est plus disponible.
+  "EN_ROUTE_CHARGEMENT",
   "EN_ATTENTE_CHARGEMENT",
   "EN_COURS",
   "ARRIVE_DESTINATION",

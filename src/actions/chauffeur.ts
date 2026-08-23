@@ -73,7 +73,14 @@ function rafraichir(voyageId: string) {
  * faite avant le départ, que personne ne corrige jamais.
  */
 const SUITE: Partial<Record<StatutVoyage, { statut: StatutVoyage; champDate: string; champKm: string }>> = {
+  // Le départ déclaré par le chauffeur : c'est ici qu'on relève le compteur
+  // de début de mission, seul point où il pouvait encore manquer.
   PLANIFIE: {
+    statut: "EN_ROUTE_CHARGEMENT",
+    champDate: "dateDepart",
+    champKm: "kmDepart",
+  },
+  EN_ROUTE_CHARGEMENT: {
     statut: "EN_ATTENTE_CHARGEMENT",
     champDate: "dateArriveeChargement",
     champKm: "kmArriveeChargement",

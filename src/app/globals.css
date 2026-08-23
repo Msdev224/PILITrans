@@ -2645,6 +2645,48 @@
     border: 1px solid var(--line);
   }
 
+  /* --- Identifiants d'un compte tout juste créé --- */
+  .identifiants {
+    margin: 0 20px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 11px;
+    padding: 12px 14px;
+    background: var(--accent-bg, #f0faf8);
+  }
+  .identifiants h4 {
+    font-size: 12.5px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .identifiants p {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .identifiants dl {
+    display: grid;
+    gap: 6px;
+  }
+  .identifiants dl div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .identifiants dt {
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .identifiants dd {
+    margin: 0;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+  }
+  .identifiants dd.fort {
+    font-weight: 700;
+    font-size: 16px;
+  }
+
   /* --- File des saisies gardées faute de réseau --- */
   .ph-file {
     border: 1px solid var(--line);

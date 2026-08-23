@@ -54,8 +54,11 @@ export function DialogueChauffeur({ indicatifs, chauffeur, declencheur }: {
   const [mode, setMode] = useState(chauffeur?.modeRemuneration ?? "FORFAIT_VOYAGE");
 
   useEffect(() => {
-    if (etat.ok) setOuvert(false);
-  }, [etat.ok]);
+    // Un compte vient d'être créé : la fenêtre reste ouverte pour que le
+    // gérant note le mot de passe. Il n'est stocké nulle part en clair et ne
+    // pourra plus être relu.
+    if (etat.ok && !etat.compte) setOuvert(false);
+  }, [etat.ok, etat.compte]);
 
   useEffect(() => {
     if (etat.valeurs?.modeRemuneration) setMode(etat.valeurs.modeRemuneration);
@@ -160,11 +163,39 @@ export function DialogueChauffeur({ indicatifs, chauffeur, declencheur }: {
             </div>
           </div>
 
+          {etat.compte ? (
+            <div className="identifiants">
+              <h4>Compte créé — à remettre au chauffeur</h4>
+              <p>
+                Ce mot de passe ne s&apos;affichera plus. Note-le maintenant, ou change-le plus tard
+                depuis Configuration → Comptes.
+              </p>
+              <dl>
+                <div>
+                  <dt>Numéro</dt>
+                  <dd className="mono">{etat.compte.telephone}</dd>
+                </div>
+                <div>
+                  <dt>Mot de passe</dt>
+                  <dd className="mono fort">{etat.compte.motDePasse}</dd>
+                </div>
+              </dl>
+            </div>
+          ) : null}
+
           <footer className="modal-pied">
-            <button type="button" className="btn ghost" onClick={() => setOuvert(false)}>
-              Annuler
-            </button>
-            <BoutonEnvoyer edition={edition} />
+            {etat.compte ? (
+              <button type="button" className="btn primary" onClick={() => setOuvert(false)}>
+                J&apos;ai noté le mot de passe
+              </button>
+            ) : (
+              <>
+                <button type="button" className="btn ghost" onClick={() => setOuvert(false)}>
+                  Annuler
+                </button>
+                <BoutonEnvoyer edition={edition} />
+              </>
+            )}
           </footer>
         </form>
       </DialogContent>

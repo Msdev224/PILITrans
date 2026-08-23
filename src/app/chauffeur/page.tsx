@@ -32,7 +32,8 @@ export const metadata = { title: "Espace chauffeur — PILITrans" };
 
 /** Libellé du bouton d'avancement, selon l'état de la mission. */
 const PROCHAINE_ETAPE: Record<string, string> = {
-  PLANIFIE: "Je suis arrivé au chargement",
+  PLANIFIE: "Je pars pour la mission",
+  EN_ROUTE_CHARGEMENT: "Je suis arrivé au chargement",
   EN_ATTENTE_CHARGEMENT: "Chargé — je pars",
   EN_COURS: "Je suis arrivé à destination",
   ARRIVE_DESTINATION: "Début du déchargement",

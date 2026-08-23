@@ -17,7 +17,10 @@ import {
 
 /** Progression normale d'une mission ; `null` = plus rien à avancer. */
 const SUIVANT: Record<string, { statut: string; libelle: string } | null> = {
-  PLANIFIE: { statut: "EN_ATTENTE_CHARGEMENT", libelle: "Marquer arrivé au chargement" },
+  // Le chauffeur déclare normalement lui-même son départ depuis son
+  // téléphone ; le gérant garde la main quand le réseau manque de son côté.
+  PLANIFIE: { statut: "EN_ROUTE_CHARGEMENT", libelle: "Marquer parti" },
+  EN_ROUTE_CHARGEMENT: { statut: "EN_ATTENTE_CHARGEMENT", libelle: "Marquer arrivé au chargement" },
   EN_ATTENTE_CHARGEMENT: { statut: "EN_COURS", libelle: "Marquer chargé et en route" },
   EN_COURS: { statut: "ARRIVE_DESTINATION", libelle: "Marquer arrivé à destination" },
   ARRIVE_DESTINATION: { statut: "EN_DECHARGEMENT", libelle: "Marquer en déchargement" },

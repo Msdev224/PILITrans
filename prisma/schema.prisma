@@ -203,7 +203,7 @@ enum ModeRemuneration {
 model Chauffeur {
   id                   String           @id @default(cuid())
   nom                  String
-  telephone            String?
+  telephone            String?          @unique
   numeroPermis         String?
   categoriePermis      String?          @default("CE")
   permisExpire         DateTime?
@@ -239,6 +239,10 @@ model Chauffeur {
 
 enum StatutVoyage {
   PLANIFIE
+  /// Le chauffeur a déclaré son départ : il roule vers le point de chargement.
+  /// Sans cet état, une mission restait « planifiée » alors que le camion était
+  /// déjà sur la route depuis des heures.
+  EN_ROUTE_CHARGEMENT
   EN_ATTENTE_CHARGEMENT // parti chercher la marchandise, attend le chargement
   EN_COURS
   ARRIVE_DESTINATION // arrivé à destination
@@ -848,7 +852,7 @@ model ReleveTemperature {
 model Client {
   id               String   @id @default(cuid())
   nom              String
-  telephone        String?
+  telephone        String?  @unique
   ville            String? // lieu
   adresse          String?
   email            String?
@@ -988,6 +992,8 @@ model Parametres {
 
   // --- Caisse de l'entreprise ---
   /**
+   * /**
+   * /**
    * /**
    * /**
    * /**

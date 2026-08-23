@@ -1,10 +1,13 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+
 import { ModeRemuneration, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { hacherMotDePasse } from "@/lib/mots-de-passe";
 import { prisma } from "@/lib/prisma";
 import { caseACocher, dateExpirationOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
 
@@ -58,6 +61,14 @@ export interface EtatChauffeurFiche {
   erreur?: string;
   champs?: Record<string, string>;
   valeurs?: Record<string, string>;
+  /**
+   * Identifiants du compte créé avec la fiche, à communiquer au chauffeur.
+   *
+   * Affichés une seule fois : le mot de passe n'est pas conservé en clair, et
+   * ne pourra plus être relu. Le gérant le redonne ou le change depuis
+   * l'écran Comptes.
+   */
+  compte?: { telephone: string; motDePasse: string };
 }
 
 function donnees(saisie: z.infer<typeof schemaChauffeur>) {
@@ -92,9 +103,74 @@ export async function creerChauffeur(
   const saisie = schemaChauffeur.safeParse(Object.fromEntries(donneesForm));
   if (!saisie.success) return erreursFormulaire<EtatChauffeurFiche>(saisie.error, donneesForm);
 
-  await prisma.chauffeur.create({ data: donnees(saisie.data) });
+  const valeurs = donnees(saisie.data);
+
+  /*
+   * Le compte de connexion naît avec la fiche.
+   *
+   * Un chauffeur sans compte ne peut rien saisir depuis la route : la fiche
+   * existe, mais l'espace mobile lui reste fermé. Les créer séparément faisait
+   * systématiquement oublier le second, et le gérant s'en apercevait le jour
+   * où le chauffeur était déjà parti.
+   */
+  const telephone = valeurs.telephone;
+  if (telephone) {
+    const pris = await prisma.utilisateur.findUnique({ where: { telephone } });
+    if (pris) {
+      return {
+        erreur: `Le numéro ${telephone} sert déjà de connexion à « ${pris.nom} ». Un numéro identifie une seule personne.`,
+        champs: { telephone: "Numéro déjà utilisé par un compte" },
+        valeurs: aPlat(donneesForm),
+      };
+    }
+  }
+
+  const motDePasse = telephone ? motDePasseProvisoire() : null;
+
+  await prisma.$transaction(async (tx) => {
+    const cree = await tx.chauffeur.create({ data: valeurs });
+
+    if (telephone && motDePasse) {
+      await tx.utilisateur.create({
+        data: {
+          nom: cree.nom,
+          telephone,
+          role: "CHAUFFEUR",
+          actif: true,
+          motDePasse: await hacherMotDePasse(motDePasse),
+          chauffeurId: cree.id,
+        },
+      });
+    }
+  });
+
   rafraichir();
-  return { ok: true };
+  revalidatePath("/utilisateurs");
+
+  return {
+    ok: true,
+    ...(telephone && motDePasse ? { compte: { telephone, motDePasse } } : {}),
+  };
+}
+
+/** Reprend la saisie telle quelle, pour ne pas la faire retaper après un refus. */
+function aPlat(donnees: FormData): Record<string, string> {
+  const champs: Record<string, string> = {};
+  for (const [cle, valeur] of donnees.entries()) {
+    if (typeof valeur === "string") champs[cle] = valeur;
+  }
+  return champs;
+}
+
+/**
+ * Mot de passe provisoire, montré une seule fois au gérant.
+ *
+ * Assez long pour ne pas se deviner, assez simple pour être dicté au
+ * téléphone : pas de caractère ambigu — ni O ni 0, ni I ni l.
+ */
+function motDePasseProvisoire(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from(randomBytes(10), (o) => alphabet[o % alphabet.length]).join("");
 }
 
 export async function modifierChauffeur(

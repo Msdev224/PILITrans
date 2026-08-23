@@ -123,7 +123,7 @@ export function DialoguePaiement({
           <div className="mb-4 text-[12.5px] text-[var(--muted)]">
             <div className="font-semibold text-[var(--ink)]">{client}</div>
             <div className="mt-2 flex justify-between">
-              <span>Montant facturé</span>
+              <span>Montant convenu</span>
               <b className="mono text-[var(--ink)]">{formatGnf(montantGnf)}</b>
             </div>
             <div className="flex justify-between">
@@ -182,7 +182,7 @@ export function DialoguePaiement({
 
               <div className="form-grid">
                 <div className="field">
-                  <label>Montant</label>
+                  <label>Montant reçu</label>
                   <input
                     name="montant"
                     inputMode="decimal"

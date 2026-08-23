@@ -20,7 +20,6 @@ import {
   IconeFacture,
   IconeParametres,
   IconeTableauDeBord,
-  IconeTelephone,
   IconeTriangle,
   IconeVoyages,
 } from "@/components/icones";
@@ -102,7 +101,14 @@ export function Rail({
       categorie: "Équipe",
       entrees: [
         { libelle: "Chauffeurs", href: "/chauffeurs", icone: <IconeChauffeur />, droit: "equipe.lire" },
-        { libelle: "Espace chauffeur", href: "/chauffeur", icone: <IconeTelephone />, droit: "equipe.ecrire" },
+        /*
+         * L'espace chauffeur n'est plus proposé ici.
+         *
+         * C'est l'écran d'un chauffeur sur son propre téléphone, pas un écran
+         * d'administration : un gérant qui l'ouvrait tombait sur « aucune fiche
+         * chauffeur rattachée à ce compte ». Le chauffeur y arrive directement
+         * à la connexion, et n'a de toute façon pas ce rail.
+         */
       ],
     },
     {

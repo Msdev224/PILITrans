@@ -514,7 +514,7 @@ export interface EtatFroid {
   statut: "CONFORME" | "ALERTE" | "RUPTURE";
 }
 
-const STATUTS_EN_ROUTE = ["EN_ATTENTE_CHARGEMENT", "EN_COURS", "ARRIVE_DESTINATION", "EN_DECHARGEMENT"] as const;
+const STATUTS_EN_ROUTE = ["EN_ROUTE_CHARGEMENT", "EN_ATTENTE_CHARGEMENT", "EN_COURS", "ARRIVE_DESTINATION", "EN_DECHARGEMENT"] as const;
 
 export async function ficheCamion(camionId: string, periode: Periode): Promise<FicheCamion | null> {
   const camion = await prisma.camion.findUnique({ where: { id: camionId } });
