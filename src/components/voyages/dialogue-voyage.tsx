@@ -93,7 +93,6 @@ export interface VoyageEditable {
   vaChercher: boolean;
   /** Marchandises déjà déclarées, avec leur unité. */
   marchandises: LigneEditable[];
-  distanceKm: number | null;
   dateDepart: string;
   aVide: boolean;
   motif: string;
@@ -187,7 +186,6 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
 
   const majLigne = (i: number, champs: Partial<SaisieLigne>) =>
     setLignes((xs) => xs.map((x, j) => (j === i ? { ...x, ...champs } : x)));
-  const [distanceKm, setDistanceKm] = useState(voyage?.distanceKm ? String(voyage.distanceKm) : "");
   // Bennes : une mission = une journée de rotations sur le même trajet.
   const [nbRotations, setNbRotations] = useState(String(voyage?.nbRotations ?? 1));
   const [tarifRotation, setTarifRotation] = useState(
@@ -217,7 +215,6 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
     setRecetteGnf(v.recetteGnf ?? "");
     setAVide(v.aVide === "true");
     setVaChercher(v.vaChercher === "true");
-    setDistanceKm(v.distanceKm ?? "");
     setNbRotations(v.nbRotations ?? "1");
     setTarifRotation(v.tarifRotation ?? "");
   }, [etat.valeurs]);
@@ -363,13 +360,14 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                         type="button"
                         className="link bg-transparent border-0 p-0 font-semibold"
                         onClick={() => {
-                          setDistanceKm(String(suggestion.distanceMoyKm));
+                          // La distance ne se reprend plus : elle se relève sur
+                          // la route. Seul le forfait pratiqué est réutilisable.
                           if (suggestion.recetteMoyGnf && devise === "GNF") {
                             setRecette(String(suggestion.recetteMoyGnf));
                           }
                         }}
                       >
-                        Reprendre ces valeurs
+                        Reprendre ce montant
                       </button>
                     </span>
                   </div>
@@ -402,15 +400,6 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                         Aucun client enregistré : créez-le d&apos;abord depuis l&apos;écran Clients.
                       </span>
                     ) : null}
-                  </Champ>
-
-                  <Champ label="Distance (km)">
-                    <input
-                      name="distanceKm"
-                      inputMode="numeric"
-                      value={distanceKm}
-                      onChange={(e) => setDistanceKm(e.target.value)}
-                    />
                   </Champ>
 
                   <Champ label="Date de départ" erreur={err("dateDepart")}>

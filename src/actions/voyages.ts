@@ -141,7 +141,13 @@ function donneesVoyage(saisie: z.infer<typeof schemaVoyage>) {
     remunererChauffeur: saisie.remunererChauffeur,
     perDiemJournalierGnf: saisie.perDiemJournalierGnf ?? null,
     remunerationChauffeur: saisie.remunerationChauffeur ?? null,
-    distanceKm: saisie.distanceKm != null ? Math.round(saisie.distanceKm) : null,
+    /*
+     * La distance ne figure plus au formulaire : elle se déduit des relevés
+     * de compteur du chauffeur. On ne l'écrit donc que si elle est fournie —
+     * l'écraser à `null` effacerait la distance des missions déjà saisies à
+     * la main, et tous leurs coûts au kilomètre avec.
+     */
+    ...(saisie.distanceKm != null ? { distanceKm: Math.round(saisie.distanceKm) } : {}),
     dateDepart: saisie.dateDepart,
     aVide: saisie.aVide,
     recette,

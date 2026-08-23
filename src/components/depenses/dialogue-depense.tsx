@@ -42,6 +42,7 @@ export interface DepenseEditable {
   releveCompteur: number | null;
   description: string | null;
   categorie: string;
+  imputerAMission: boolean;
   moyen: string;
   reference: string | null;
   date: string;
@@ -85,6 +86,7 @@ export function DialogueDepense({
     depense?.categorie ?? CATEGORIE_PAR_TYPE_DEPENSE["GASOIL_TRACTEUR"],
   );
   const structure = estChargeDeStructure(categorie);
+  const [voyageId, setVoyageId] = useState(depense?.voyageId ?? "");
   const [devise, setDevise] = useState<"GNF" | "XOF">(depense?.devise ?? "GNF");
   const [montant, setMontant] = useState(depense ? String(depense.montant) : "");
   const [montantGnf, setMontantGnf] = useState(depense ? String(depense.montantGnf) : "");
@@ -192,7 +194,12 @@ export function DialogueDepense({
               ) : null}
 
               <Champ label="Voyage rattaché">
-                <select name="voyageId" key={val("voyageId", depense?.voyageId ?? "")} defaultValue={val("voyageId", depense?.voyageId ?? "")}>
+                <select
+                  name="voyageId"
+                  key={val("voyageId", depense?.voyageId ?? "")}
+                  defaultValue={val("voyageId", depense?.voyageId ?? "")}
+                  onChange={(e) => setVoyageId(e.target.value)}
+                >
                   <option value="">— aucun —</option>
                   {voyages.map((v) => (
                     <option key={v.id} value={v.id}>
@@ -201,6 +208,30 @@ export function DialogueDepense({
                   ))}
                 </select>
               </Champ>
+
+              {/* Une charge de véhicule rattachée à une mission sort par
+                  défaut de sa marge : la pièce sert au camion pendant des
+                  mois, pas à cette course. La case permet de l'y remettre
+                  quand la dépense appartient bien au voyage — un pneu crevé
+                  sur la route, par exemple. */}
+              {categorie === "VEHICULE" && voyageId ? (
+                <div className="full">
+                  <label className="flex items-start gap-2 text-[12px] text-[var(--muted)]">
+                    <input
+                      type="checkbox"
+                      name="imputerAMission"
+                      defaultChecked={depense?.imputerAMission ?? false}
+                      className="mt-[2px]"
+                    />
+                    <span>
+                      <b className="text-[var(--ink)]">Imputer cette dépense à la marge de la mission</b>
+                      <br />
+                      Décochée, elle reste rattachée au voyage et visible dans ses postes, mais ne
+                      pèse pas sur sa marge — elle est portée par le camion.
+                    </span>
+                  </label>
+                </div>
+              ) : null}
 
               <Champ
                 label="Camion"

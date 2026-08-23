@@ -8,6 +8,7 @@ import {
   DialogueEcheance,
   type EcheanceEditable,
 } from "@/components/flotte/dialogue-echeance";
+import { BoutonConfirme } from "@/components/bouton-confirme";
 import { IconeCorbeille, IconeCrayon, IconeValider } from "@/components/icones";
 
 export function ActionsEcheance({
@@ -24,11 +25,17 @@ export function ActionsEcheance({
   return (
     <div className="acts">
       {/* Renouveler décale d'un an, à partir d'aujourd'hui si le document est expiré. */}
-      <form action={renouvelerEcheance.bind(null, echeance.id)}>
-        <Bouton titre="Renouveler pour un an">
-          <IconeValider />
-        </Bouton>
-      </form>
+      <BoutonConfirme
+        action={renouvelerEcheance.bind(null, echeance.id)}
+        titre="Renouveler ce document pour un an ?"
+        detail="La date d'expiration est repoussée d'un an — à partir d'aujourd'hui si le document est déjà expiré. À ne faire qu'une fois le renouvellement réellement obtenu."
+        confirmer="Oui, renouveler"
+        declencheur={
+          <button type="button" title="Renouveler pour un an">
+            <IconeValider />
+          </button>
+        }
+      />
 
       <DialogueEcheance
         camions={camions}

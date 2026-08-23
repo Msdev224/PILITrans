@@ -7,6 +7,7 @@ import { dossiersIncomplets, vueDossiers } from "@/lib/donnees/dossiers";
 import { comparerExploitation } from "@/lib/donnees/exploitation";
 import { moisCourant } from "@/lib/periode";
 import { INCLURE_LIGNES, lignesEnEcart, vueLignes } from "@/lib/donnees/marchandises";
+import { tonnageTotal } from "@/lib/unites";
 import { tronconsDesVoyages } from "@/lib/donnees/carburant";
 import { prisma } from "@/lib/prisma";
 import { debutDeJour, formatDecimal, formatGnf, formatNombre, n, nOuNull } from "@/lib/utils";
@@ -263,6 +264,59 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
       titre: `Attente de chargement — ${v.villeDepart} → ${v.villeArrivee}`,
       detail: `${v.camion.nom} attend depuis ${jours} jours sur le point de chargement.`,
       meta: [v.camion.nom, "Voyage", v.reference],
+      camionId: v.camionId,
+      persistee: false,
+    });
+  }
+
+  // --- Surcharge : chargement au-dessus de la charge utile ---
+  /*
+   * Signalée, jamais bloquée.
+   *
+   * Sur le terrain un porteur part régulièrement au-dessus de sa charge
+   * utile ; refuser la saisie ferait sortir la mission de l'application. La
+   * trace sert à discuter d'une amende, d'un pneu ou d'un pont cassé — pas à
+   * empêcher le départ. Elle n'est levée que si la charge utile est connue et
+   * que le chargement se totalise en tonnes.
+   */
+  const charges = await prisma.voyage.findMany({
+    where: {
+      statut: { notIn: ["ANNULE"] },
+      camion: { capaciteTonnes: { not: null } },
+      lignes: { some: {} },
+    },
+    include: { camion: true, lignes: INCLURE_LIGNES },
+  });
+  for (const v of charges) {
+    const capacite = v.camion.capaciteTonnes != null ? Number(v.camion.capaciteTonnes) : null;
+    if (capacite == null || capacite <= 0) continue;
+
+    const lignes = vueLignes(v.lignes);
+    // Ce qui pèse est ce qui est réellement monté : la quantité reçue au
+    // chargement prime sur le prévu, qui n'est qu'une intention.
+    const charge = tonnageTotal(
+      lignes.map((l) => ({
+        quantite: l.quantiteRecue ?? l.quantiteACharger,
+        facteurTonne: l.facteurTonne,
+      })),
+    );
+    // `null` quand une marchandise ne se convertit pas en tonnes : un total
+    // mêlant cartons et palettes ne voudrait rien dire.
+    if (charge == null || charge <= capacite) continue;
+
+    const depassement = charge - capacite;
+    const pct = (depassement / capacite) * 100;
+
+    liste.push({
+      id: `surcharge-${v.id}`,
+      type: "AUTRE",
+      severite: pct >= 20 ? "ATTENTION" : "INFO",
+      categorie: "flotte",
+      lien: `/voyages/${v.id}`,
+      action: "Voir la mission",
+      titre: `Surcharge — ${v.camion.nom}`,
+      detail: `${formatDecimal(charge)} t chargées pour ${formatDecimal(capacite)} t de charge utile, soit ${formatDecimal(depassement)} t au-dessus (${formatDecimal(pct)} %).`,
+      meta: [v.camion.nom, `${v.villeDepart} → ${v.villeArrivee}`, v.reference],
       camionId: v.camionId,
       persistee: false,
     });

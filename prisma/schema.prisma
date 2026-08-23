@@ -132,6 +132,14 @@ model Camion {
   modeleGroupeFroid      String?
   heuresGroupeFroid      Int          @default(0)
   kilometrage            Int          @default(0)
+  /**
+   * Charge utile du véhicule, en tonnes.
+   * Indicative, jamais bloquante : sur le terrain un porteur non frigorifique
+   * part régulièrement au-dessus de sa charge utile. Refuser la saisie
+   * ferait sortir la mission de l'application au lieu de la documenter. Elle
+   * sert à signaler le dépassement, pas à l'empêcher.
+   */
+  capaciteTonnes         Decimal?     @db.Decimal(8, 2)
   // Acquisition & amortissement (coût de possession)
   coutAcquisition        Decimal?     @db.Decimal(16, 2) // prix d'achat du camion (GNF)
   dateAcquisition        DateTime?
@@ -402,6 +410,18 @@ model Voyage {
   dateArriveeDestination DateTime? // arrivé à destination
   dateDechargement       DateTime? // début du débarquement de la marchandise
 
+  /**
+   * Compteur relevé à chaque étape, par le chauffeur.
+   * La distance ne se saisit pas à la création : personne ne la connaît
+   * d'avance, et un chiffre estimé fausserait tous les coûts au kilomètre.
+   * Elle se déduit des relevés — approche au chargement, trajet en charge,
+   * déchargement — qui donnent aussi la distance à vide de chaque segment.
+   */
+  kmArriveeChargement  Int?
+  kmChargement         Int?
+  kmArriveeDestination Int?
+  kmDechargement       Int?
+
   // recette dans la devise réelle + équivalent GNF figé
   recette               Decimal  @default(0) @db.Decimal(14, 2)
   devise                Devise   @default(GNF)
@@ -500,17 +520,26 @@ model Depense {
   reference      String?
   date           DateTime         @default(now())
 
-  voyage      Voyage?      @relation(fields: [voyageId], references: [id])
-  voyageId    String?
-  camion      Camion?      @relation(fields: [camionId], references: [id])
-  camionId    String?
-  etape       EtapeVoyage? @relation(fields: [etapeId], references: [id]) // plein rattaché à une étape
+  voyage          Voyage?      @relation(fields: [voyageId], references: [id])
+  voyageId        String?
+  /**
+   * Cette dépense pèse-t-elle sur la marge de la mission ?
+   * Une réparation engagée pendant un voyage n'est pas un coût de ce
+   * voyage : la pièce sert au camion pendant des mois. L'imputer ferait
+   * plonger la marge d'une mission au hasard de la panne, et laisserait
+   * croire que la ligne n'est pas rentable. Les dépenses de catégorie
+   * véhicule arrivent donc à `false`, sauf indication contraire à la saisie.
+   */
+  imputerAMission Boolean      @default(true)
+  camion          Camion?      @relation(fields: [camionId], references: [id])
+  camionId        String?
+  etape           EtapeVoyage? @relation(fields: [etapeId], references: [id]) // plein rattaché à une étape
   /// Rattachements analytiques facultatifs, pour ventiler au-delà du camion.
-  chauffeur   Chauffeur?   @relation(fields: [chauffeurId], references: [id], onDelete: SetNull)
-  chauffeurId String?
-  client      Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  clientId    String?
-  etapeId     String?
+  chauffeur       Chauffeur?   @relation(fields: [chauffeurId], references: [id], onDelete: SetNull)
+  chauffeurId     String?
+  client          Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId        String?
+  etapeId         String?
 
   // si la dépense a été payée depuis la caisse du chauffeur
   mouvementCaisse MouvementCaisse?
@@ -923,6 +952,8 @@ model Parametres {
 
   // --- Caisse de l'entreprise ---
   /**
+   * /**
+   * /**
    * /**
    * /**
    * Argent déjà détenu au démarrage de l'application.

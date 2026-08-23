@@ -168,13 +168,12 @@ export default async function ImpressionFacturePage({
                 valeur={`${voyage.villeDepart} (${voyage.paysDepart?.code ?? ""}) → ${voyage.villeArrivee} (${voyage.paysArrivee?.code ?? ""})`}
                 route
               />
+              {/* Le client reconnaît sa marchandise par son nom, pas par un
+                  décompte : « 2 articles » ne lui dit rien sur ce qu'il a
+                  confié. Le détail chiffré suit dans le tableau. */}
               <Cellule
-                libelle="Chargement"
-                valeur={
-                  marchandises.length > 0
-                    ? `${marchandises.length} article${marchandises.length > 1 ? "s" : ""}`
-                    : "—"
-                }
+                libelle="Marchandise transportée"
+                valeur={marchandises.length > 0 ? marchandises.map((m) => m.designation).join(" · ") : "—"}
               />
               <Cellule
                 libelle="Camion"
@@ -187,9 +186,6 @@ export default async function ImpressionFacturePage({
                   voyage.dateArriveeDestination ? ` → ${jjmmaaaa(voyage.dateArriveeDestination)}` : ""
                 }`}
               />
-              {voyage.distanceKm ? (
-                <Cellule libelle="Distance" valeur={`${formatNombre(voyage.distanceKm)} km`} />
-              ) : null}
             </div>
           ) : null}
 

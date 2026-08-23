@@ -31,6 +31,7 @@ export interface CamionEditable {
   modeleGroupeFroid: string | null;
   heuresGroupeFroid: number;
   kilometrage: number;
+  capaciteTonnes: number | null;
   coutAcquisition: number | null;
   dateAcquisition: string | null;
   dureeAmortissementMois: number | null;
@@ -156,6 +157,14 @@ export function DialogueCamion({ indicatifs, carrosseries, camion, declencheur }
 
               <Champ label="Compteur (km)">
                 <input name="kilometrage" inputMode="numeric" key={val("kilometrage", num(camion?.kilometrage))} defaultValue={val("kilometrage", num(camion?.kilometrage))} />
+              </Champ>
+
+              {/* Indicative : l'application signale un dépassement, elle ne le
+                  refuse pas. Sur le terrain un porteur part régulièrement
+                  au-dessus, et bloquer la saisie ferait sortir la mission de
+                  l'application au lieu de la documenter. */}
+              <Champ label="Charge utile (t)" aide="Facultative. Sert à signaler une surcharge, jamais à l'interdire.">
+                <input name="capaciteTonnes" inputMode="decimal" key={val("capaciteTonnes", num(camion?.capaciteTonnes))} defaultValue={val("capaciteTonnes", num(camion?.capaciteTonnes))} placeholder="30" />
               </Champ>
 
               <Champ

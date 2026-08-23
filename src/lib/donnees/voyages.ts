@@ -38,6 +38,8 @@ export interface LigneVoyage {
   /** Produits & charges directement imputables à la mission (GNF). */
   recetteGnf: number;
   fraisGnf: number;
+  /** Dépenses saisies sur la mission mais laissées hors de sa marge. */
+  horsMargeGnf: number;
   remunerationGnf: number;
   /** Recette − frais de voyage − rémunération. Sans amortissement : il se
    *  répartit sur le mois du camion, pas sur une mission isolée. */
@@ -102,7 +104,16 @@ function construireLigne(
 ): LigneVoyage {
   const postes = depenses.filter((d) => d.voyageId === voyage.id);
   const recetteGnf = n(voyage.recetteGnf);
-  const fraisGnf = postes.reduce((total, d) => total + n(d.montantGnf), 0);
+  /*
+   * Seules les dépenses imputées pèsent sur la marge de la mission.
+   *
+   * Une réparation engagée pendant le voyage reste visible dans la liste des
+   * postes — il faut pouvoir la retrouver — mais elle appartient au camion,
+   * pas à cette course : la pièce sert des mois durant. L'imputer ferait
+   * plonger la marge d'un voyage au hasard de la panne.
+   */
+  const fraisGnf = postes.reduce((total, d) => (d.imputerAMission ? total + n(d.montantGnf) : total), 0);
+  const horsMargeGnf = postes.reduce((total, d) => (d.imputerAMission ? total : total + n(d.montantGnf)), 0);
   const remunerationGnf = remunerationDuVoyage(voyage);
 
   const joursAttente = voyage.dateArriveeChargement
@@ -117,6 +128,7 @@ function construireLigne(
     chargement: resumeChargement(marchandises),
     recetteGnf,
     fraisGnf,
+    horsMargeGnf,
     remunerationGnf,
     margeGnf: recetteGnf - fraisGnf - remunerationGnf,
     km: kmVoyage(voyage),

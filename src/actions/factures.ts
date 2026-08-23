@@ -305,36 +305,6 @@ export async function supprimerPaiement(paiementId: string) {
   rafraichir(paiement.facture.voyageId);
 }
 
-/** Raccourci « marquer payée » : solde le restant dû en une fois. */
-export async function marquerPayee(id: string) {
-  await droitEcriture();
-
-  const facture = await prisma.facture.findUnique({ where: { id } });
-  if (!facture) throw new Error("Facture introuvable.");
-
-  const paiements = await prisma.paiement.findMany({ where: { factureId: id } });
-  const dejaPaye = paiements.reduce((total, p) => total + Number(p.montantGnf), 0);
-  const reste = Number(facture.montantGnf) - dejaPaye;
-
-  // Solder crée un dernier versement : le total réglé doit toujours se lire
-  // dans l'historique, jamais apparaître sans écriture correspondante.
-  if (reste > 0) {
-    await prisma.paiement.create({
-      data: {
-        factureId: id,
-        montant: reste,
-        devise: "GNF",
-        montantGnf: reste,
-        moyen: "AUTRE",
-        note: "Solde enregistré depuis la liste des factures",
-      },
-    });
-  }
-
-  await recalculerFacture(id);
-  rafraichir(facture.voyageId);
-}
-
 export async function supprimerFacture(id: string) {
   await droitEcriture();
 

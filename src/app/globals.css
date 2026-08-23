@@ -2607,6 +2607,31 @@
     border-top: 1px solid var(--line-soft);
   }
 
+  /* --- Confirmation d'une étape, côté chauffeur --- */
+  .ph-confirme {
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    background: var(--warn-bg);
+  }
+  .ph-confirme p {
+    font-size: 12.5px;
+    margin-bottom: 8px;
+  }
+  .ph-confirme-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .ph-confirme-btns .ph-btn {
+    flex: 1;
+  }
+  .ph-btn.ghost {
+    background: #fff;
+    color: var(--muted);
+    border: 1px solid var(--line);
+  }
+
   /* --- File des saisies gardées faute de réseau --- */
   .ph-file {
     border: 1px solid var(--line);
@@ -2663,6 +2688,41 @@
     margin: 4px 0 8px;
     color: var(--muted);
   }
+  /* --- Encaissement : ce que le versement fait à la facture --- */
+  .recap-paiement {
+    margin-top: 12px;
+    border-radius: 9px;
+    padding: 9px 11px;
+    font-size: 12px;
+    background: var(--warn-bg);
+    color: #8a5d06;
+  }
+  .recap-paiement.ok {
+    background: var(--pos-bg, #eefaf2);
+    color: var(--pos);
+  }
+  .recap-paiement.neg {
+    background: var(--neg-bg, #fff5f5);
+    color: var(--neg);
+  }
+  .confirme-bloc {
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 11px 12px;
+    background: var(--bg-soft, #fafafa);
+  }
+  .confirme-bloc p {
+    font-size: 12.5px;
+    margin-bottom: 9px;
+  }
+  .confirme-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .confirme-btns .btn {
+    flex: 1;
+  }
+
   .ph-deconnexion {
     display: flex;
     align-items: center;

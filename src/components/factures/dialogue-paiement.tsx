@@ -63,11 +63,31 @@ export function DialoguePaiement({
 
   const [montant, setMontant] = useState(String(Math.round(resteGnf)));
   const [devise, setDevise] = useState<"GNF" | "XOF">("GNF");
+  const [confirme, setConfirme] = useState(false);
   const [montantGnfSaisi, setMontantGnfSaisi] = useState("");
 
   useEffect(() => {
     if (etat.ok) setOuvert(false);
   }, [etat.ok]);
+
+  /**
+   * Montant réellement encaissé, en GNF.
+   *
+   * C'est lui qui décide « partiel » ou « soldée », jamais le montant en
+   * devise : un versement en CFA ne se compare pas au reste dû sans passer
+   * par son équivalent réel.
+   */
+  const nombre = (v: string) => {
+    const x = Number(v.replace(/\s/g, "").replace(",", "."));
+    return Number.isFinite(x) && x > 0 ? x : 0;
+  };
+  const montantVerseGnf = devise === "GNF" ? nombre(montant) : nombre(montantGnfSaisi);
+
+  // Toute retouche du montant annule la confirmation : on ne valide jamais un
+  // chiffre différent de celui qu'on a lu.
+  useEffect(() => {
+    setConfirme(false);
+  }, [montant, devise, montantGnfSaisi]);
 
   // En CFA, l'équivalent GNF se pré-remplit au dernier taux connu.
   useEffect(() => {
@@ -219,7 +239,20 @@ export function DialoguePaiement({
                 </div>
               </div>
 
-              <BoutonEnvoyer />
+              {/* Ce que le versement fait à la facture, avant de valider.
+                  Un encaissement ne se défait pas d'un clic : le gérant doit
+                  voir « partiel » ou « soldée » avant, pas après. */}
+              <RecapPaiement montantGnf={montantVerseGnf} resteGnf={resteGnf} />
+
+              {etat.erreur ? <p className="lg-error mt-2">{etat.erreur}</p> : null}
+
+              <BoutonEnvoyer
+                resteApres={resteGnf - montantVerseGnf}
+                montantGnf={montantVerseGnf}
+                confirme={confirme}
+                demander={() => setConfirme(true)}
+                annuler={() => setConfirme(false)}
+              />
             </form>
           ) : (
             <p className="vide-msg">Facture soldée — tous les versements ont été encaissés.</p>
@@ -236,11 +269,88 @@ export function DialoguePaiement({
   );
 }
 
-function BoutonEnvoyer() {
+/** Effet du versement en cours de saisie, en clair. */
+function RecapPaiement({ montantGnf, resteGnf }: { montantGnf: number; resteGnf: number }) {
+  if (montantGnf <= 0) return null;
+
+  const apres = Math.round(resteGnf - montantGnf);
+  // Un franc d'écart vient d'un arrondi de conversion, pas d'un impayé.
+  const solde = apres <= 1;
+  const trop = apres < -1;
+
+  return (
+    <div className={`recap-paiement ${trop ? "neg" : solde ? "ok" : ""}`}>
+      {trop ? (
+        <>
+          Le versement dépasse le reste à régler de <b>{formatGnf(Math.abs(apres))}</b>.
+        </>
+      ) : solde ? (
+        <>
+          Cette facture sera <b>soldée</b> : {formatGnf(montantGnf)} encaissés, plus rien à régler.
+        </>
+      ) : (
+        <>
+          <b>Paiement partiel</b> : {formatGnf(montantGnf)} encaissés, il restera{" "}
+          <b>{formatGnf(apres)}</b> à régler.
+        </>
+      )}
+    </div>
+  );
+}
+
+function BoutonEnvoyer({
+  resteApres,
+  montantGnf,
+  confirme,
+  demander,
+  annuler,
+}: {
+  resteApres: number;
+  montantGnf: number;
+  confirme: boolean;
+  demander: () => void;
+  annuler: () => void;
+}) {
+  const { pending } = useFormStatus();
+
+  // Rien de saisi : inutile de proposer une confirmation.
+  if (montantGnf <= 0) {
+    return (
+      <button type="button" className="btn primary mt-3 w-full" disabled>
+        Enregistrer le versement
+      </button>
+    );
+  }
+
+  if (!confirme) {
+    return (
+      <button type="button" className="btn primary mt-3 w-full" onClick={demander}>
+        Enregistrer le versement
+      </button>
+    );
+  }
+
+  return (
+    <div className="confirme-bloc mt-3">
+      <p>
+        Confirmer l&apos;encaissement de <b>{formatGnf(montantGnf)}</b> ?{" "}
+        {Math.round(resteApres) <= 1 ? "La facture sera soldée." : `Il restera ${formatGnf(Math.round(resteApres))}.`}
+      </p>
+      <div className="confirme-btns">
+        <button type="button" className="btn ghost" onClick={annuler} disabled={pending}>
+          Annuler
+        </button>
+        <BoutonValider />
+      </div>
+    </div>
+  );
+}
+
+function BoutonValider() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="btn primary full mt-3">
-      {pending ? "Enregistrement…" : "Enregistrer le versement"}
+    <button type="submit" className="btn primary" disabled={pending}>
+      {pending ? "Enregistrement…" : "Oui, encaisser"}
     </button>
   );
 }

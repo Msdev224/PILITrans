@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { marquerPayee, relancerParSms, supprimerFacture } from "@/actions/factures";
+import { relancerParSms, supprimerFacture } from "@/actions/factures";
+import { BoutonConfirme } from "@/components/bouton-confirme";
 import {
   DialogueFacture,
   type FactureEditable,
@@ -75,25 +76,28 @@ export function ActionsFacture({
           }
         />
 
-      {/* Raccourci « marquer payée » : solde le restant dû en une écriture.
-          Masqué dès que la facture est soldée — proposer une action sans effet
-          revient à laisser croire qu'il reste quelque chose à faire. */}
-      {!soldee ? (
-        <form action={marquerPayee.bind(null, facture.id)}>
-          <button type="submit" title={`Marquer payée — solder ${numero}`}>
-            <IconeValider />
-          </button>
-        </form>
-      ) : null}
+      {/* Il n'y a plus de raccourci « marquer payée ».
+          Il soldait la facture en un clic, sans moyen de paiement ni date, et
+          sans rien montrer avant : un encaissement inexistant se glissait dans
+          les comptes sur une erreur de bouton. Tout règlement passe désormais
+          par le dialogue ci-dessus, qui demande le montant, le moyen, et fait
+          confirmer — en annonçant si la facture sera soldée ou partiellement
+          réglée. */}
 
       {/* Relance manuelle : elle s'envoie au bon moment, choisi par le gérant,
           et seulement sur une facture réellement en retard. */}
       {enRetard ? (
-        <form action={relancerParSms.bind(null, facture.id)}>
-          <button type="submit" title={`Relancer ${client} par SMS`}>
-            <IconeCloche width={14} height={14} />
-          </button>
-        </form>
+        <BoutonConfirme
+          action={relancerParSms.bind(null, facture.id)}
+          titre={`Relancer ${client} par SMS ?`}
+          detail={`Un message part maintenant sur le numéro du client pour la facture ${numero}. Un SMS envoyé ne se rappelle pas.`}
+          confirmer="Oui, envoyer"
+          declencheur={
+            <button type="button" title={`Relancer ${client} par SMS`}>
+              <IconeCloche width={14} height={14} />
+            </button>
+          }
+        />
       ) : null}
 
       <Link

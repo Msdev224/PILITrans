@@ -1,5 +1,6 @@
 "use client";
 
+import { BoutonConfirme } from "@/components/bouton-confirme";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -55,11 +56,17 @@ export function ActionsCodeLivraison({
 
       {/* Après trop d'essais ratés, seul un code neuf débloque la situation. */}
       {bloque ? (
-        <form action={reinitialiserCode.bind(null, ligneId)}>
-          <button type="submit" className="btn ghost sm" title={`Nouveau code pour ${designation}`}>
-            Nouveau code
-          </button>
-        </form>
+        <BoutonConfirme
+          action={reinitialiserCode.bind(null, ligneId)}
+          titre={`Générer un nouveau code pour ${designation} ?`}
+          detail="L'ancien code cesse aussitôt de fonctionner. Le client devra recevoir le nouveau avant que le chauffeur puisse livrer."
+          confirmer="Oui, nouveau code"
+          declencheur={
+            <button type="button" className="btn ghost sm" title={`Nouveau code pour ${designation}`}>
+              Nouveau code
+            </button>
+          }
+        />
       ) : null}
 
       {etat.erreur ? <p className="text-[11.5px] text-[var(--neg)]">{etat.erreur}</p> : null}

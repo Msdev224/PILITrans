@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { changerStatutVoyage, supprimerVoyage } from "@/actions/voyages";
+import { BoutonConfirme } from "@/components/bouton-confirme";
 import { IconeCorbeille, IconeCrayon, IconeValider } from "@/components/icones";
 import {
   DialogueVoyage,
@@ -52,15 +53,23 @@ export function ActionsVoyage({
 
   return (
     <div className="acts">
-      {/* Les mutations passent par un <form> : une soumission = une exécution.
-          Avec startTransition, le rafraîchissement déclenché par revalidatePath
-          rejouait l'action et la mission sautait plusieurs états d'un coup. */}
+      {/* Faire avancer une mission se confirme : l'état change pour tout le
+          monde et peut déclencher un SMS au client. La confirmation ferme
+          aussi la porte au double envoi — avec startTransition, le
+          rafraîchissement de revalidatePath rejouait l'action et la mission
+          sautait plusieurs états d'un coup. */}
       {suivant ? (
-        <form action={changerStatutVoyage.bind(null, voyage.id, suivant.statut as never)}>
-          <BoutonAction titre={suivant.libelle}>
-            <IconeValider />
-          </BoutonAction>
-        </form>
+        <BoutonConfirme
+          action={changerStatutVoyage.bind(null, voyage.id, suivant.statut as never)}
+          titre={`${suivant.libelle} ?`}
+          detail="L'état de la mission change pour tout le monde, le chauffeur compris, et le client peut en être averti par SMS. Il n'y a pas de retour en arrière."
+          confirmer="Oui, faire avancer"
+          declencheur={
+            <button type="button" title={suivant.libelle}>
+              <IconeValider />
+            </button>
+          }
+        />
       ) : null}
 
       <DialogueVoyage

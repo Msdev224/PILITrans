@@ -38,6 +38,32 @@ const PROCHAINE_ETAPE: Record<string, string> = {
   EN_DECHARGEMENT: "Mission terminée",
 };
 
+/**
+ * Dernier compteur relevé sur la mission.
+ *
+ * Sert de plancher à la saisie suivante : un compteur ne recule pas, et une
+ * valeur en dessous donnerait une distance négative sur le segment.
+ */
+function dernierCompteur(v: {
+  kmDepart: number | null;
+  kmArriveeChargement: number | null;
+  kmChargement: number | null;
+  kmArriveeDestination: number | null;
+  kmDechargement: number | null;
+  kmArrivee: number | null;
+}): number | null {
+  return (
+    [
+      v.kmArrivee,
+      v.kmDechargement,
+      v.kmArriveeDestination,
+      v.kmChargement,
+      v.kmArriveeChargement,
+      v.kmDepart,
+    ].find((km) => km != null) ?? null
+  );
+}
+
 export default async function EspaceChauffeurPage() {
   const session = await sessionRequise();
 
@@ -199,7 +225,11 @@ export default async function EspaceChauffeurPage() {
               </div>
 
               {PROCHAINE_ETAPE[mission.statut] ? (
-                <BoutonAvancer voyageId={mission.id} libelle={PROCHAINE_ETAPE[mission.statut]} />
+                <BoutonAvancer
+                  voyageId={mission.id}
+                  libelle={PROCHAINE_ETAPE[mission.statut]}
+                  dernierKm={dernierCompteur(mission)}
+                />
               ) : null}
             </div>
 
@@ -334,7 +364,11 @@ export default async function EspaceChauffeurPage() {
               {prochaine.villeDepart} → {prochaine.villeArrivee}
             </div>
             <p className="ph-aide">Départ prévu le {formatDate(prochaine.dateDepart)}.</p>
-            <BoutonAvancer voyageId={prochaine.id} libelle="Je suis arrivé au chargement" />
+            <BoutonAvancer
+              voyageId={prochaine.id}
+              libelle="Je suis arrivé au chargement"
+              dernierKm={dernierCompteur(prochaine)}
+            />
           </div>
         ) : (
           <div className="ph-card">

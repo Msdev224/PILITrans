@@ -8,7 +8,7 @@ import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { estChargeDeStructure } from "@/lib/utils";
-import { dateBornee, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
+import { caseACocher, dateBornee, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -40,6 +40,14 @@ const schemaDepense = z
     /** Comment la dépense a été réglée : à retrouver dans un relevé. */
     /** Étage de la charge : mission, véhicule, administratif, général. */
     categorie: z.nativeEnum(CategorieDepense).default("DIRECTE"),
+    /**
+     * Compter cette dépense dans la marge de la mission ?
+     *
+     * Cochée seulement pour une charge de véhicule qu'on veut malgré tout
+     * imputer au voyage — un pneu crevé sur la route, par exemple, dont le
+     * coût appartient bien à cette course-là.
+     */
+    imputerAMission: caseACocher,
     /** Ventilations analytiques facultatives. */
     chauffeurId: texteOptionnel,
     clientId: texteOptionnel,
@@ -103,6 +111,13 @@ async function donneesDepense(saisie: z.infer<typeof schemaDepense>) {
     voyageId: saisie.voyageId || null,
     camionId,
     categorie: saisie.categorie,
+    /*
+     * Une réparation engagée pendant une mission n'est pas un coût de cette
+     * mission : la pièce sert au camion pendant des mois. L'imputer ferait
+     * plonger la marge d'un voyage au hasard de la panne. Les charges de
+     * véhicule sortent donc de la marge de mission, sauf case cochée.
+     */
+    imputerAMission: saisie.categorie === "VEHICULE" ? saisie.imputerAMission : true,
     chauffeurId: saisie.chauffeurId || null,
     clientId: saisie.clientId || null,
     moyen: saisie.moyen,

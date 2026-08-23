@@ -42,17 +42,78 @@ function Bouton({ libelle, enCours }: { libelle: string; enCours: string }) {
 }
 
 /** Bouton d'avancement de mission — une soumission = un cran. */
-export function BoutonAvancer({ voyageId, libelle }: { voyageId: string; libelle: string }) {
+export function BoutonAvancer({
+  voyageId,
+  libelle,
+  dernierKm,
+}: {
+  voyageId: string;
+  libelle: string;
+  /** Dernier compteur connu sur la mission — plancher de la saisie. */
+  dernierKm: number | null;
+}) {
   const lancer = useCallback((d: FormData) => avancerMission(voyageId, d), [voyageId]);
   const [etat, envoyer] = useActionDifferee(lancer, "avancerMission", `Étape — ${libelle}`);
+  const [compteur, setCompteur] = useState("");
+  const [confirme, setConfirme] = useState(false);
+
+  useEffect(() => {
+    if (etat.ok) {
+      setCompteur("");
+      setConfirme(false);
+    }
+  }, [etat.ok]);
+
+  const valeur = Number(compteur.replace(/\s/g, "").replace(",", "."));
+  const recule = compteur !== "" && Number.isFinite(valeur) && dernierKm != null && valeur < dernierKm;
 
   return (
-    <form action={envoyer}>
+    <form action={envoyer} onSubmit={() => setConfirme(false)}>
       {/* Sert au rejeu : la file doit savoir de quelle mission il s'agit. */}
       <input type="hidden" name="voyageId" value={voyageId} />
+
+      {/* Le compteur à chaque étape remplace la distance saisie au départ :
+          c'est lui qui donne les kilomètres réels, à vide comme en charge. */}
+      <div className="ph-champ">
+        <span>Compteur (km)</span>
+        <input
+          name="compteur"
+          inputMode="numeric"
+          value={compteur}
+          onChange={(e) => setCompteur(e.target.value)}
+          placeholder={dernierKm != null ? String(dernierKm) : "128400"}
+          aria-label="Relevé du compteur en kilomètres"
+        />
+      </div>
+      {recule ? (
+        <p className="ph-erreur">
+          Le compteur ne peut pas être inférieur au dernier relevé ({formatNombre(dernierKm)} km).
+        </p>
+      ) : null}
+
       <Garde differe={etat.differe} texte="" />
       {etat.erreur ? <p className="ph-erreur">{etat.erreur}</p> : null}
-      <Bouton libelle={libelle} enCours="Envoi…" />
+
+      {/* Une étape ne se défait pas : elle prévient le gérant et le client.
+          On demande donc une confirmation avant de la franchir. */}
+      {confirme ? (
+        <div className="ph-confirme">
+          <p>
+            {libelle} — confirmer ?
+            {compteur !== "" && !recule ? ` Compteur ${formatNombre(valeur)} km.` : " Sans relevé de compteur."}
+          </p>
+          <div className="ph-confirme-btns">
+            <button type="button" className="ph-btn ghost" onClick={() => setConfirme(false)}>
+              Annuler
+            </button>
+            <Bouton libelle="Oui, confirmer" enCours="Envoi…" />
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="ph-btn" onClick={() => setConfirme(true)} disabled={recule}>
+          {libelle}
+        </button>
+      )}
     </form>
   );
 }
@@ -473,9 +534,12 @@ export function FormulaireArret({
         <span>Motif</span>
         <input name="motif" aria-label="Motif" />
       </div>
+      {/* Obligatoire : c'est le relevé de chaque arrêt qui découpe le trajet
+          en segments. Sans lui, on sait qu'il y a eu un arrêt mais pas où,
+          et les kilomètres à vide ne se distinguent plus de ceux en charge. */}
       <div className="ph-champ">
         <span>Compteur (km)</span>
-        <input name="kmDepart" inputMode="numeric" aria-label="Compteur en km" />
+        <input name="kmDepart" inputMode="numeric" required aria-label="Compteur en km" />
       </div>
       <div className="ph-champ">
         <span>Réservoir (L)</span>

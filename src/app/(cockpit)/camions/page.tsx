@@ -10,7 +10,7 @@ import { pnlFlotte } from "@/lib/donnees/camions";
 import { moisCourant } from "@/lib/periode";
 import { indicatifsPays } from "@/lib/donnees/pays";
 import { prisma } from "@/lib/prisma";
-import { LIBELLE_CARROSSERIE, LIBELLE_STATUT_CAMION, LIBELLE_TYPE_VEHICULE, carrosseriesDisponibles, formatSigne, n } from "@/lib/utils";
+import { LIBELLE_CARROSSERIE, LIBELLE_STATUT_CAMION, LIBELLE_TYPE_VEHICULE, carrosseriesDisponibles, formatSigne, n, nOuNull } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
@@ -182,6 +182,7 @@ function aplatir(camion: {
   modeleGroupeFroid: string | null;
   heuresGroupeFroid: number;
   kilometrage: number;
+  capaciteTonnes: unknown;
   coutAcquisition: unknown;
   dateAcquisition: Date | null;
   dureeAmortissementMois: number | null;
@@ -203,6 +204,7 @@ function aplatir(camion: {
     modeleGroupeFroid: camion.modeleGroupeFroid,
     heuresGroupeFroid: camion.heuresGroupeFroid,
     kilometrage: camion.kilometrage,
+    capaciteTonnes: nOuNull(camion.capaciteTonnes as Parameters<typeof nOuNull>[0]) ?? null,
     coutAcquisition: camion.coutAcquisition != null ? n(camion.coutAcquisition as never) : null,
     dateAcquisition: camion.dateAcquisition ? camion.dateAcquisition.toISOString().slice(0, 10) : null,
     dureeAmortissementMois: camion.dureeAmortissementMois,

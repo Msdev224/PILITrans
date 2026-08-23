@@ -397,7 +397,6 @@ function aplatir(ligne: LigneVoyage): VoyageEditable {
       quantiteACharger: m.quantiteACharger,
       clientId: m.clientId,
     })),
-    distanceKm: voyage.distanceKm,
     dateDepart: voyage.dateDepart.toISOString().slice(0, 10),
     aVide: voyage.aVide,
     motif: voyage.motif,

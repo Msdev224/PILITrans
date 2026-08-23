@@ -9,6 +9,7 @@ import {
   type OptionCamionReparation,
   type ReparationEditable,
 } from "@/components/camions/dialogue-reparation";
+import { BoutonConfirme } from "@/components/bouton-confirme";
 import { IconeCorbeille, IconeCrayon, IconeValider } from "@/components/icones";
 
 export function ActionsReparation({
@@ -30,11 +31,17 @@ export function ActionsReparation({
   return (
     <div className="acts">
       {reparation.statut !== "TERMINEE" ? (
-        <form action={cloreReparation.bind(null, reparation.id)}>
-          <Bouton titre="Marquer terminée">
-            <IconeValider />
-          </Bouton>
-        </form>
+        <BoutonConfirme
+          action={cloreReparation.bind(null, reparation.id)}
+          titre="Marquer cette réparation terminée ?"
+          detail={`« ${reparation.description} » passera en terminée et le camion redeviendra disponible s'il n'a pas d'autre immobilisation en cours.`}
+          confirmer="Oui, terminée"
+          declencheur={
+            <button type="button" title="Marquer terminée">
+              <IconeValider />
+            </button>
+          }
+        />
       ) : null}
 
       <DialogueReparation

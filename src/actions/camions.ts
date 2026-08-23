@@ -56,6 +56,7 @@ const schemaCamion = z
     modeleGroupeFroid: z.string().trim().optional(),
     heuresGroupeFroid: nombreOptionnel,
     kilometrage: nombreOptionnel,
+    capaciteTonnes: nombreOptionnel,
     coutAcquisition: nombreOptionnel,
     dateAcquisition: dateOptionnelle,
     dureeAmortissementMois: nombreOptionnel,
@@ -99,6 +100,7 @@ function donneesCamion(saisie: z.infer<typeof schemaCamion>) {
     modeleGroupeFroid: froid ? saisie.modeleGroupeFroid || null : null,
     heuresGroupeFroid: froid ? Math.round(saisie.heuresGroupeFroid ?? 0) : 0,
     kilometrage: Math.round(saisie.kilometrage ?? 0),
+    capaciteTonnes: saisie.capaciteTonnes ?? null,
     coutAcquisition: saisie.coutAcquisition ?? null,
     dateAcquisition: saisie.dateAcquisition ?? null,
     dureeAmortissementMois:

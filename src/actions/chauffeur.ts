@@ -64,13 +64,53 @@ function rafraichir(voyageId: string) {
 //  Avancement de la mission
 // ------------------------------------------------------------
 
-const SUITE: Partial<Record<StatutVoyage, { statut: StatutVoyage; champDate: string }>> = {
-  PLANIFIE: { statut: "EN_ATTENTE_CHARGEMENT", champDate: "dateArriveeChargement" },
-  EN_ATTENTE_CHARGEMENT: { statut: "EN_COURS", champDate: "dateChargement" },
-  EN_COURS: { statut: "ARRIVE_DESTINATION", champDate: "dateArriveeDestination" },
-  ARRIVE_DESTINATION: { statut: "EN_DECHARGEMENT", champDate: "dateDechargement" },
-  EN_DECHARGEMENT: { statut: "TERMINE", champDate: "dateArrivee" },
+/**
+ * Chaque cran de la mission pose une date ET un relevé de compteur.
+ *
+ * Le compteur à chaque étape est ce qui remplace la distance saisie à la
+ * création : approche à vide jusqu'au chargement, trajet en charge,
+ * déchargement. Sans lui, le coût au kilomètre reposerait sur une estimation
+ * faite avant le départ, que personne ne corrige jamais.
+ */
+const SUITE: Partial<Record<StatutVoyage, { statut: StatutVoyage; champDate: string; champKm: string }>> = {
+  PLANIFIE: {
+    statut: "EN_ATTENTE_CHARGEMENT",
+    champDate: "dateArriveeChargement",
+    champKm: "kmArriveeChargement",
+  },
+  EN_ATTENTE_CHARGEMENT: { statut: "EN_COURS", champDate: "dateChargement", champKm: "kmChargement" },
+  EN_COURS: {
+    statut: "ARRIVE_DESTINATION",
+    champDate: "dateArriveeDestination",
+    champKm: "kmArriveeDestination",
+  },
+  ARRIVE_DESTINATION: {
+    statut: "EN_DECHARGEMENT",
+    champDate: "dateDechargement",
+    champKm: "kmDechargement",
+  },
+  EN_DECHARGEMENT: { statut: "TERMINE", champDate: "dateArrivee", champKm: "kmArrivee" },
 };
+
+/**
+ * Relevé de compteur envoyé avec le cran d'étape.
+ *
+ * Un compteur ne recule pas. Une valeur inférieure au dernier relevé connu
+ * est une faute de frappe : la retenir donnerait une distance négative, donc
+ * un coût au kilomètre absurde sur toute la période. On la refuse plutôt que
+ * de bloquer le chauffeur — l'étape passe, le relevé est ignoré.
+ */
+function compteurValide(donnees: FormData | undefined, plancher: number | null): number | null {
+  const brut = donnees?.get("compteur");
+  if (typeof brut !== "string" || brut.trim() === "") return null;
+
+  const valeur = Number(brut.replace(/\s/g, "").replace(",", "."));
+  if (!Number.isFinite(valeur) || valeur <= 0) return null;
+
+  const arrondi = Math.round(valeur);
+  if (plancher != null && arrondi < plancher) return null;
+  return arrondi;
+}
 
 export async function avancerMission(voyageId: string, donnees?: FormData) {
   const { voyage } = await missionDuChauffeur(voyageId);
@@ -81,11 +121,22 @@ export async function avancerMission(voyageId: string, donnees?: FormData) {
   const champ = suite.champDate as keyof typeof voyage;
   const dejaPosee = voyage[champ] != null;
 
+  // Le compteur ne peut pas être inférieur au dernier relevé de la mission.
+  const dernierKm = [
+    voyage.kmDechargement,
+    voyage.kmArriveeDestination,
+    voyage.kmChargement,
+    voyage.kmArriveeChargement,
+    voyage.kmDepart,
+  ].find((v) => v != null);
+  const compteur = compteurValide(donnees, dernierKm ?? null);
+
   await prisma.voyage.update({
     where: { id: voyageId },
     data: {
       statut: suite.statut,
       ...(dejaPosee ? {} : { [suite.champDate]: quand(donnees) }),
+      ...(compteur != null ? { [suite.champKm]: compteur } : {}),
     },
   });
 
@@ -208,7 +259,9 @@ const schemaArret = z.object({
   villeDepart: z.string().trim().min(1, "Ville de départ requise"),
   villeArrivee: z.string().trim().min(1, "Destination requise"),
   motif: texteOptionnel,
-  kmDepart: nombreOptionnel,
+  // Le compteur fait l'arrêt : sans relevé, on ne sait pas où le trajet s'est
+  // coupé, et les kilomètres à vide ne se séparent plus de ceux en charge.
+  kmDepart: nombrePositif("Relevé du compteur requis"),
   carburantRestantDepart: nombreOptionnel,
   changementDestination: z.preprocess((v) => v === "true" || v === "on", z.boolean()),
 });
