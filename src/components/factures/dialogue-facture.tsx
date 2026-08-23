@@ -83,13 +83,14 @@ export function DialogueFacture({
   const [devise, setDevise] = useState<"GNF" | "XOF">(facture?.devise ?? "GNF");
   const [montant, setMontant] = useState(facture ? String(facture.montant) : "");
   const [montantGnf, setMontantGnf] = useState(facture ? String(facture.montantGnf) : "");
+  const [montantRecu, setMontantRecu] = useState("");
   const [confirme, setConfirme] = useState(false);
 
   // Toute retouche annule la confirmation : on ne valide jamais un montant
   // différent de celui qu'on vient de lire.
   useEffect(() => {
     setConfirme(false);
-  }, [montant, montantGnf, devise, clientId, voyageId]);
+  }, [montant, montantGnf, devise, clientId, voyageId, montantRecu]);
 
   /** Nom du destinataire, pour que la confirmation dise à qui la facture part. */
   const nomClient = clients.find((c) => c.id === clientId)?.nom ?? null;
@@ -219,35 +220,55 @@ export function DialogueFacture({
               ) : null}
 
               <div className="full">
-                <Champ label="Client" erreur={err("clientId")}>
-                  <select
-                    name="clientId"
-                    required
-                    key={clientId}
-                    defaultValue={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                  >
-                    <option value="" disabled>
-                      Choisir…
-                    </option>
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nom}
+                {/* Le client vient de la mission : le changer ici ferait partir
+                    la facture chez quelqu'un qui n'a rien commandé, et la
+                    mission resterait rattachée à l'autre. Champ caché plutôt
+                    que liste désactivée — un champ désactivé n'est pas envoyé. */}
+                {voyageVerrouille ? (
+                  <Champ label="Client" aide="Repris de la mission.">
+                    <input type="hidden" name="clientId" value={clientId} />
+                    <div className="valeur-figee">{nomClient ?? "—"}</div>
+                  </Champ>
+                ) : (
+                  <Champ label="Client" erreur={err("clientId")}>
+                    <select
+                      name="clientId"
+                      required
+                      key={clientId}
+                      defaultValue={clientId}
+                      onChange={(e) => setClientId(e.target.value)}
+                    >
+                      <option value="" disabled>
+                        Choisir…
                       </option>
-                    ))}
-                  </select>
-                </Champ>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nom}
+                        </option>
+                      ))}
+                    </select>
+                  </Champ>
+                )}
               </div>
 
-              <Champ label="Montant" erreur={err("montant")}>
-                <ChampMontant
+              {voyageVerrouille ? (
+                <Champ label="Montant convenu" aide="Le forfait de la mission. Il ne se retouche pas ici.">
+                  <input type="hidden" name="montant" value={montant} />
+                  <div className="valeur-figee mono">
+                    {formatNombre(Number(montant) || 0)} {devise === "XOF" ? "CFA" : "GNF"}
+                  </div>
+                </Champ>
+              ) : (
+                <Champ label="Montant convenu" erreur={err("montant")}>
+                  <ChampMontant
                     nom="montant"
                     valeur={montant}
                     devise={devise}
                     requis
                     onChange={setMontant}
                   />
-              </Champ>
+                </Champ>
+              )}
 
               <Champ label="Devise">
                 {/* `key` : voir dialogue-voyage.tsx (select contrôlé désynchronisé). */}
@@ -274,6 +295,25 @@ export function DialogueFacture({
               ) : (
                 <input type="hidden" name="montantGnf" value={montant} />
               )}
+
+              {/* Ce qui a réellement été encaissé à l'émission.
+                  Une course se règle souvent en partie à la livraison : sans ce
+                  champ, il fallait créer la facture puis rouvrir le règlement,
+                  et cette seconde étape s'oubliait. Laisser à zéro si rien
+                  n'a été reçu. */}
+              {!edition ? (
+                <Champ
+                  label="Montant reçu"
+                  aide="Laisser vide si le client n'a rien versé pour l'instant."
+                >
+                  <ChampMontant
+                    nom="montantRecu"
+                    valeur={montantRecu}
+                    devise={devise}
+                    onChange={setMontantRecu}
+                  />
+                </Champ>
+              ) : null}
 
               <Champ
                 label="Échéance"
@@ -343,6 +383,11 @@ export function DialogueFacture({
                   <>
                     {" "}
                     pour <b>{nomClient}</b>
+                  </>
+                ) : null}
+                {Number(montantRecu) > 0 ? (
+                  <>
+                    , dont <b>{formatNombre(Number(montantRecu))}</b> déjà reçus
                   </>
                 ) : null}
                 &nbsp;?

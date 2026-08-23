@@ -2645,6 +2645,19 @@
     border: 1px solid var(--line);
   }
 
+  /* --- Valeur reprise d'ailleurs, non modifiable ici --- */
+  .valeur-figee {
+    padding: 9px 11px;
+    border: 1px solid var(--line-soft);
+    border-radius: 9px;
+    background: var(--bg-soft, #fafafa);
+    color: var(--ink);
+    font-size: 13px;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+  }
+
   /* --- Identifiants d'un compte tout juste créé --- */
   .identifiants {
     margin: 0 20px 16px;

@@ -23,6 +23,8 @@ const schemaFacture = z
     clientId: z.string().min(1, "Client requis"),
     voyageId: texteOptionnel,
     montant: nombrePositif("Montant requis"),
+  /** Ce que le client a déjà versé au moment d'émettre. */
+  montantRecu: nombreOptionnel,
     devise: z.nativeEnum(Devise),
     /** Équivalent GNF au taux réel — figé, jamais recalculé. */
     montantGnf: nombreOptionnel,
@@ -146,6 +148,52 @@ export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promi
       tauxPenaliteRetard: saisie.data.tauxPenaliteRetard ?? null,
       afficherEquivalentCfa: saisie.data.afficherEquivalentCfa,
     },
+  });
+
+  /*
+   * Ce qui a déjà été encaissé au moment d'émettre.
+   *
+   * Une course se règle souvent en partie à la livraison. Sans cette saisie,
+   * il fallait créer la facture puis rouvrir le règlement — et cette seconde
+   * étape s'oubliait, laissant une créance qui n'existait pas.
+   */
+  const recu = saisie.data.montantRecu ?? 0;
+  if (recu > 0) {
+    const recuGnf =
+      saisie.data.devise === "GNF" ? recu : Math.round(recu * (montantGnf / saisie.data.montant));
+
+    // Encaisser plus que le montant convenu n'a pas de sens : on plafonne
+    // plutôt que de refuser, la facture est déjà écrite.
+    const plafonne = Math.min(recuGnf, montantGnf);
+
+    await prisma.paiement.create({
+      data: {
+        factureId: creee.id,
+        montant: saisie.data.devise === "GNF" ? plafonne : recu,
+        devise: saisie.data.devise,
+        montantGnf: plafonne,
+        date: dateEmission,
+        moyen: "ESPECES",
+        note: "Reçu à l'émission de la facture",
+      },
+    });
+    await recalculerFacture(creee.id);
+
+    await journaliser({
+      action: "facture.paiement.enregistre",
+      objet: "Facture",
+      objetId: creee.id,
+      libelle: `Règlement de ${formatNombre(plafonne)} GNF reçu à l'émission de ${numero}`,
+      montantGnf: plafonne,
+    });
+  }
+
+  await journaliser({
+    action: "facture.emise",
+    objet: "Facture",
+    objetId: creee.id,
+    libelle: `Facture ${numero} émise pour ${formatNombre(montantGnf)} GNF`,
+    montantGnf,
   });
 
   // Le client reçoit sa facture et son lien de consultation.
