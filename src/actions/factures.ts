@@ -7,6 +7,7 @@ import { z } from "zod";
 import { observerTaux } from "@/lib/donnees/taux";
 import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
+import { formatNombre } from "@/lib/utils";
 import { numeroLibre } from "@/lib/donnees/facturation-auto";
 import { notifierFacture, notifierRelance } from "@/lib/sms/declencheurs";
 import { caseACocher, dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
@@ -266,7 +267,7 @@ export async function enregistrerPaiement(
   if (montantGnf > reste + 1) {
     return {
       erreur: "Le versement dépasse le montant restant dû.",
-      champs: { montant: `Reste à régler : ${Math.round(reste)} GNF` },
+      champs: { montant: `Reste à régler : ${formatNombre(reste)} GNF` },
       valeurs: { montant: String(saisie.data.montant) },
     };
   }

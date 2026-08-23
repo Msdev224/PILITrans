@@ -39,10 +39,33 @@ const MOINS = "−"; // signe moins typographique
 
 /** `14200000` → `14 200 000`. Arrondi à l'entier. */
 export function formatNombre(valeur: number): string {
-  const arrondi = Math.round(valeur);
-  const signe = arrondi < 0 ? MOINS : "";
-  const chiffres = Math.abs(arrondi).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ESPACE);
-  return signe + chiffres;
+  /*
+   * Les décimales ne sont jamais arrondies.
+   *
+   * Un montant arrondi à l'entier fait disparaître des centimes qui existent
+   * bel et bien : une facture de 14 200 000,50 s'affichait 14 200 000, et le
+   * reste à régler ne tombait jamais à zéro sans qu'on comprenne pourquoi.
+   * Les montants sont stockés à deux décimales, donc deux suffisent à les
+   * représenter exactement.
+   *
+   * Les zéros de fin sont retirés : la très grande majorité des sommes est
+   * ronde, et afficher « ,00 » partout alourdirait chaque écran sans rien
+   * apprendre.
+   */
+  const signe = valeur < 0 ? MOINS : "";
+
+  /*
+   * Le découpage se fait APRÈS `toFixed`, jamais avant.
+   *
+   * Séparer d'abord la partie entière laissait 999,999 s'afficher « 999 » :
+   * la partie décimale remontait à 1,00 toute seule et se faisait effacer
+   * avec les zéros de fin. Un franc disparaissait.
+   */
+  const [entiere, decimales] = Math.abs(valeur).toFixed(2).split(".");
+  const chiffres = entiere.replace(/\B(?=(\d{3})+(?!\d))/g, ESPACE);
+  const reste = decimales.replace(/0+$/, "");
+
+  return signe + chiffres + (reste ? `,${reste}` : "");
 }
 
 /** `14200000` → `14 200 000 GNF`. */
@@ -52,8 +75,7 @@ export function formatGnf(valeur: number): string {
 
 /** Même chose avec un `+` explicite sur les valeurs positives (marges, deltas). */
 export function formatSigne(valeur: number): string {
-  const arrondi = Math.round(valeur);
-  return (arrondi > 0 ? "+" : "") + formatNombre(arrondi);
+  return (valeur > 0 ? "+" : "") + formatNombre(valeur);
 }
 
 /** `14200000` → `14,2` — pour les tuiles KPI libellées « M GNF ». */

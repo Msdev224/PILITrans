@@ -41,7 +41,7 @@ describe("conversion des Decimal Prisma", () => {
   });
 });
 
-describe("formatage des montants — GNF sans décimales", () => {
+describe("formatage des montants — jamais arrondis", () => {
   it("sépare les milliers par une espace fine insécable", () => {
     expect(formatNombre(14_200_000)).toBe(`14${ESPACE}200${ESPACE}000`);
   });
@@ -50,8 +50,29 @@ describe("formatage des montants — GNF sans décimales", () => {
     expect(formatGnf(14_200_000)).toBe(`14${ESPACE}200${ESPACE}000${ESPACE}GNF`);
   });
 
-  it("arrondit à l'entier : le GNF n'a pas de centimes", () => {
-    expect(formatNombre(1_499.6)).toBe(`1${ESPACE}500`);
+  it("garde les décimales plutôt que de les arrondir", () => {
+    // Arrondir faisait disparaître des centimes réels : un reste à régler ne
+    // tombait jamais à zéro sans qu'on comprenne pourquoi.
+    expect(formatNombre(1_499.6)).toBe(`1${ESPACE}499,6`);
+    expect(formatNombre(14_200_000.25)).toBe(`14${ESPACE}200${ESPACE}000,25`);
+  });
+
+  it("n'affiche pas de décimales sur un montant rond", () => {
+    // La très grande majorité des sommes est ronde : « ,00 » partout
+    // alourdirait chaque écran sans rien apprendre.
+    expect(formatNombre(14_200_000)).toBe(`14${ESPACE}200${ESPACE}000`);
+    expect(formatNombre(1_234.0)).toBe(`1${ESPACE}234`);
+  });
+
+  it("ne perd pas d'unité en retirant les zéros de fin", () => {
+    // 999,999 s'affichait « 999 » quand la partie entière était découpée
+    // avant l'arrondi : la décimale remontait à 1,00 et se faisait effacer.
+    expect(formatNombre(999.999)).toBe(`1${ESPACE}000`);
+  });
+
+  it("ne laisse pas fuir les décimales du binaire", () => {
+    // 0,1 + 0,2 ne vaut pas exactement 0,3 en flottant.
+    expect(formatNombre(0.1 + 0.2)).toBe("0,3");
   });
 
   it("utilise le signe moins typographique", () => {

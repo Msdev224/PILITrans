@@ -61,7 +61,13 @@ export function DialoguePaiement({
     {},
   );
 
-  const [montant, setMontant] = useState(String(Math.round(resteGnf)));
+  /*
+   * Le reste dû se pré-remplit à l'exact, jamais arrondi.
+   *
+   * Arrondir 2 100 000,50 à 2 100 000 laissait cinquante centimes impayés :
+   * la facture ne se soldait jamais, et personne ne voyait pourquoi.
+   */
+  const [montant, setMontant] = useState(String(resteGnf));
   const [devise, setDevise] = useState<"GNF" | "XOF">("GNF");
   const [confirme, setConfirme] = useState(false);
   /** Versement dont l'annulation attend une confirmation. */
@@ -285,7 +291,7 @@ export function DialoguePaiement({
 function RecapPaiement({ montantGnf, resteGnf }: { montantGnf: number; resteGnf: number }) {
   if (montantGnf <= 0) return null;
 
-  const apres = Math.round(resteGnf - montantGnf);
+  const apres = resteGnf - montantGnf;
   // Un franc d'écart vient d'un arrondi de conversion, pas d'un impayé.
   const solde = apres <= 1;
   const trop = apres < -1;
@@ -346,7 +352,7 @@ function BoutonEnvoyer({
     <div className="confirme-bloc mt-3">
       <p>
         Confirmer l&apos;encaissement de <b>{formatGnf(montantGnf)}</b> ?{" "}
-        {Math.round(resteApres) <= 1 ? "La facture sera soldée." : `Il restera ${formatGnf(Math.round(resteApres))}.`}
+        {resteApres <= 1 ? "La facture sera soldée." : `Il restera ${formatGnf(resteApres)}.`}
       </p>
       <div className="confirme-btns">
         <button type="button" className="btn ghost" onClick={annuler} disabled={pending}>
