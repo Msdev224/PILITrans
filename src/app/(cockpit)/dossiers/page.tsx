@@ -25,6 +25,7 @@ const CLASSE_PIECE: Record<string, string> = {
   expire: "warn",
   manquant: "miss",
   "sans-objet": "hs",
+  facultatif: "hs",
 };
 
 const BADGE_PIECE: Record<string, { classe: string; libelle: string }> = {
@@ -32,6 +33,7 @@ const BADGE_PIECE: Record<string, { classe: string; libelle: string }> = {
   expire: { classe: "b-warn", libelle: "À vérifier" },
   manquant: { classe: "b-down", libelle: "Manquant" },
   "sans-objet": { classe: "b-idle", libelle: "Sans objet" },
+  facultatif: { classe: "b-idle", libelle: "Facultatif" },
 };
 
 interface Props {

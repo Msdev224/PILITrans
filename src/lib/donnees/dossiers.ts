@@ -15,7 +15,14 @@ import { n, nOuNull } from "@/lib/utils";
  * si la donnée correspondante existe déjà en base. C'est exploitable
  * immédiatement, et ça n'anticipe aucune décision d'infrastructure.
  */
-export type EtatPiece = "fourni" | "manquant" | "expire" | "sans-objet";
+/**
+ * État d'une pièce du dossier.
+ *
+ * `facultatif` se distingue de `sans-objet` : la pièce aurait un sens ici,
+ * mais son absence ne rend pas le dossier incomplet. Ni l'un ni l'autre
+ * n'entre dans le calcul de complétude.
+ */
+export type EtatPiece = "fourni" | "manquant" | "expire" | "sans-objet" | "facultatif";
 
 export interface Piece {
   libelle: string;
@@ -94,10 +101,19 @@ async function vueDossiersBrut(): Promise<DossierVoyage[]> {
         detail: "Véhicule non frigorifique.",
       });
     } else if (v.relevesTemp.length === 0) {
+      /*
+       * Sans relevé, la pièce est signalée mais ne manque pas.
+       *
+       * Un relevé de température se prend sur la route, quand le chauffeur y
+       * a accès et que le client l'exige. Le compter comme manquant faisait
+       * apparaître incomplets des dossiers qui ne le sont pas, et noyait les
+       * vraies pièces absentes — l'assurance, la carte brune — dans un bruit
+       * permanent.
+       */
       pieces.push({
         libelle: "Certificat de chaîne du froid",
-        etat: "manquant",
-        detail: "Aucun relevé de température.",
+        etat: "facultatif",
+        detail: "Aucun relevé de température. Facultatif : à fournir si le client le demande.",
         lien: `/voyages/${v.id}`,
       });
     } else {
@@ -192,9 +208,10 @@ async function vueDossiersBrut(): Promise<DossierVoyage[]> {
       });
     }
 
-    // Les pièces sans objet ne comptent ni au numérateur ni au dénominateur :
-    // un trajet national n'a pas à être pénalisé pour une carte brune.
-    const attendues = pieces.filter((p) => p.etat !== "sans-objet");
+    // Ni les pièces sans objet ni les facultatives ne comptent, au numérateur
+    // comme au dénominateur : un trajet national n'a pas à être pénalisé pour
+    // une carte brune, ni un frigo pour un relevé que personne n'a réclamé.
+    const attendues = pieces.filter((p) => p.etat !== "sans-objet" && p.etat !== "facultatif");
     const fournis = attendues.filter((p) => p.etat === "fourni").length;
     const manquants = attendues.filter((p) => p.etat === "manquant").length;
     const expirent = attendues.filter((p) => p.etat === "expire").length;
