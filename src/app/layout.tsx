@@ -30,11 +30,27 @@ export const viewport: Viewport = {
   initialScale: 1,
   // La saisie en cabine se fait au pouce : on laisse le zoom accessible.
   maximumScale: 5,
+  /*
+   * Le contenu occupe l'écran entier, encoche comprise.
+   *
+   * Sans cela, `env(safe-area-inset-*)` vaut zéro et l'application installée
+   * affiche deux bandes noires en haut et en bas — le signe le plus visible
+   * qu'on regarde une page web déguisée plutôt qu'une application.
+   */
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "PILITrans", statusBarStyle: "black-translucent" },
+  // iOS ignore le manifeste pour l'icône d'accueil : il lui faut ce PNG.
+  icons: {
+    icon: [
+      { url: "/icone-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icone.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   title: "PILITrans — Cockpit flotte frigo",
   description:
     "Gestion de flotte pour le transport frigorifique transfrontalier Guinée ⇄ Sénégal : voyages, carburant, chaîne du froid, rentabilité par camion.",

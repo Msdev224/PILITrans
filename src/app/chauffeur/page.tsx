@@ -2,6 +2,7 @@ import { sessionRequise } from "@/auth";
 import { BoutonDeconnexion } from "@/components/chauffeur/bouton-deconnexion";
 import { EnregistrementServiceWorker } from "@/components/chauffeur/enregistrement-sw";
 import { EtatReseau } from "@/components/chauffeur/etat-reseau";
+import { InviteInstallation } from "@/components/chauffeur/invite-installation";
 import { FournisseurFile } from "@/components/chauffeur/file-attente";
 import {
   BoutonAvancer,
@@ -144,6 +145,7 @@ export default async function EspaceChauffeurPage() {
       </div>
 
       <div className="ph-body">
+        <InviteInstallation />
         <EtatReseau />
 
         {/* ---------- Caisse ---------- */}

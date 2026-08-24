@@ -3,13 +3,29 @@
   "short_name": "PILITrans",
   "description": "Saisie de mission depuis le téléphone de bord : départ, arrêts, carburant, chargement et livraison.",
   "start_url": "/chauffeur",
+  "id": "/chauffeur",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0C242D",
   "theme_color": "#0C242D",
   "lang": "fr",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
   "icons": [
-    { "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ma mission",
+      "short_name": "Mission",
+      "description": "Ouvrir directement la mission en cours",
+      "url": "/chauffeur",
+      "icons": [{ "src": "/icone-192.png", "sizes": "192x192" }]
+    }
   ]
 }

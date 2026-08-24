@@ -2143,15 +2143,57 @@
      Espace chauffeur — écran de téléphone de bord (maquette)
      ============================================================ */
   .ph-app {
-    min-height: 100vh;
+    /*
+     * `dvh` plutôt que `vh` : sur mobile, `100vh` compte la barre d'adresse
+     * même quand elle est repliée, ce qui laissait un bas de page inatteignable
+     * et faisait sauter la mise en page au premier défilement.
+     */
+    min-height: 100dvh;
     background: var(--bg);
     max-width: 520px;
     margin: 0 auto;
+    /* L'encoche et la barre de gestes ne mangent plus le contenu. */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /*
+   * Comportement d'application, pas de page web.
+   *
+   * Trois détails trahissent une page web installée : le halo bleu au toucher,
+   * la sélection de texte qui s'accroche à un bouton pressé un peu longtemps,
+   * et le rebond élastique qui découvre le fond du navigateur derrière l'écran.
+   */
+  .ph-app,
+  .ph-app button,
+  .ph-app .ph-seg span,
+  .ph-app label {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ph-app button,
+  .ph-app .ph-seg span,
+  .ph-app .lab,
+  .ph-app .hi,
+  .ph-app .tk {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .ph-app {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Les montants et les codes restent copiables : on les recopie ailleurs. */
+  .ph-app .mono,
+  .ph-app input {
+    -webkit-user-select: text;
+    user-select: text;
   }
   .ph-top {
     background: linear-gradient(180deg, var(--rail), var(--rail-2));
     color: #fff;
     padding: 20px 18px 18px;
+    /* Après le raccourci, sinon il l'écrase : en plein écran, la barre d'état
+       se superpose au contenu et il faut le descendre sous l'encoche. */
+    padding-top: calc(20px + env(safe-area-inset-top));
   }
   .ph-top .hi {
     font-weight: 600;
@@ -2776,6 +2818,32 @@
   .identifiants dd.fort {
     font-weight: 700;
     font-size: 16px;
+  }
+
+  /* --- Invite d'installation --- */
+  .ph-install {
+    border: 1px solid var(--accent);
+    border-radius: 11px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    background: var(--accent-bg, #f0faf8);
+  }
+  .ph-install-texte b {
+    font-size: 13px;
+  }
+  .ph-install-texte p {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .ph-install-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .ph-install-btns .ph-btn {
+    flex: 1;
+    margin-top: 0;
   }
 
   /* --- File des saisies gardées faute de réseau --- */
