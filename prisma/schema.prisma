@@ -233,6 +233,7 @@ model Chauffeur {
   whatsappNumero   String?
   /// Saisies hors ligne déjà appliquées — garde-fou anti-doublon au rejeu.
   operations       OperationChauffeur[]
+  compteTresorerie CompteTresorerie?
 }
 
 // ------------------------------------------------------------
@@ -577,7 +578,10 @@ model Depense {
   // si la dépense a été payée depuis la caisse du chauffeur
   mouvementCaisse MouvementCaisse?
 
-  createdAt DateTime @default(now())
+  createdAt DateTime          @default(now())
+  /// D'où l'argent est sorti.
+  compte    CompteTresorerie? @relation(fields: [compteId], references: [id])
+  compteId  String?
 }
 
 // ------------------------------------------------------------
@@ -698,8 +702,11 @@ model MouvementCaisse {
   /// Sans ce rattachement, l'argent remis pour un Conakry–Dakar se confond
   /// avec celui d'une autre course : impossible de dire ce qu'un voyage a
   /// réellement coûté en trésorerie, ni ce qu'il reste à justifier dessus.
-  voyage   Voyage? @relation(fields: [voyageId], references: [id], onDelete: SetNull)
+  voyage   Voyage?           @relation(fields: [voyageId], references: [id], onDelete: SetNull)
   voyageId String?
+  /// Compte d'où l'avance a été tirée, ou vers lequel le reliquat revient.
+  compte   CompteTresorerie? @relation(fields: [compteId], references: [id])
+  compteId String?
 
   @@index([voyageId])
 }
@@ -1011,6 +1018,9 @@ model Parametres {
    * /**
    * /**
    * /**
+   * /**
+   * /**
+   * /**
    * Argent déjà détenu au démarrage de l'application.
    * Sans lui, la trésorerie partirait de zéro et afficherait un solde négatif
    * dès la première dépense, alors que l'exploitation tournait avant.
@@ -1073,20 +1083,23 @@ model MoyenPaiement {
 /// autant de lignes que d'échéances honorées : sans ce détail, on connaîtrait
 /// le cumul sans savoir quand ni comment le client a payé.
 model Paiement {
-  id         String         @id @default(cuid())
-  facture    Facture        @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  id         String            @id @default(cuid())
+  facture    Facture           @relation(fields: [factureId], references: [id], onDelete: Cascade)
   factureId  String
-  montant    Decimal        @db.Decimal(14, 2)
-  devise     Devise         @default(GNF)
+  montant    Decimal           @db.Decimal(14, 2)
+  devise     Devise            @default(GNF)
   /// Équivalent GNF figé au taux réel du jour du versement.
-  montantGnf Decimal        @db.Decimal(16, 2)
-  date       DateTime       @default(now())
-  moyen      MoyenPaiement? @relation(fields: [moyenId], references: [id])
+  montantGnf Decimal           @db.Decimal(16, 2)
+  date       DateTime          @default(now())
+  moyen      MoyenPaiement?    @relation(fields: [moyenId], references: [id])
   moyenId    String?
   /// Référence du transfert, numéro de chèque, identifiant Orange Money…
   reference  String?
   note       String?
-  createdAt  DateTime       @default(now())
+  createdAt  DateTime          @default(now())
+  /// Où l'argent a été encaissé.
+  compte     CompteTresorerie? @relation(fields: [compteId], references: [id])
+  compteId   String?
 
   @@index([factureId, date])
 }
@@ -1300,4 +1313,117 @@ model Journal {
   @@index([date])
   @@index([objet, objetId])
   @@index([auteurId, date])
+}
+
+// ------------------------------------------------------------
+//  Trésorerie : où se trouve l'argent
+// ------------------------------------------------------------
+
+enum TypeCompte {
+  CAISSE // espèces détenues au bureau
+  BANQUE
+  MOBILE_MONEY
+  CHAUFFEUR // argent confié à un chauffeur, qu'il devra justifier
+}
+
+/**
+ * Un emplacement où de l'argent se trouve réellement.
+ * Un solde global ne dit rien d'exploitable : savoir qu'on détient quinze
+ * millions ne dit pas si on peut payer un fournisseur aujourd'hui. Ce qui
+ * compte, c'est où est cet argent — en banque, dans le coffre, sur un compte
+ * Orange Money, ou dans la poche d'un chauffeur parti à Dakar.
+ */
+model CompteTresorerie {
+  id String @id @default(cuid())
+
+  nom       String     @unique
+  type      TypeCompte
+  /// Numéro de compte, de téléphone, ou emplacement physique du coffre.
+  reference String?
+
+  /// Devise du compte. Un compte bancaire en CFA ne se mélange pas au GNF.
+  devise Devise @default(GNF)
+
+  /**
+   * Argent déjà présent à l'ouverture du compte dans l'application.
+   * Sans lui, chaque compte partirait de zéro et afficherait un solde négatif
+   * dès la première sortie, alors que l'exploitation tournait avant.
+   */
+  soldeInitial     Decimal   @default(0) @db.Decimal(16, 2)
+  dateSoldeInitial DateTime?
+
+  /**
+   * Compte porté par un chauffeur.
+   * Son solde EST la caisse du chauffeur : les avances qu'on lui remet et les
+   * dépenses qu'il justifie s'y inscrivent. Un chauffeur n'a qu'un compte.
+   */
+  chauffeur   Chauffeur? @relation(fields: [chauffeurId], references: [id], onDelete: Cascade)
+  chauffeurId String?    @unique
+
+  actif Boolean @default(true)
+  ordre Int     @default(100)
+
+  operations       OperationTresorerie[] @relation("CompteOperation")
+  operationsRecues OperationTresorerie[] @relation("CompteContrepartie")
+  paiements        Paiement[]
+  depenses         Depense[]
+  mouvementsCaisse MouvementCaisse[]
+
+  @@index([actif, ordre])
+}
+
+enum MotifTresorerie {
+  DEPOT // de la caisse vers la banque, ou apport extérieur
+  RETRAIT // de la banque vers la caisse
+  TRANSFERT // entre deux comptes de l'exploitation
+  APPORT // argent injecté par le gérant ou un associé
+  PRELEVEMENT // argent sorti de l'exploitation
+  AJUSTEMENT // écart constaté à un comptage physique
+}
+
+/**
+ * Mouvement d'argent qui ne correspond à aucune opération commerciale.
+ * Un règlement client, une dépense ou une avance sont déjà enregistrés comme
+ * tels, et portent leur compte. Restent les mouvements purement financiers —
+ * déposer les espèces à la banque, retirer pour payer un garage, virer d'un
+ * compte Orange Money vers un autre, constater un écart de comptage. Sans eux,
+ * le solde par emplacement serait faux dès le premier dépôt.
+ */
+model OperationTresorerie {
+  id String @id @default(cuid())
+
+  compte   CompteTresorerie @relation("CompteOperation", fields: [compteId], references: [id])
+  compteId String
+
+  /**
+   * Compte destinataire d'un transfert.
+   * Un transfert est UNE opération, pas deux : la sortie et l'entrée sont le
+   * même événement. Deux écritures séparées finiraient par diverger — l'une
+   * corrigée, l'autre oubliée.
+   */
+  vers   CompteTresorerie? @relation("CompteContrepartie", fields: [versId], references: [id])
+  versId String?
+
+  motif MotifTresorerie
+
+  montant    Decimal @db.Decimal(16, 2)
+  devise     Devise  @default(GNF)
+  /// Équivalent GNF figé au taux réel du jour.
+  montantGnf Decimal @db.Decimal(16, 2)
+
+  /**
+   * Frais prélevés par l'opérateur ou la banque sur l'opération.
+   * Retirer un million au guichet n'en coûte pas un million : la commission
+   * est un vrai coût, et elle sort de la caisse sans arriver nulle part.
+   */
+  fraisGnf Decimal? @db.Decimal(14, 2)
+
+  date      DateTime @default(now())
+  libelle   String?
+  reference String?
+
+  createdAt DateTime @default(now())
+
+  @@index([compteId, date])
+  @@index([date])
 }

@@ -80,6 +80,7 @@ export function Rail({
         { libelle: "Dossiers", href: "/dossiers", icone: <IconeDossier />, droit: "flotte.lire" },
         { libelle: "Dépenses", href: "/depenses", icone: <IconeDepense />, droit: "depenses.lire" },
         { libelle: "Caisse", href: "/caisse", icone: <IconeCle />, droit: "depenses.lire" },
+        { libelle: "Trésorerie", href: "/tresorerie", icone: <IconeDepense />, droit: "depenses.lire" },
       ],
     },
     {

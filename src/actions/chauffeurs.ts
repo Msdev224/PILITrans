@@ -131,6 +131,18 @@ export async function creerChauffeur(
   await prisma.$transaction(async (tx) => {
     const cree = await tx.chauffeur.create({ data: valeurs });
 
+    /*
+     * Son emplacement de trésorerie naît avec lui.
+     *
+     * L'argent qu'on lui remet est quelque part, et ce quelque part, c'est
+     * lui. Sans compte, ses avances sortiraient de la caisse sans arriver
+     * nulle part : la trésorerie totale baisserait alors que rien n'a quitté
+     * l'entreprise.
+     */
+    await tx.compteTresorerie.create({
+      data: { nom: cree.nom, type: "CHAUFFEUR", chauffeurId: cree.id, ordre: 50 },
+    });
+
     if (telephone && motDePasse) {
       await tx.utilisateur.create({
         data: {
@@ -193,7 +205,15 @@ export async function modifierChauffeur(
   const saisie = schemaChauffeur.safeParse(Object.fromEntries(donneesForm));
   if (!saisie.success) return erreursFormulaire<EtatChauffeurFiche>(saisie.error, donneesForm);
 
-  await prisma.chauffeur.update({ where: { id }, data: donnees(saisie.data) });
+  const valeursModifiees = donnees(saisie.data);
+  await prisma.chauffeur.update({ where: { id }, data: valeursModifiees });
+
+  // Le compte porte le nom du chauffeur : le renommer d'un côté sans l'autre
+  // rendrait l'écran Trésorerie incompréhensible.
+  await prisma.compteTresorerie.updateMany({
+    where: { chauffeurId: id },
+    data: { nom: valeursModifiees.nom },
+  });
   rafraichir();
   return { ok: true };
 }

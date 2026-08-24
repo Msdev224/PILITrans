@@ -368,6 +368,24 @@ export const OBJETS_REMISE = [
   "DIVERS",
 ] as const;
 
+/** Nature d'une opération de trésorerie. */
+export const LIBELLE_MOTIF_TRESORERIE: Record<string, string> = {
+  DEPOT: "Dépôt",
+  RETRAIT: "Retrait",
+  TRANSFERT: "Transfert",
+  APPORT: "Apport",
+  PRELEVEMENT: "Prélèvement",
+  AJUSTEMENT: "Ajustement",
+};
+
+/** Nature d'un emplacement où se trouve de l'argent. */
+export const LIBELLE_TYPE_COMPTE: Record<string, string> = {
+  CAISSE: "Caisse (espèces)",
+  BANQUE: "Banque",
+  MOBILE_MONEY: "Mobile Money",
+  CHAUFFEUR: "Détenu par un chauffeur",
+};
+
 /** Nature d'un mouvement de caisse chauffeur. */
 export const LIBELLE_MOUVEMENT: Record<string, string> = {
   AVANCE: "Avance",
