@@ -13,7 +13,7 @@
  * donc qu'à une chose : que la page s'ouvre encore quand il n'y a pas de
  * réseau du tout.
  */
-const CACHE = "pilitrans-v3";
+const CACHE = "pilitrans-v4";
 const COQUILLE = ["/chauffeur", "/manifest.webmanifest", "/icone.svg"];
 
 self.addEventListener("install", (evenement) => {
@@ -60,6 +60,24 @@ self.addEventListener("fetch", (evenement) => {
 
   const url = new URL(requete.url);
   if (url.origin !== self.location.origin) return;
+
+  /*
+   * Second verrou, après la portée d'enregistrement.
+   *
+   * Ce worker n'existe que pour l'espace chauffeur. S'il venait à contrôler
+   * autre chose — enregistrement hérité, portée élargie par erreur — il
+   * servirait des pages du cockpit depuis son cache, et le navigateur
+   * réclamerait après chaque déploiement des fichiers qui n'existent plus.
+   * Les ressources partagées (`/_next/`) restent traitées : la page chauffeur
+   * en dépend.
+   */
+  const pourLeChauffeur =
+    url.pathname === "/chauffeur" ||
+    url.pathname.startsWith("/chauffeur/") ||
+    url.pathname.startsWith("/_next/") ||
+    url.pathname === "/manifest.webmanifest" ||
+    url.pathname === "/icone.svg";
+  if (!pourLeChauffeur) return;
 
   // L'authentification ne doit jamais être servie depuis le cache : une
   // session expirée paraîtrait valide, et une déconnexion serait annulée.

@@ -1,3 +1,4 @@
+import { NettoyageServiceWorker } from "@/components/nettoyage-sw";
 import { Rail } from "@/components/rail";
 import { sessionRequise } from "@/auth";
 import { alertes, compterParSeverite } from "@/lib/donnees/alertes";
@@ -15,6 +16,10 @@ export default async function CockpitLayout({ children }: { children: React.Reac
 
   return (
     <div className="app">
+      {/* Retire un service worker hérité d'une version qui prenait tout le
+          site : sans cela, le cockpit continue de servir des fichiers
+          disparus après chaque déploiement. */}
+      <NettoyageServiceWorker />
       <Rail nbAlertes={compteur.urgent} resume={resume} role={session.user.role} />
       <div className="zone">{children}</div>
     </div>
