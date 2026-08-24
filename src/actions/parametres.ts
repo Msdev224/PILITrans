@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { difference, journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { caseACocher, dateOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
 
@@ -154,6 +155,27 @@ export async function enregistrerParametres(
   const existant = await prisma.parametres.findFirst({ select: { id: true } });
   if (existant) {
     await prisma.parametres.update({ where: { id: existant.id }, data: valeurs });
+
+  /*
+   * Les paramètres décident du comportement de toute l'application : délai de
+   * paiement, taux de référence, seuils d'alerte, envoi des SMS. Un chiffre
+   * changé ici déplace des marges et des échéances sans qu'aucune écriture
+   * n'apparaisse ailleurs — d'où la trace, avec l'avant et l'après.
+   */
+  const change = difference(
+    existant as unknown as Record<string, unknown>,
+    valeurs as Record<string, unknown>,
+  );
+  if (change) {
+    await journaliser({
+      action: "parametres.modifies",
+      objet: "Parametres",
+      objetId: existant.id,
+      libelle: `Paramètres modifiés : ${Object.keys(change.apres).join(", ")}`,
+      avant: change.avant,
+      apres: change.apres,
+    });
+  }
   } else {
     await prisma.parametres.create({ data: valeurs });
   }

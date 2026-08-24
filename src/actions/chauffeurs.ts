@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { hacherMotDePasse } from "@/lib/mots-de-passe";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { caseACocher, dateExpirationOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
 
@@ -144,6 +145,15 @@ export async function creerChauffeur(
     }
   });
 
+  await journaliser({
+    action: telephone ? "chauffeur.cree.avec-compte" : "chauffeur.cree",
+    objet: "Chauffeur",
+    objetId: null,
+    libelle: telephone
+      ? `${valeurs.nom} enregistré, compte de connexion créé sur ${telephone}`
+      : `${valeurs.nom} enregistré (sans compte : aucun numéro renseigné)`,
+  });
+
   rafraichir();
   revalidatePath("/utilisateurs");
 
@@ -192,15 +202,26 @@ export async function modifierChauffeur(
 export async function retirerChauffeur(id: string) {
   await droitEcriture();
 
+  const fiche = await prisma.chauffeur.findUnique({ where: { id }, select: { nom: true } });
+  let desactive = false;
+
   try {
     await prisma.chauffeur.delete({ where: { id } });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
       await prisma.chauffeur.update({ where: { id }, data: { actif: false } });
+      desactive = true;
     } else {
       throw e;
     }
   }
+
+  await journaliser({
+    action: desactive ? "chauffeur.desactive" : "chauffeur.supprime",
+    objet: "Chauffeur",
+    objetId: id,
+    libelle: `${fiche?.nom ?? "Chauffeur"} ${desactive ? "désactivé (ses missions restent)" : "supprimé (n'avait jamais roulé)"}`,
+  });
 
   rafraichir();
 }

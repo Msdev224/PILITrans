@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { erreursFormulaire, nombreOptionnel } from "@/lib/validation";
 
@@ -144,6 +145,13 @@ export async function supprimerPays(id: string) {
   }
 
   await prisma.pays.delete({ where: { id } });
+
+  await journaliser({
+    action: "pays.supprime",
+    objet: "Pays",
+    objetId: id,
+    libelle: "Pays supprimé",
+  });
   rafraichir();
 }
 

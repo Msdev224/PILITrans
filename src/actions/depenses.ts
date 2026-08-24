@@ -205,6 +205,11 @@ export async function modifierDepense(
   const saisie = schemaDepense.safeParse(Object.fromEntries(donnees));
   if (!saisie.success) return erreursFormulaire<EtatDepense>(saisie.error, donnees);
 
+  const avant = await prisma.depense.findUnique({
+    where: { id },
+    select: { montantGnf: true, voyageId: true },
+  });
+
   const data = await donneesDepense(saisie.data);
   await prisma.depense.update({ where: { id }, data });
 
@@ -228,6 +233,21 @@ export async function modifierDepense(
     });
     revalidatePath("/chauffeurs");
   }
+
+  // Corriger un montant déjà saisi change une marge et, si la dépense était
+  // sur la caisse du chauffeur, ce qu'on lui réclame.
+  await journaliser({
+    action: "depense.modifiee",
+    objet: "Depense",
+    objetId: id,
+    libelle:
+      avant && Number(avant.montantGnf) !== data.montantGnf
+        ? `Dépense ${LIBELLE_TYPE_DEPENSE[data.type] ?? data.type} : ${formatNombre(Number(avant.montantGnf))} → ${formatNombre(data.montantGnf)} GNF`
+        : `Dépense ${LIBELLE_TYPE_DEPENSE[data.type] ?? data.type} modifiée`,
+    montantGnf: data.montantGnf,
+    avant: avant ? { montantGnf: Number(avant.montantGnf), voyageId: avant.voyageId } : null,
+    apres: { montantGnf: data.montantGnf, voyageId: data.voyageId },
+  });
 
   rafraichir(data.camionId, data.voyageId);
   return { ok: true };

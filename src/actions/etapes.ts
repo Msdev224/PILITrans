@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { refusMissionAnnulee } from "@/lib/mission-active";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { synchroniserCamionDuVoyage } from "@/lib/donnees/synchronisation";
 import { dateOptionnelle, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
@@ -142,6 +143,13 @@ export async function supprimerEtape(id: string) {
   // Les ravitaillements sont détachés, jamais supprimés : ce sont des dépenses.
   await prisma.etapeVoyage.update({ where: { id }, data: { ravitaillements: { set: [] } } });
   await prisma.etapeVoyage.delete({ where: { id } });
+
+  await journaliser({
+    action: "etape.supprimee",
+    objet: "EtapeVoyage",
+    objetId: id,
+    libelle: "Étape de trajet supprimée",
+  });
 
   rafraichir(etape.voyageId);
 }

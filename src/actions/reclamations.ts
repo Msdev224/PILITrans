@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
 
@@ -112,5 +113,12 @@ export async function modifierReclamation(
 export async function supprimerReclamation(id: string) {
   await droitEcriture();
   await prisma.reclamation.delete({ where: { id } });
+
+  await journaliser({
+    action: "reclamation.supprimee",
+    objet: "Reclamation",
+    objetId: id,
+    libelle: "Réclamation supprimée",
+  });
   rafraichir();
 }

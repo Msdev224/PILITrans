@@ -7,6 +7,7 @@ import { z } from "zod";
 import { sessionRequise } from "@/auth";
 import { peut } from "@/lib/permissions";
 import { CHAMP_SAISIE, instantSaisie } from "@/lib/chauffeur/operations";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel, nombrePositif, texteOptionnel } from "@/lib/validation";
 
@@ -138,5 +139,12 @@ export async function supprimerPrelevement(id: string) {
 
   await accesAuVoyage(prelevement.voyageId);
   await prisma.prelevementDouane.delete({ where: { id } });
+
+  await journaliser({
+    action: "douane.supprime",
+    objet: "PrelevementDouane",
+    objetId: id,
+    libelle: "Prélèvement de douane supprimé",
+  });
   rafraichir(prelevement.voyageId);
 }

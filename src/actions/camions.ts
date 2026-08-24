@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { estTransportPersonnes } from "@/lib/utils";
 import { dateOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
@@ -189,16 +190,29 @@ export async function retirerCamion(id: string) {
 
   const camion = await prisma.camion.findUnique({
     where: { id },
-    select: { _count: { select: { voyages: true, depenses: true, reparations: true } } },
+    select: { nom: true, _count: { select: { voyages: true, depenses: true, reparations: true } } },
   });
   if (!camion) throw new Error("Camion introuvable.");
 
   const { voyages, depenses, reparations } = camion._count;
-  if (voyages + depenses + reparations > 0) {
+  const historique = voyages + depenses + reparations > 0;
+
+  if (historique) {
     await prisma.camion.update({ where: { id }, data: { actif: false, statut: "HORS_SERVICE" } });
   } else {
     await prisma.camion.delete({ where: { id } });
   }
+
+  // La distinction compte : un camion mis hors service reste dans les comptes
+  // du passé, un camion effacé n'a jamais rien porté.
+  await journaliser({
+    action: historique ? "camion.hors-service" : "camion.supprime",
+    objet: "Camion",
+    objetId: id,
+    libelle: historique
+      ? `${camion.nom} mis hors service (${voyages} voyage(s), ${depenses} dépense(s) conservés)`
+      : `${camion.nom} supprimé (aucun historique)`,
+  });
 
   rafraichir(id);
 }

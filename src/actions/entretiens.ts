@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
 
@@ -119,5 +120,12 @@ export async function supprimerEntretien(id: string) {
   if (!entretien) throw new Error("Entretien introuvable.");
 
   await prisma.entretien.delete({ where: { id } });
+
+  await journaliser({
+    action: "entretien.supprime",
+    objet: "Entretien",
+    objetId: id,
+    libelle: "Entretien supprimé",
+  });
   rafraichir(entretien.camionId);
 }

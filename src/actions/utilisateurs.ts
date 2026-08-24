@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { difference, journaliser } from "@/lib/journal";
 import { hacherMotDePasse } from "@/lib/mots-de-passe";
+import { LIBELLE_ROLE } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { normaliserTelephone } from "@/lib/telephone";
 import { erreursFormulaire, telephoneRequis, texteOptionnel } from "@/lib/validation";
@@ -91,7 +93,7 @@ export async function creerUtilisateur(
     return { erreur: "Un compte utilise déjà ce numéro.", valeurs: Object.fromEntries(donnees) as Record<string, string> };
   }
 
-  await prisma.utilisateur.create({
+  const cree = await prisma.utilisateur.create({
     data: {
       nom: d.nom,
       telephone,
@@ -101,6 +103,16 @@ export async function creerUtilisateur(
       motDePasse: await hacherMotDePasse(d.motDePasse),
       chauffeurId: d.role === "CHAUFFEUR" ? (d.chauffeurId ?? null) : null,
     },
+  });
+
+  // Un accès accordé se trace : c'est la première chose qu'on cherche quand
+  // une opération douteuse remonte à un compte qu'on ne reconnaît pas.
+  await journaliser({
+    action: "compte.cree",
+    objet: "Utilisateur",
+    objetId: cree.id,
+    libelle: `Compte ${LIBELLE_ROLE[d.role] ?? d.role} créé pour ${d.nom} (${telephone})`,
+    apres: { role: d.role, actif: d.actif ?? true },
   });
 
   revalidatePath("/utilisateurs");
@@ -136,6 +148,11 @@ export async function modifierUtilisateur(
     return { erreur: "Un autre compte utilise déjà ce numéro.", valeurs: Object.fromEntries(donnees) as Record<string, string> };
   }
 
+  const avant = await prisma.utilisateur.findUnique({
+    where: { id },
+    select: { nom: true, telephone: true, role: true, actif: true },
+  });
+
   await prisma.utilisateur.update({
     where: { id },
     data: {
@@ -148,6 +165,29 @@ export async function modifierUtilisateur(
       // Un champ mot de passe laissé vide ne touche pas à l'existant.
       ...(d.motDePasse ? { motDePasse: await hacherMotDePasse(d.motDePasse) } : {}),
     },
+  });
+
+  /*
+   * Un changement de rôle est le plus lourd de conséquences : il élargit ou
+   * réduit ce qu'une personne peut faire sur l'argent. Il se lit ici, avec
+   * l'avant et l'après.
+   */
+  const change = avant
+    ? difference(avant as Record<string, unknown>, { nom: d.nom, telephone, role: d.role, actif })
+    : null;
+
+  await journaliser({
+    action: d.motDePasse ? "compte.modifie.mot-de-passe" : "compte.modifie",
+    objet: "Utilisateur",
+    objetId: id,
+    libelle:
+      avant && avant.role !== d.role
+        ? `${d.nom} passe de ${LIBELLE_ROLE[avant.role] ?? avant.role} à ${LIBELLE_ROLE[d.role] ?? d.role}`
+        : d.motDePasse
+          ? `Mot de passe réattribué à ${d.nom}`
+          : `Compte de ${d.nom} modifié`,
+    avant: change?.avant ?? null,
+    apres: change?.apres ?? null,
   });
 
   revalidatePath("/utilisateurs");
@@ -163,13 +203,24 @@ export async function basculerActivation(id: string) {
 
   const compte = await prisma.utilisateur.findUnique({
     where: { id },
-    select: { actif: true, role: true },
+    select: { actif: true, role: true, nom: true },
   });
   if (!compte) throw new Error("Compte introuvable.");
+  const nom = compte.nom;
 
   const futurActif = !compte.actif;
   await verifierDernierGerant(id, compte.role, futurActif);
 
   await prisma.utilisateur.update({ where: { id }, data: { actif: futurActif } });
+
+  await journaliser({
+    action: futurActif ? "compte.reactive" : "compte.desactive",
+    objet: "Utilisateur",
+    objetId: id,
+    libelle: `${nom} — accès ${futurActif ? "rétabli" : "retiré"}`,
+    avant: { actif: compte.actif },
+    apres: { actif: futurActif },
+  });
+
   revalidatePath("/utilisateurs");
 }

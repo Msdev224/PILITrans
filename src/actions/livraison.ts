@@ -8,6 +8,7 @@ import { sessionRequise } from "@/auth";
 import { facturerSiLivre } from "@/lib/donnees/facturation-auto";
 import { TENTATIVES_MAX_CODE } from "@/lib/donnees/marchandises";
 import { peut } from "@/lib/permissions";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { messageCodeLivraison } from "@/lib/sms/notifications";
 import { notifier } from "@/lib/sms/notifications";
@@ -188,6 +189,15 @@ export async function confirmerParCode(
     data: { codeConfirmeLe: new Date() },
   });
 
+  // La confirmation par code EST la preuve de livraison : savoir qui l'a
+  // saisie, et quand, est ce qui la rend opposable en cas de contestation.
+  await journaliser({
+    action: "livraison.confirmee",
+    objet: "LigneMarchandise",
+    objetId: ligne.id,
+    libelle: `Livraison de ${ligne.designation} confirmée par le code du client`,
+  });
+
   // La facture part à la livraison, pas à la création du voyage : c'est ici
   // qu'on sait enfin ce qui a réellement été remis. `facturerSiLivre` ne fait
   // rien tant qu'une marchandise du voyage reste non confirmée.
@@ -219,8 +229,18 @@ export async function reinitialiserCode(ligneId: string) {
 
   const ligne = await prisma.ligneMarchandise.findUnique({
     where: { id: ligneId },
-    select: { voyageId: true },
+    select: { voyageId: true, designation: true },
   });
+
+  // Générer un nouveau code invalide celui que le client détient peut-être
+  // déjà : c'est une remise à zéro de la preuve, elle doit se voir.
+  await journaliser({
+    action: "livraison.code.reinitialise",
+    objet: "LigneMarchandise",
+    objetId: ligneId,
+    libelle: `Code de retrait réinitialisé pour ${ligne?.designation ?? "une marchandise"}`,
+  });
+
   if (ligne) rafraichir(ligne.voyageId);
 }
 

@@ -248,6 +248,24 @@ export async function modifierFacture(
     },
   });
 
+  /*
+   * Modifier une facture déjà émise change un document parti chez le client.
+   * Le montant avant et après est la première chose qu'on cherche quand un
+   * client conteste ce qu'il a reçu.
+   */
+  await journaliser({
+    action: "facture.modifiee",
+    objet: "Facture",
+    objetId: id,
+    libelle:
+      Number(existante.montantGnf) !== montantGnf
+        ? `Facture ${existante.numero} : montant porté de ${formatNombre(Number(existante.montantGnf))} à ${formatNombre(montantGnf)} GNF`
+        : `Facture ${existante.numero} modifiée`,
+    montantGnf,
+    avant: { montantGnf: Number(existante.montantGnf), echeance: existante.echeance },
+    apres: { montantGnf, echeance },
+  });
+
   rafraichir(saisie.data.voyageId);
   return { ok: true };
 }
@@ -397,7 +415,13 @@ export async function supprimerFacture(id: string) {
 
   const facture = await prisma.facture.findUnique({
     where: { id },
-    select: { voyageId: true, montantPayeGnf: true, _count: { select: { reclamations: true } } },
+    select: {
+      voyageId: true,
+      numero: true,
+      montantGnf: true,
+      montantPayeGnf: true,
+      _count: { select: { reclamations: true } },
+    },
   });
   if (!facture) throw new Error("Facture introuvable.");
 
@@ -411,6 +435,17 @@ export async function supprimerFacture(id: string) {
   }
 
   await prisma.facture.delete({ where: { id } });
+
+  // Une facture supprimée laisse un trou dans la numérotation : sans trace,
+  // ce trou est inexplicable devant un contrôle.
+  await journaliser({
+    action: "facture.supprimee",
+    objet: "Facture",
+    objetId: id,
+    libelle: `Facture ${facture.numero} supprimée (jamais réglée)`,
+    montantGnf: Number(facture.montantGnf),
+  });
+
   rafraichir(facture.voyageId);
 }
 

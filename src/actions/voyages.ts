@@ -15,7 +15,7 @@ import { suggestionTrajet, type Suggestion } from "@/lib/donnees/trajets";
 import { exigerPermission } from "@/lib/autorisation";
 import { observerTaux } from "@/lib/donnees/taux";
 import { lignesRemise, type LigneRemise } from "@/lib/remise";
-import { LIBELLE_TYPE_DEPENSE } from "@/lib/utils";
+import { LIBELLE_TYPE_DEPENSE, formatNombre } from "@/lib/utils";
 import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { notifierAffectationChauffeur, notifierEtapeVoyage } from "@/lib/sms/declencheurs";
@@ -428,6 +428,17 @@ export async function creerVoyage(_etat: EtatFormulaire, donnees: FormData): Pro
   await synchroniserCamion(data.camionId);
   // Le chauffeur est prévenu de son affectation.
   await notifierAffectationChauffeur(cree.id);
+
+  await journaliser({
+    action: "voyage.cree",
+    objet: "Voyage",
+    objetId: cree.id,
+    libelle:
+      `Mission ${cree.reference} créée : ${data.villeDepart} > ${data.villeArrivee}` +
+      (data.recetteGnf > 0 ? `, ${formatNombre(data.recetteGnf)} GNF convenus` : ""),
+    montantGnf: data.recetteGnf || null,
+  });
+
   rafraichir();
   return { ok: true };
 }
@@ -575,7 +586,7 @@ export async function supprimerVoyage(id: string) {
 
   const liens = await prisma.voyage.findUnique({
     where: { id },
-    select: { camionId: true, _count: { select: { factures: true, depenses: true, etapes: true } } },
+    select: { camionId: true, reference: true, _count: { select: { factures: true, depenses: true, etapes: true } } },
   });
   if (!liens) throw new Error("Voyage introuvable.");
 
@@ -595,6 +606,16 @@ export async function supprimerVoyage(id: string) {
   }
 
   await prisma.voyage.delete({ where: { id } });
+
+  // Une mission vierge supprimée reste une intention effacée : sans trace, on
+  // ne peut pas expliquer un trou dans la numérotation des références.
+  await journaliser({
+    action: "voyage.supprime",
+    objet: "Voyage",
+    objetId: id,
+    libelle: `Mission ${liens.reference} supprimée (aucune écriture rattachée)`,
+  });
+
   await synchroniserCamion(liens.camionId);
   rafraichir();
 }

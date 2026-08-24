@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { erreursFormulaire, nombreOptionnel } from "@/lib/validation";
 
@@ -122,6 +123,13 @@ export async function supprimerUnite(id: string) {
   }
 
   await prisma.unite.delete({ where: { id } });
+
+  await journaliser({
+    action: "unite.supprimee",
+    objet: "Unite",
+    objetId: id,
+    libelle: "Unité de mesure supprimée",
+  });
   rafraichir();
 }
 

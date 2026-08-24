@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { caseACocher, erreursFormulaire, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
 
@@ -86,6 +87,13 @@ export async function supprimerClient(id: string) {
 
   try {
     await prisma.client.delete({ where: { id } });
+
+  await journaliser({
+    action: "client.supprime",
+    objet: "Client",
+    objetId: id,
+    libelle: "Client supprimé",
+  });
   } catch (e) {
     // Un client facturé est référencé : la base refuse la suppression, et
     // c'est bien ainsi — l'historique de facturation doit rester intact.

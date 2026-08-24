@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { dateBorneeOptionnelle, dateExpiration, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
 
@@ -120,5 +121,12 @@ export async function supprimerEcheance(id: string) {
     select: { camionId: true },
   });
   await prisma.echeance.delete({ where: { id } });
+
+  await journaliser({
+    action: "echeance.supprimee",
+    objet: "Echeance",
+    objetId: id,
+    libelle: "Échéance supprimée",
+  });
   rafraichir(echeance?.camionId);
 }

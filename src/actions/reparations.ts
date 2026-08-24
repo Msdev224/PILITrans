@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
 import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
@@ -149,5 +150,12 @@ export async function supprimerReparation(id: string) {
   if (!reparation) throw new Error("Réparation introuvable.");
 
   await prisma.reparation.delete({ where: { id } });
+
+  await journaliser({
+    action: "reparation.supprimee",
+    objet: "Reparation",
+    objetId: id,
+    libelle: "Réparation supprimée",
+  });
   await rafraichirEtSynchroniser(reparation.camionId);
 }
