@@ -32,6 +32,29 @@ export default async function RentabilitePage() {
   const totalInvesti = lignes.reduce((t, l) => t + (l.capital.coutAcquisition ?? 0), 0);
   const totalReste = lignes.reduce((t, l) => t + l.capital.resteGnf, 0);
   const rembourses = lignes.filter((l) => l.capital.rembourse && l.capital.coutAcquisition).length;
+  const totalVoyages = lignes.reduce((t, l) => t + l.pnl.nbVoyages, 0);
+
+  /*
+   * Un taux de marge sans recette n'existe pas.
+   *
+   * Diviser par zéro donnerait l'infini, et afficher « 0 % » laisserait croire
+   * que le mois est simplement médiocre alors qu'il n'a rien produit.
+   */
+  const tauxMarge = totalRecette > 0 ? (totalMarge / totalRecette) * 100 : null;
+
+  /*
+   * Meilleur véhicule et véhicules en perte.
+   *
+   * Ceux dont la recette n'a pas été saisie sont écartés : leur marge est
+   * négative par défaut de saisie, pas par manque de rentabilité, et les
+   * désigner comme perdants ferait chercher un problème qui n'existe pas.
+   */
+  const chiffres = lignes.filter((l) => !l.pnl.recetteManquante);
+  const meilleur = chiffres.reduce<(typeof lignes)[number] | null>(
+    (best, l) => (best === null || l.pnl.margeExploitation > best.pnl.margeExploitation ? l : best),
+    null,
+  );
+  const enPerte = chiffres.filter((l) => l.pnl.margeExploitation < 0);
 
   return (
     <>
@@ -53,6 +76,54 @@ export default async function RentabilitePage() {
           </div>
         ) : (
           <>
+            {/* ---------- L'essentiel, avant le détail ----------
+                On arrivait directement sur un tableau de huit colonnes. La
+                première question — « est-ce que le mois est bon ? » — demandait
+                de lire toutes les lignes et d'additionner de tête. */}
+            <div className="kpis mb-5">
+              <div className={`card kpi ${totalMarge >= 0 ? "posbar" : "negbar"}`}>
+                <div className="lab">Marge d&apos;exploitation</div>
+                <div className="val">
+                  {formatSigne(totalMarge)}
+                  <span className="unit">GNF</span>
+                </div>
+                <div className="delta flat">
+                  {tauxMarge != null
+                    ? `${formatDecimal(tauxMarge)} % de la recette`
+                    : "pas de recette sur la période"}
+                </div>
+              </div>
+
+              <div className="card kpi">
+                <div className="lab">Recette</div>
+                <div className="val">
+                  {formatNombre(totalRecette)}
+                  <span className="unit">GNF</span>
+                </div>
+                <div className="delta flat">
+                  {totalVoyages} mission{totalVoyages > 1 ? "s" : ""}
+                </div>
+              </div>
+
+              <div className="card kpi">
+                <div className="lab">Meilleur véhicule</div>
+                <div className="val val-texte">{meilleur ? meilleur.pnl.camion.nom : "—"}</div>
+                <div className="delta flat">
+                  {meilleur ? `${formatSigne(meilleur.pnl.margeExploitation)} GNF de marge` : "aucun"}
+                </div>
+              </div>
+
+              <div className={`card kpi ${enPerte.length > 0 ? "negbar" : ""}`}>
+                <div className="lab">Véhicules en perte</div>
+                <div className="val">{enPerte.length}</div>
+                <div className="delta flat">
+                  {enPerte.length > 0
+                    ? enPerte.map((l) => l.pnl.camion.nom).join(", ")
+                    : "aucun sur la période"}
+                </div>
+              </div>
+            </div>
+
             {/* ---------- Résultat du mois : exploitation seule ---------- */}
             <div className="head-row">
               <h3>

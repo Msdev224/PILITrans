@@ -397,6 +397,21 @@
     font-variant-numeric: tabular-nums;
     font-family: var(--police-titre), "Space Grotesk", sans-serif;
   }
+  /*
+   * Une immatriculation ne se coupe pas.
+   *
+   * « RC-4821-A » passait à la ligne sur le tiret, ce qui la rendait illisible
+   * et déformait la hauteur des lignes du tableau.
+   */
+  .tbl .t-sub.mono,
+  .tbl td .t-sub {
+    white-space: nowrap;
+  }
+
+  .kpi .val-texte {
+    font-size: 20px;
+    letter-spacing: -0.01em;
+  }
   .kpi .unit {
     font-size: 13px;
     color: var(--muted-2);
@@ -2377,6 +2392,8 @@
     gap: 7px;
     justify-content: flex-end;
     min-width: 96px;
+    /* Sans cela, « 100 % » se coupait entre le nombre et le signe. */
+    white-space: nowrap;
   }
   .part-barre > span {
     height: 6px;
