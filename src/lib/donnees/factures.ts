@@ -12,12 +12,12 @@ export interface VersementVue {
   devise: "GNF" | "XOF";
   montantGnf: number;
   date: string;
-  moyen: string;
+  moyen: string | null;
   reference: string | null;
 }
 
 export interface LigneFacture {
-  facture: Facture & { client: Client; voyage: Voyage | null; paiements?: Paiement[] };
+  facture: Facture & { client: Client; voyage: Voyage | null; paiements?: PaiementAvecMoyen[] };
   /** Échéancier aplati — les Decimal ne traversent pas vers le client. */
   versements: VersementVue[];
   montantGnf: number;
@@ -59,6 +59,15 @@ export interface VueFactures {
   total: number;
 }
 
+/**
+ * Un versement, avec le libellé de son moyen de paiement.
+ *
+ * Le moyen est devenu une table tenue par l'exploitation : la relation est
+ * chargée par la requête, et vaut `null` sur une écriture dérivée qui n'en
+ * déclare aucun.
+ */
+export type PaiementAvecMoyen = Paiement & { moyen: { nom: string } | null };
+
 const JOUR_MS = 86_400_000;
 
 /** Le calcul ne dépend que de la facture : le typage du voyage reste libre. */
@@ -88,7 +97,7 @@ function construireLigne<T extends LigneFacture["facture"]>(
     devise: p.devise,
     montantGnf: n(p.montantGnf),
     date: p.date.toISOString(),
-    moyen: p.moyen,
+    moyen: p.moyen?.nom ?? null,
     reference: p.reference,
   }));
 
@@ -119,7 +128,11 @@ export async function vueFactures(
   const ceJour = debutDeJour(aujourdhui);
 
   const factures = await prisma.facture.findMany({
-    include: { client: true, voyage: true, paiements: { orderBy: { date: "asc" } } },
+    include: {
+      client: true,
+      voyage: true,
+      paiements: { orderBy: { date: "asc" }, include: { moyen: { select: { nom: true } } } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -173,7 +186,7 @@ export async function vueFactures(
 export type FactureImprimable = Facture & {
   client: Client;
   /** Règlements reçus, repris sur le document avec leur moyen. */
-  paiements: Paiement[];
+  paiements: PaiementAvecMoyen[];
   voyage:
     | (Voyage & {
         camion: Camion;
@@ -208,7 +221,7 @@ export async function ficheFacture(
           paysArrivee: { select: { nom: true, code: true } },
         },
       },
-      paiements: { orderBy: { date: "asc" } },
+      paiements: { orderBy: { date: "asc" }, include: { moyen: { select: { nom: true } } } },
     },
   });
   if (!facture) return null;

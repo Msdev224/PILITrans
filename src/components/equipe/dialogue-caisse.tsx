@@ -12,7 +12,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { LIBELLE_TYPE_DEPENSE, OBJETS_REMISE, formatDecimal, formatNombre } from "@/lib/utils";
-import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
 import { ChampMontant } from "@/components/champ-montant";
 
 /**
@@ -42,6 +41,7 @@ export function DialogueCaisse({
   soldeXof,
   tauxReferenceXof,
   missions,
+  moyens,
   voyageImpose,
   declencheur,
 }: {
@@ -52,6 +52,8 @@ export function DialogueCaisse({
   tauxReferenceXof: number | null;
   /** Missions en cours de ce chauffeur, pour rattacher l'avance. */
   missions: { id: string; libelle: string }[];
+  /** Moyens de paiement actifs, tenus dans Configuration. */
+  moyens: { id: string; nom: string }[];
   /**
    * Mission imposée : ouvert depuis une fiche mission, le rattachement est
    * déjà connu et ne se choisit pas.
@@ -175,10 +177,11 @@ export function DialogueCaisse({
 
               <div className="field">
                 <label>Moyen</label>
-                <select name="moyen" defaultValue="ESPECES">
-                  {Object.keys(LIBELLE_MOYEN_PAIEMENT).map((m) => (
-                    <option key={m} value={m}>
-                      {LIBELLE_MOYEN_PAIEMENT[m]}
+                <select name="moyenId" defaultValue="">
+                  <option value="">— à préciser —</option>
+                  {moyens.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nom}
                     </option>
                   ))}
                 </select>

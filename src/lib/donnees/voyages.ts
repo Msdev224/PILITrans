@@ -294,7 +294,7 @@ export interface FicheVoyage extends LigneVoyage {
    * puis on recharge en route — un poste plus cher que prévu, une panne, un
    * détour. Les mouvements s'ajoutent donc, ils ne se remplacent pas.
    */
-  avances: MouvementCaisse[];
+  avances: (MouvementCaisse & { moyen: { nom: string } | null })[];
   /** Total remis, rechargements compris. */
   remisGnf: number;
   /** Part déjà justifiée par des dépenses, ou rendue en reliquat. */
@@ -413,7 +413,11 @@ export async function ficheVoyage(id: string, aujourdhui: Date = new Date()): Pr
       },
       orderBy: { ordre: "asc" },
     }),
-    prisma.mouvementCaisse.findMany({ where: { voyageId: id }, orderBy: { date: "asc" } }),
+    prisma.mouvementCaisse.findMany({
+      where: { voyageId: id },
+      orderBy: { date: "asc" },
+      include: { moyen: { select: { nom: true } } },
+    }),
   ]);
 
   /*

@@ -14,21 +14,14 @@ import {
 } from "@/components/ui/dialog";
 import { formatDate, formatDecimal, formatGnf, formatNombre } from "@/lib/utils";
 
-const LIBELLE_MOYEN: Record<string, string> = {
-  ESPECES: "Espèces",
-  ORANGE_MONEY: "Orange Money",
-  VIREMENT: "Virement",
-  CHEQUE: "Chèque",
-  AUTRE: "Autre",
-};
-
 export interface VersementVue {
   id: string;
   montant: number;
   devise: "GNF" | "XOF";
   montantGnf: number;
   date: string;
-  moyen: string;
+  /** `null` quand le moyen n'a pas été précisé. */
+  moyen: string | null;
   reference: string | null;
 }
 
@@ -40,6 +33,8 @@ interface Props {
   payeGnf: number;
   resteGnf: number;
   versements: VersementVue[];
+  /** Moyens de paiement actifs, tenus dans Configuration. */
+  moyens: { id: string; nom: string }[];
   tauxReferenceXof: number | null;
   declencheur: React.ReactNode;
 }
@@ -52,6 +47,7 @@ export function DialoguePaiement({
   payeGnf,
   resteGnf,
   versements,
+  moyens,
   tauxReferenceXof,
   declencheur,
 }: Props) {
@@ -151,7 +147,8 @@ export function DialoguePaiement({
                   <div className="corps">
                     <div className="t mono">{formatNombre(v.montantGnf)} GNF</div>
                     <div className="s">
-                      {formatDate(new Date(v.date))} · {LIBELLE_MOYEN[v.moyen] ?? v.moyen}
+                      {formatDate(new Date(v.date))}
+                      {v.moyen ? ` · ${v.moyen}` : " · moyen non précisé"}
                       {v.devise === "XOF" ? ` · ${formatNombre(v.montant)} CFA` : ""}
                       {v.reference ? ` · ${v.reference}` : ""}
                     </div>
@@ -235,13 +232,14 @@ export function DialoguePaiement({
 
                 <div className="field">
                   <label>Moyen de paiement</label>
-                  <select name="moyen" defaultValue="ESPECES">
-                    {Object.keys(LIBELLE_MOYEN).map((m) => (
-                      <option key={m} value={m}>
-                        {LIBELLE_MOYEN[m]}
-                      </option>
-                    ))}
-                  </select>
+                  <select name="moyenId" defaultValue="">
+                  <option value="">— à préciser —</option>
+                  {moyens.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nom}
+                    </option>
+                  ))}
+                </select>
                 </div>
 
                 <div className="field">

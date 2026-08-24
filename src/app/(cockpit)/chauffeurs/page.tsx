@@ -11,6 +11,7 @@ import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes
 import { vueChauffeurs, type LigneChauffeur } from "@/lib/donnees/equipe";
 import { moisCourant } from "@/lib/periode";
 import { indicatifsPays } from "@/lib/donnees/pays";
+import { moyensActifs } from "@/lib/donnees/moyens-paiement";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatNombre, LIBELLE_MODE_REMUNERATION, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
@@ -20,12 +21,13 @@ export const metadata = { title: "Chauffeurs — PILITrans" };
 
 export default async function ChauffeursPage() {
   const periode = moisCourant();
-  const [session, lignes, parametres, fil, indicatifs] = await Promise.all([
+  const [session, lignes, parametres, fil, indicatifs, moyens] = await Promise.all([
     sessionRequise(),
     vueChauffeurs(periode),
     prisma.parametres.findFirst(),
     filAlertes(),
     indicatifsPays(),
+    moyensActifs(),
   ]);
 
   const actifs = lignes.filter((l) => l.chauffeur.actif).length;
@@ -85,6 +87,7 @@ export default async function ChauffeursPage() {
                     key={ligne.chauffeur.id}
                     ligne={ligne}
                     indicatifs={indicatifs}
+                    moyens={moyens}
                     tauxReferenceXof={tauxReferenceXof}
                   />
               ))}
@@ -99,10 +102,12 @@ export default async function ChauffeursPage() {
 function LigneTableau({
   ligne,
   indicatifs,
+  moyens,
   tauxReferenceXof,
 }: {
   ligne: LigneChauffeur;
   indicatifs: { code: string; libelle: string; longueur: number | null }[];
+  moyens: { id: string; nom: string }[];
   tauxReferenceXof: number | null;
 }) {
   const { chauffeur } = ligne;
@@ -192,6 +197,7 @@ function LigneTableau({
             soldeXof={ligne.soldeXof}
             tauxReferenceXof={tauxReferenceXof}
             missions={ligne.missionsEnCours}
+            moyens={moyens}
             declencheur={
               <button type="button" title="Mouvement de caisse (avance, remboursement)">
                 <IconeDepense />

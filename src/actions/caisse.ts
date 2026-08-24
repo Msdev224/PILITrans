@@ -1,6 +1,6 @@
 "use server";
 
-import { Devise, MoyenPaiement, TypeDepense, TypeMouvement } from "@prisma/client";
+import { Devise, TypeDepense, TypeMouvement } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -57,7 +57,8 @@ const schemaMouvement = z
      * trésorerie, ni ce qu'il reste à justifier dessus.
      */
     voyageId: texteOptionnel,
-    moyen: z.nativeEnum(MoyenPaiement),
+    /** Identifiant du moyen de paiement, tenu dans Configuration. */
+    moyenId: texteOptionnel,
     reference: texteOptionnel,
     /**
      * Commission prélevée par l'opérateur sur l'envoi.
@@ -114,7 +115,7 @@ export async function enregistrerMouvementCaisse(
           ? (saisie.data.objet as TypeDepense)
           : null,
       voyageId: saisie.data.voyageId || null,
-      moyen: saisie.data.moyen,
+      moyenId: saisie.data.moyenId || null,
       reference: saisie.data.reference ?? null,
       fraisGnf: saisie.data.fraisGnf ?? null,
       date: saisie.data.date ?? new Date(),
@@ -128,7 +129,7 @@ export async function enregistrerMouvementCaisse(
     libelle: `${LIBELLE_MOUVEMENT[saisie.data.type] ?? saisie.data.type} de ${formatNombre(montantGnf)} GNF — ${chauffeur?.nom ?? "chauffeur"}`,
     montantGnf,
     apres: {
-      moyen: saisie.data.moyen,
+      moyenId: saisie.data.moyenId || null,
       objetRemise: saisie.data.objet ?? null,
       voyageId: saisie.data.voyageId || null,
     },

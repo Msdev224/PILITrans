@@ -1,6 +1,6 @@
 "use server";
 
-import { CategorieDepense, Devise, MoyenPaiement, SegmentTrajet, TypeDepense } from "@prisma/client";
+import { CategorieDepense, Devise, SegmentTrajet, TypeDepense } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -55,7 +55,7 @@ const schemaDepense = z
     /** Ventilations analytiques facultatives. */
     chauffeurId: texteOptionnel,
     clientId: texteOptionnel,
-    moyen: z.nativeEnum(MoyenPaiement),
+    moyenId: texteOptionnel,
     reference: texteOptionnel,
   })
   .refine((d) => d.devise === "GNF" || (d.montantGnf ?? 0) > 0, {
@@ -130,7 +130,7 @@ async function donneesDepense(saisie: z.infer<typeof schemaDepense>) {
         : null,
     chauffeurId: saisie.chauffeurId || null,
     clientId: saisie.clientId || null,
-    moyen: saisie.moyen,
+    moyenId: saisie.moyenId || null,
     reference: saisie.reference || null,
   };
 }

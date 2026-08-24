@@ -19,6 +19,7 @@ import {
   type LigneDepense,
 } from "@/lib/donnees/depenses";
 import { moisCourant } from "@/lib/periode";
+import { moyensActifs } from "@/lib/donnees/moyens-paiement";
 import { prisma } from "@/lib/prisma";
 import {
   formatDecimal,
@@ -42,7 +43,7 @@ export default async function DepensesPage({ searchParams }: Props) {
   const recherche = params.q ?? "";
   const periode = moisCourant();
 
-  const [session, vue, parametres, fil, voyages, camions, chauffeurs] = await Promise.all([
+  const [session, vue, parametres, fil, voyages, camions, chauffeurs, moyens] = await Promise.all([
     sessionRequise(),
     vueDepenses(periode, { filtre, recherche }),
     prisma.parametres.findFirst(),
@@ -63,6 +64,7 @@ export default async function DepensesPage({ searchParams }: Props) {
       select: { id: true, nom: true },
       orderBy: { nom: "asc" },
     }),
+    moyensActifs(),
   ]);
 
   const tauxReferenceXof = parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null;
@@ -145,6 +147,7 @@ export default async function DepensesPage({ searchParams }: Props) {
             <DialogueDepense
               voyages={optionsVoyages}
               camions={optionsCamions}
+              moyens={moyens}
               chauffeurs={chauffeurs}
               tauxReferenceXof={tauxReferenceXof}
               declencheur={
@@ -186,6 +189,7 @@ export default async function DepensesPage({ searchParams }: Props) {
                     ligne={ligne}
                     voyages={optionsVoyages}
                     camions={optionsCamions}
+                    moyens={moyens}
                     tauxReferenceXof={tauxReferenceXof}
                   />
                 ))}
@@ -211,11 +215,13 @@ function LigneTableau({
   ligne,
   voyages,
   camions,
+  moyens,
   tauxReferenceXof,
 }: {
   ligne: LigneDepense;
   voyages: OptionVoyage[];
   camions: OptionCamionSimple[];
+  moyens: { id: string; nom: string }[];
   tauxReferenceXof: number | null;
 }) {
   const { depense } = ligne;
@@ -262,6 +268,7 @@ function LigneTableau({
           depense={aplatir(ligne)}
           voyages={voyages}
           camions={camions}
+          moyens={moyens}
           tauxReferenceXof={tauxReferenceXof}
         />
       </td>
@@ -284,7 +291,7 @@ function aplatir(ligne: LigneDepense): DepenseEditable {
     categorie: depense.categorie,
     imputerAMission: depense.imputerAMission,
     segment: depense.segment,
-    moyen: depense.moyen,
+    moyenId: depense.moyenId,
     reference: depense.reference,
     date: depense.date.toISOString().slice(0, 10),
     voyageId: depense.voyageId,

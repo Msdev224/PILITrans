@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
-import { LIBELLE_MOYEN_PAIEMENT, n, nOuNull } from "@/lib/utils";
+import { n, nOuNull } from "@/lib/utils";
 
 /**
  * Caisse de l'entreprise.
@@ -26,7 +26,8 @@ export interface LigneTresorerie {
   sens: SensMouvement;
   libelle: string;
   detail: string | null;
-  moyen: string;
+  /** `null` quand l'écriture ne déclare aucun moyen. */
+  moyen: string | null;
   reference: string | null;
   montantGnf: number;
   /** Solde après cette opération, du plus ancien au plus récent. */
@@ -54,18 +55,21 @@ async function tresorerieBrute(): Promise<Tresorerie> {
       select: { soldeCaisseInitial: true, dateSoldeInitial: true },
     }),
     prisma.paiement.findMany({
-      include: { facture: { select: { numero: true, client: { select: { nom: true } } } } },
+      include: {
+        facture: { select: { numero: true, client: { select: { nom: true } } } },
+        moyen: { select: { nom: true } },
+      },
       orderBy: { date: "asc" },
     }),
     // Les dépenses réglées sur la caisse d'un chauffeur sont exclues : leur
     // sortie a déjà été comptée à la remise de l'avance.
     prisma.depense.findMany({
       where: { mouvementCaisse: null },
-      include: { camion: { select: { nom: true } } },
+      include: { camion: { select: { nom: true } }, moyen: { select: { nom: true } } },
       orderBy: { date: "asc" },
     }),
     prisma.mouvementCaisse.findMany({
-      include: { chauffeur: { select: { nom: true } } },
+      include: { chauffeur: { select: { nom: true } }, moyen: { select: { nom: true } } },
       orderBy: { date: "asc" },
     }),
   ]);
@@ -79,7 +83,7 @@ async function tresorerieBrute(): Promise<Tresorerie> {
       sens: "ENTREE",
       libelle: `Règlement ${p.facture.client.nom}`,
       detail: p.facture.numero,
-      moyen: LIBELLE_MOYEN_PAIEMENT[p.moyen] ?? p.moyen,
+      moyen: p.moyen?.nom ?? null,
       reference: p.reference,
       montantGnf: n(p.montantGnf),
     });
@@ -92,7 +96,7 @@ async function tresorerieBrute(): Promise<Tresorerie> {
       sens: "SORTIE",
       libelle: d.description || d.type.replaceAll("_", " ").toLowerCase(),
       detail: d.camion?.nom ?? null,
-      moyen: LIBELLE_MOYEN_PAIEMENT[d.moyen] ?? d.moyen,
+      moyen: d.moyen?.nom ?? null,
       reference: null,
       montantGnf: n(d.montantGnf),
     });
@@ -112,7 +116,7 @@ async function tresorerieBrute(): Promise<Tresorerie> {
           ? `Avance à ${m.chauffeur.nom}`
           : `Reliquat rendu par ${m.chauffeur.nom}`,
       detail: m.motif,
-      moyen: LIBELLE_MOYEN_PAIEMENT[m.moyen] ?? m.moyen,
+      moyen: m.moyen?.nom ?? null,
       reference: m.reference,
       montantGnf: n(m.montantGnf),
     });
@@ -126,8 +130,8 @@ async function tresorerieBrute(): Promise<Tresorerie> {
         date: m.date,
         sens: "SORTIE",
         libelle: `Frais d'envoi — ${m.chauffeur.nom}`,
-        detail: LIBELLE_MOYEN_PAIEMENT[m.moyen] ?? m.moyen,
-        moyen: LIBELLE_MOYEN_PAIEMENT[m.moyen] ?? m.moyen,
+        detail: m.moyen?.nom ?? null,
+        moyen: m.moyen?.nom ?? null,
         reference: m.reference,
         montantGnf: frais,
       });

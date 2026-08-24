@@ -2,7 +2,6 @@
 
 import {
   MotifVoyage,
-  MoyenPaiement,
   Prisma,
   SegmentTrajet,
   StatutVoyage,
@@ -277,7 +276,7 @@ function rafraichir(voyageId?: string) {
  */
 /** Réglages communs à la remise : un seul transfert couvre souvent le tout. */
 const schemaRemise = z.object({
-  avanceMoyen: z.nativeEnum(MoyenPaiement).default("ESPECES"),
+  avanceMoyen: texteOptionnel,
   avanceReference: texteOptionnel,
   /** Commission de l'opérateur : elle sort de la caisse sans être remise. */
   avanceFraisGnf: nombreOptionnel,
@@ -364,7 +363,7 @@ async function appliquerRemise(
         montant: ligne.montant,
         devise: ligne.devise,
         montantGnf: ligne.montantGnf,
-        moyen: r.avanceMoyen,
+        moyenId: r.avanceMoyen || null,
         reference: r.avanceReference ?? null,
         // La commission ne se paie qu'une fois pour l'ensemble du transfert :
         // la répéter sur chaque ligne la compterait autant de fois.

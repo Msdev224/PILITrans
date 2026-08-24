@@ -31,6 +31,7 @@ interface Props {
   payeGnf: number;
   resteGnf: number;
   versements: VersementVue[];
+  moyens: { id: string; nom: string }[];
   clients: OptionClient[];
   voyages: OptionVoyageFacturable[];
   delaiPaiementJours: number;
@@ -46,6 +47,7 @@ export function ActionsFacture({
   payeGnf,
   resteGnf,
   versements,
+  moyens,
   clients,
   voyages,
   delaiPaiementJours,
@@ -65,6 +67,7 @@ export function ActionsFacture({
           payeGnf={payeGnf}
           resteGnf={resteGnf}
           versements={versements}
+          moyens={moyens}
           tauxReferenceXof={tauxReferenceXof}
           declencheur={
             <button

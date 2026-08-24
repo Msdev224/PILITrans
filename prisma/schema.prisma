@@ -538,7 +538,11 @@ model Depense {
   description    String?
   /// Comment la dépense a été réglée : espèces, Orange Money, virement…
   /// Sert à retrouver l'opération dans un relevé et à la justifier.
-  moyen          MoyenPaiement    @default(ESPECES)
+  /// Comment l'argent a circulé. Facultatif : une écriture dérivée — le
+  /// carburant remis avec la mission, par exemple — n'a pas de moyen déclaré,
+  /// et inventer « espèces » ferait entrer une donnée fausse dans la caisse.
+  moyen          MoyenPaiement?   @relation(fields: [moyenId], references: [id])
+  moyenId        String?
   /// Référence du transfert, identifiant Orange Money, n° de reçu.
   reference      String?
   date           DateTime         @default(now())
@@ -654,13 +658,13 @@ enum TypeMouvement {
 }
 
 model MouvementCaisse {
-  id          String        @id @default(cuid())
-  chauffeur   Chauffeur     @relation(fields: [chauffeurId], references: [id])
+  id          String         @id @default(cuid())
+  chauffeur   Chauffeur      @relation(fields: [chauffeurId], references: [id])
   chauffeurId String
   type        TypeMouvement
-  montant     Decimal       @db.Decimal(14, 2) // dans la devise réelle
-  devise      Devise        @default(GNF)
-  montantGnf  Decimal       @default(0) @db.Decimal(16, 2) // équivalent GNF figé
+  montant     Decimal        @db.Decimal(14, 2) // dans la devise réelle
+  devise      Devise         @default(GNF)
+  montantGnf  Decimal        @default(0) @db.Decimal(16, 2) // équivalent GNF figé
   motif       String?
   /**
    * Ce à quoi l'argent est destiné : gasoil, nourriture, réparation…
@@ -673,7 +677,8 @@ model MouvementCaisse {
   objet       TypeDepense?
   /// Comment l'argent a circulé : espèces de la main à la main, Orange Money,
   /// virement… Nécessaire pour retrouver une opération et la justifier.
-  moyen       MoyenPaiement @default(ESPECES)
+  moyen       MoyenPaiement? @relation(fields: [moyenId], references: [id])
+  moyenId     String?
   /// Référence du transfert, identifiant Orange Money, n° de chèque.
   reference   String?
   /**
@@ -682,8 +687,8 @@ model MouvementCaisse {
    * commission est un vrai coût d'exploitation. Comptée à part, elle ne se
    * confond pas avec l'argent remis au chauffeur, qui devra le justifier.
    */
-  fraisGnf    Decimal?      @db.Decimal(14, 2)
-  date        DateTime      @default(now())
+  fraisGnf    Decimal?       @db.Decimal(14, 2)
+  date        DateTime       @default(now())
 
   depense   Depense? @relation(fields: [depenseId], references: [id])
   depenseId String?  @unique
@@ -1004,6 +1009,8 @@ model Parametres {
    * /**
    * /**
    * /**
+   * /**
+   * /**
    * Argent déjà détenu au démarrage de l'application.
    * Sans lui, la trésorerie partirait de zéro et afficherait un solde négatif
    * dès la première dépense, alors que l'exploitation tournait avant.
@@ -1038,31 +1045,48 @@ model Parametres {
 }
 
 /// Moyens de règlement usuels — repris des Paramètres pour la facture.
-enum MoyenPaiement {
-  ESPECES
-  ORANGE_MONEY
-  VIREMENT
-  CHEQUE
-  AUTRE
+/**
+ * Moyens de paiement, tenus par l'exploitation.
+ * C'était une énumération figée dans le code : ajouter Wave, MTN Money ou un
+ * opérateur local demandait un déploiement. Or les moyens de paiement
+ * apparaissent et disparaissent plus vite que l'application, et une opération
+ * qu'on ne peut pas qualifier finit saisie en « Autre » — ce qui la rend
+ * introuvable au moment de la rapprocher d'un relevé.
+ */
+model MoyenPaiement {
+  id String @id @default(cuid())
+
+  /// Code stable, indépendant du libellé : les reprises s'y accrochent.
+  code  String  @unique
+  nom   String  @unique
+  ordre Int     @default(100)
+  actif Boolean @default(true)
+
+  paiements  Paiement[]
+  mouvements MouvementCaisse[]
+  depenses   Depense[]
+
+  @@index([actif, ordre])
 }
 
 /// Un versement sur une facture. Une facture réglée en plusieurs fois porte
 /// autant de lignes que d'échéances honorées : sans ce détail, on connaîtrait
 /// le cumul sans savoir quand ni comment le client a payé.
 model Paiement {
-  id         String        @id @default(cuid())
-  facture    Facture       @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  id         String         @id @default(cuid())
+  facture    Facture        @relation(fields: [factureId], references: [id], onDelete: Cascade)
   factureId  String
-  montant    Decimal       @db.Decimal(14, 2)
-  devise     Devise        @default(GNF)
+  montant    Decimal        @db.Decimal(14, 2)
+  devise     Devise         @default(GNF)
   /// Équivalent GNF figé au taux réel du jour du versement.
-  montantGnf Decimal       @db.Decimal(16, 2)
-  date       DateTime      @default(now())
-  moyen      MoyenPaiement @default(ESPECES)
+  montantGnf Decimal        @db.Decimal(16, 2)
+  date       DateTime       @default(now())
+  moyen      MoyenPaiement? @relation(fields: [moyenId], references: [id])
+  moyenId    String?
   /// Référence du transfert, numéro de chèque, identifiant Orange Money…
   reference  String?
   note       String?
-  createdAt  DateTime      @default(now())
+  createdAt  DateTime       @default(now())
 
   @@index([factureId, date])
 }

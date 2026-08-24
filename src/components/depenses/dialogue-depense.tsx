@@ -16,7 +16,6 @@ import {
   LIBELLE_TYPE_DEPENSE,
   formatDecimal,
 } from "@/lib/utils";
-import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
 import {
   CATEGORIE_PAR_TYPE_DEPENSE,
   estChargeDeStructure,
@@ -48,7 +47,7 @@ export interface DepenseEditable {
   categorie: string;
   imputerAMission: boolean;
   segment: string | null;
-  moyen: string;
+  moyenId: string | null;
   reference: string | null;
   date: string;
   voyageId: string | null;
@@ -63,6 +62,8 @@ export interface OptionChauffeurCaisse {
 interface Props {
   voyages: OptionVoyage[];
   camions: OptionCamionSimple[];
+  /** Moyens de paiement actifs, tenus dans Configuration. */
+  moyens: { id: string; nom: string }[];
   chauffeurs: OptionChauffeurCaisse[];
   tauxReferenceXof: number | null;
   depense?: DepenseEditable | null;
@@ -72,6 +73,7 @@ interface Props {
 export function DialogueDepense({
   voyages,
   camions,
+  moyens,
   chauffeurs,
   tauxReferenceXof,
   depense,
@@ -294,10 +296,11 @@ export function DialogueDepense({
               </Champ>
 
               <Champ label="Moyen de paiement">
-                <select name="moyen" defaultValue={val("moyen", depense?.moyen ?? "ESPECES")}>
-                  {Object.keys(LIBELLE_MOYEN_PAIEMENT).map((m) => (
-                    <option key={m} value={m}>
-                      {LIBELLE_MOYEN_PAIEMENT[m]}
+                <select name="moyenId" defaultValue={val("moyenId", depense?.moyenId ?? "")}>
+                  <option value="">— à préciser —</option>
+                  {moyens.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nom}
                     </option>
                   ))}
                 </select>

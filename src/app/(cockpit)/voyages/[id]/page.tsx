@@ -16,10 +16,10 @@ import { BoutonConfirme } from "@/components/bouton-confirme";
 import { DialogueCaisse } from "@/components/equipe/dialogue-caisse";
 import { DialogueAnnulation } from "@/components/voyages/dialogue-annulation";
 import { ficheVoyage, type TronconVue } from "@/lib/donnees/voyages";
+import { moyensActifs } from "@/lib/donnees/moyens-paiement";
 import { prisma } from "@/lib/prisma";
 import {
   LIBELLE_MOUVEMENT,
-  LIBELLE_MOYEN_PAIEMENT,
   LIBELLE_SEGMENT,
   LIBELLE_STATUT_VOYAGE,
   LIBELLE_TYPE_DEPENSE,
@@ -47,13 +47,14 @@ export const dynamic = "force-dynamic";
 export default async function FicheVoyagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [session, fiche, parametres, fil, pays, clients] = await Promise.all([
+  const [session, fiche, parametres, fil, pays, clients, moyens] = await Promise.all([
     sessionRequise(),
     ficheVoyage(id),
     prisma.parametres.findFirst(),
     filAlertes(),
     paysActifs(),
     prisma.client.findMany({ select: { id: true, nom: true }, orderBy: { nom: "asc" } }),
+    moyensActifs(),
   ]);
 
   if (!fiche) notFound();
@@ -371,6 +372,7 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
               soldeXof={caisseChauffeur.parDevise.XOF}
               tauxReferenceXof={parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null}
               missions={[]}
+              moyens={moyens}
               voyageImpose={fiche.voyage.id}
               declencheur={
                 <button type="button" className="btn-add">
@@ -420,7 +422,8 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                       ) : null}
                     </div>
                     <div className="s">
-                      {formatDate(m.date)} · {LIBELLE_MOYEN_PAIEMENT[m.moyen] ?? m.moyen}
+                      {formatDate(m.date)}
+                      {m.moyen ? ` · ${m.moyen.nom}` : ""}
                       {m.devise === "XOF" ? ` · ${formatNombre(n(m.montant))} CFA` : ""}
                       {m.fraisGnf ? ` · frais ${formatNombre(n(m.fraisGnf))} GNF` : ""}
                     </div>

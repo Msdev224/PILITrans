@@ -19,6 +19,7 @@ import {
   type LigneFacture,
 } from "@/lib/donnees/factures";
 import { moisCourant } from "@/lib/periode";
+import { moyensActifs } from "@/lib/donnees/moyens-paiement";
 import { prisma } from "@/lib/prisma";
 import { formatDateCourte, formatGnf, formatNombre, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
@@ -50,7 +51,7 @@ export default async function FacturesPage({ searchParams }: Props) {
   const recherche = params.q ?? "";
   const periode = moisCourant();
 
-  const [session, vue, parametres, fil, clients, voyages] = await Promise.all([
+  const [session, vue, parametres, fil, clients, voyages, moyens] = await Promise.all([
     sessionRequise(),
     vueFactures(periode, { filtre, recherche }),
     prisma.parametres.findFirst(),
@@ -76,6 +77,7 @@ export default async function FacturesPage({ searchParams }: Props) {
       },
       orderBy: { dateDepart: "desc" },
     }),
+    moyensActifs(),
   ]);
 
   const tauxReferenceXof = parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null;
@@ -203,6 +205,7 @@ export default async function FacturesPage({ searchParams }: Props) {
                     ligne={ligne}
                     clients={optionsClients}
                     voyages={optionsVoyages}
+                    moyens={moyens}
                     delaiPaiementJours={delaiPaiementJours}
                     tauxReferenceXof={tauxReferenceXof}
                   />
@@ -229,12 +232,14 @@ function LigneTableau({
   ligne,
   clients,
   voyages,
+  moyens,
   delaiPaiementJours,
   tauxReferenceXof,
 }: {
   ligne: LigneFacture;
   clients: OptionClient[];
   voyages: OptionVoyageFacturable[];
+  moyens: { id: string; nom: string }[];
   delaiPaiementJours: number;
   tauxReferenceXof: number | null;
 }) {
@@ -292,6 +297,7 @@ function LigneTableau({
           payeGnf={ligne.payeGnf}
           resteGnf={ligne.resteGnf}
           versements={ligne.versements}
+          moyens={moyens}
           clients={clients}
           voyages={voyages}
           delaiPaiementJours={delaiPaiementJours}

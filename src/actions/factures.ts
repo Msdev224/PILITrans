@@ -1,6 +1,6 @@
 "use server";
 
-import { Devise, MoyenPaiement, StatutFacture } from "@prisma/client";
+import { Devise, StatutFacture } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -26,6 +26,8 @@ const schemaFacture = z
     montant: nombrePositif("Montant requis"),
   /** Ce que le client a déjà versé au moment d'émettre. */
   montantRecu: nombreOptionnel,
+  /** Moyen du règlement reçu à l'émission, s'il y en a un. */
+  moyenId: texteOptionnel,
     devise: z.nativeEnum(Devise),
     /** Équivalent GNF au taux réel — figé, jamais recalculé. */
     montantGnf: nombreOptionnel,
@@ -179,7 +181,9 @@ export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promi
         devise: saisie.data.devise,
         montantGnf: plafonne,
         date: dateEmission,
-        moyen: "ESPECES",
+        // Un règlement reçu à l'émission : le moyen se saisit sur le
+        // formulaire de facture, sinon il reste à préciser.
+        moyenId: saisie.data.moyenId || null,
         note: "Reçu à l'émission de la facture",
       },
     });
@@ -277,7 +281,7 @@ const schemaPaiement = z
     /** Équivalent GNF figé au taux du jour du versement. */
     montantGnf: nombreOptionnel,
     date: dateBorneeOptionnelle,
-    moyen: z.nativeEnum(MoyenPaiement),
+    moyenId: texteOptionnel,
     reference: texteOptionnel,
   })
   .refine((p) => p.devise === "GNF" || (p.montantGnf ?? 0) > 0, {
@@ -354,7 +358,7 @@ export async function enregistrerPaiement(
       devise: saisie.data.devise,
       montantGnf,
       date: saisie.data.date ?? new Date(),
-      moyen: saisie.data.moyen,
+      moyenId: saisie.data.moyenId || null,
       reference: saisie.data.reference ?? null,
     },
   });
@@ -367,7 +371,7 @@ export async function enregistrerPaiement(
     objetId: factureId,
     libelle: `Règlement de ${formatNombre(montantGnf)} GNF sur ${facture.numero}`,
     montantGnf,
-    apres: { moyen: saisie.data.moyen, reference: saisie.data.reference ?? null },
+    apres: { moyenId: saisie.data.moyenId ?? null, reference: saisie.data.reference ?? null },
   });
 
   rafraichir(facture.voyageId);
@@ -383,7 +387,7 @@ export async function supprimerPaiement(paiementId: string) {
     select: {
       factureId: true,
       montantGnf: true,
-      moyen: true,
+      moyen: { select: { nom: true } },
       date: true,
       facture: { select: { voyageId: true, numero: true } },
     },
@@ -404,7 +408,7 @@ export async function supprimerPaiement(paiementId: string) {
     objetId: paiement.factureId,
     libelle: `Versement de ${formatNombre(n(paiement.montantGnf))} GNF annulé sur ${paiement.facture.numero}`,
     montantGnf: n(paiement.montantGnf),
-    avant: { moyen: paiement.moyen, date: paiement.date.toISOString() },
+    avant: { moyen: paiement.moyen?.nom ?? null, date: paiement.date.toISOString() },
   });
 
   rafraichir(paiement.facture.voyageId);

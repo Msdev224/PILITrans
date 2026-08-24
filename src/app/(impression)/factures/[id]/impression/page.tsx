@@ -10,7 +10,6 @@ import { formatDecimal, formatNombre, n, nOuNull } from "@/lib/utils";
 import { BoutonImprimer } from "./bouton-imprimer";
 import { vueLignes } from "@/lib/donnees/marchandises";
 import { formatQuantite } from "@/lib/donnees/unites";
-import { LIBELLE_MOYEN_PAIEMENT } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -312,7 +311,7 @@ export default async function ImpressionFacturePage({
                   {facture.paiements.map((p) => (
                     <div key={p.id} className="line">
                       {jjmmaaaa(p.date)} — {formatNombre(n(p.montantGnf))} GNF ·{" "}
-                      {LIBELLE_MOYEN_PAIEMENT[p.moyen] ?? p.moyen}
+                      {p.moyen?.nom ?? "moyen non précisé"}
                       {p.reference ? ` · réf. ${p.reference}` : ""}
                     </div>
                   ))}

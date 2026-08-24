@@ -16,11 +16,13 @@ export function ActionsDepense({
   depense,
   voyages,
   camions,
+  moyens,
   tauxReferenceXof,
 }: {
   depense: DepenseEditable;
   voyages: OptionVoyage[];
   camions: OptionCamionSimple[];
+  moyens: { id: string; nom: string }[];
   tauxReferenceXof: number | null;
 }) {
   const [confirmation, setConfirmation] = useState(false);
@@ -31,6 +33,7 @@ export function ActionsDepense({
         chauffeurs={[]}
         voyages={voyages}
         camions={camions}
+        moyens={moyens}
         tauxReferenceXof={tauxReferenceXof}
         depense={depense}
         declencheur={
