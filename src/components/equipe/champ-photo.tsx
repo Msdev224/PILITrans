@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 
+import { obtenirSignature } from "@/actions/televersement";
+
 /** Côté du carré final, en pixels. Suffisant pour reconnaître un visage. */
 const COTE = 320;
 /** Au-delà, on refuse : la photo part en base, elle doit rester légère. */
@@ -18,6 +20,7 @@ const POIDS_MAX = 400 * 1024;
 export function ChampPhoto({ nom, valeur }: { nom: string; valeur?: string | null }) {
   const [apercu, setApercu] = useState<string | null>(valeur ?? null);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [envoi, setEnvoi] = useState(false);
   const fichier = useRef<HTMLInputElement>(null);
 
   async function choisir(e: React.ChangeEvent<HTMLInputElement>) {
@@ -30,10 +33,35 @@ export function ChampPhoto({ nom, valeur }: { nom: string; valeur?: string | nul
       return;
     }
 
+    let reduite: string;
     try {
-      setApercu(await reduire(f));
+      reduite = await reduire(f);
     } catch {
       setErreur("Image illisible. Essayez une autre photo.");
+      return;
+    }
+
+    // L'aperçu s'affiche tout de suite : l'envoi peut durer sur un réseau lent.
+    setApercu(reduite);
+
+    /*
+     * Téléversement vers Cloudinary, si l'exploitation l'a configuré.
+     *
+     * En cas d'échec — pas de clés, réseau coupé, service indisponible — on
+     * garde l'image en base comme avant. Une photo est un confort : elle ne
+     * doit jamais empêcher d'enregistrer une fiche chauffeur.
+     */
+    setEnvoi(true);
+    try {
+      const signature = await obtenirSignature();
+      if (signature) {
+        const url = await televerser(reduite, signature);
+        if (url) setApercu(url);
+      }
+    } catch {
+      // Silencieux : l'image reste en base, la fiche s'enregistre quand même.
+    } finally {
+      setEnvoi(false);
     }
   }
 
@@ -49,6 +77,7 @@ export function ChampPhoto({ nom, valeur }: { nom: string; valeur?: string | nul
         ) : (
           <span>Aucune photo</span>
         )}
+        {envoi ? <span className="photo-envoi">Envoi…</span> : null}
       </div>
 
       <div className="photo-actions">
@@ -119,4 +148,33 @@ function reduire(f: File): Promise<string> {
     };
     lecteur.readAsDataURL(f);
   });
+}
+
+/**
+ * Envoie l'image à Cloudinary et rend son URL.
+ *
+ * L'appel part du navigateur vers Cloudinary directement : le fichier ne
+ * traverse pas nos fonctions serveur, qui plafonnent la taille des requêtes.
+ */
+async function televerser(
+  dataUri: string,
+  s: { cloudName: string; apiKey: string; timestamp: number; folder: string; signature: string },
+): Promise<string | null> {
+  const corps = new FormData();
+  corps.append("file", dataUri);
+  corps.append("api_key", s.apiKey);
+  corps.append("timestamp", String(s.timestamp));
+  corps.append("folder", s.folder);
+  corps.append("signature", s.signature);
+
+  const reponse = await fetch(`https://api.cloudinary.com/v1_1/${s.cloudName}/image/upload`, {
+    method: "POST",
+    body: corps,
+    // Le réseau de bord est instable : mieux vaut renoncer que rester bloqué.
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!reponse.ok) return null;
+
+  const resultat = (await reponse.json()) as { secure_url?: string };
+  return resultat.secure_url ?? null;
 }
