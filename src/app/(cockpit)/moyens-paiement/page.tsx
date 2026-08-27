@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Moyens de paiement — PILITrans" };
+export const metadata = { title: "Moyens de paiement" };
 
 export default async function MoyensPaiementPage() {
   const [session, moyens, parametres, fil] = await Promise.all([

@@ -3,6 +3,7 @@ import type { EvenementSms, Parametres } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assainirGsm7, dateSms, montantSms } from "@/lib/sms/gsm7";
 import { envoyerSms, envoyerWhatsApp, normaliserNumero, smsConfigure } from "@/lib/sms/nimba";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 /**
  * Mise en file et envoi des notifications SMS.
@@ -98,7 +99,7 @@ export async function notifier(demande: DemandeSms): Promise<void> {
     });
 
     if (actif && smsConfigure()) {
-      await tenterEnvoi(notification.id, parametres?.smsExpediteur ?? "PILITrans");
+      await tenterEnvoi(notification.id, parametres?.smsExpediteur ?? NOM_APPLICATION);
     }
   } catch {
     // Une notification qui échoue ne remonte pas : l'opération métier prime.
@@ -152,7 +153,7 @@ export async function tenterEnvoi(id: string, expediteur: string): Promise<boole
 //     se lit d'un coup d'œil sur un téléphone de bord.
 // ------------------------------------------------------------
 
-const enseigne = (p: Parametres | null) => assainirGsm7(p?.raisonSociale ?? "PILITrans");
+const enseigne = (p: Parametres | null) => assainirGsm7(p?.raisonSociale ?? NOM_APPLICATION);
 
 /** Numéro à rappeler, quand il est renseigné : sans lui, le client ne peut rien faire. */
 function rappel(p: Parametres | null): string {

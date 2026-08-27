@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatNombre, n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Historique — PILITrans" };
+export const metadata = { title: "Historique" };
 
 /** Nom lisible d'un type d'objet tracé. */
 const LIBELLE_OBJET: Record<string, string> = {

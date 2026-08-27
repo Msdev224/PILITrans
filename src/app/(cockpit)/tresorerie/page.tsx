@@ -21,7 +21,7 @@ import {
 } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Trésorerie — PILITrans" };
+export const metadata = { title: "Trésorerie" };
 
 export default async function TresoreriePage() {
   const [session, soldes, orphelines, comptes, operations, parametres, fil] = await Promise.all([

@@ -9,6 +9,9 @@
  */
 import type { OperationEnAttente } from "./operations";
 
+// Nom de la base hors-ligne : **ne pas renommer**. Un chauffeur peut avoir
+// des saisies en attente sous l'ancien nom ; les changer les rendrait
+// invisibles, donc perdues, sans le moindre message.
 const BASE = "pilitrans-chauffeur";
 const MAGASIN = "file";
 const CLE_SECOURS = "pilitrans-file-attente";

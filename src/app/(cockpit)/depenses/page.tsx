@@ -31,7 +31,7 @@ import {
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Dépenses — PILITrans" };
+export const metadata = { title: "Dépenses" };
 
 interface Props {
   searchParams: Promise<{ filtre?: string; q?: string }>;

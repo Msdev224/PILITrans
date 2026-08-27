@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDecimal, n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Unités — PILITrans" };
+export const metadata = { title: "Unités" };
 
 export default async function UnitesPage() {
   const [session, unites, parametres, fil] = await Promise.all([

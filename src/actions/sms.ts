@@ -6,6 +6,7 @@ import { exigerPermission } from "@/lib/autorisation";
 import { prisma } from "@/lib/prisma";
 import { smsConfigure } from "@/lib/sms/nimba";
 import { tenterEnvoi } from "@/lib/sms/notifications";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
 async function droitEcriture() {
@@ -44,7 +45,7 @@ export async function viderFileSms(): Promise<{ envoyes: number; echecs: number;
   let envoyes = 0;
   let echecs = 0;
   for (const notification of enAttente) {
-    const ok = await tenterEnvoi(notification.id, parametres.smsExpediteur ?? "PILITrans");
+    const ok = await tenterEnvoi(notification.id, parametres.smsExpediteur ?? NOM_APPLICATION);
     if (ok) envoyes += 1;
     else echecs += 1;
   }

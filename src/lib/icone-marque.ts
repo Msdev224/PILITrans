@@ -65,8 +65,22 @@ export async function iconePng(cote: number): Promise<Buffer> {
   if (!brut) return sharp(marqueParDefaut(cote)).png().toBuffer();
 
   try {
-    // Le logo est ramené à l'intérieur du carré sans être rogné : un logo
-    // large recadré perdrait la moitié de son nom.
+    /*
+     * Une source déjà carrée remplit toute la tuile.
+     *
+     * C'est une icône dédiée : elle porte ses propres marges, en ajouter
+     * d'autres la rétrécit et la fait ressembler à un autocollant collé sur
+     * un fond de couleur. Un logo allongé, lui, doit rester entier — recadré,
+     * il perdrait la moitié de son nom — d'où la marge et le fond dans ce cas.
+     */
+    const source = await sharp(brut).metadata();
+    const carree =
+      !!source.width && !!source.height && Math.abs(source.width / source.height - 1) < 0.12;
+
+    if (carree) {
+      return sharp(brut).resize(cote, cote, { fit: "cover" }).png().toBuffer();
+    }
+
     const marge = Math.round(cote * 0.12);
     const logo = await sharp(brut)
       .resize(cote - marge * 2, cote - marge * 2, { fit: "inside", withoutEnlargement: false })

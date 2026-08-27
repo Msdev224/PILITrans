@@ -13,7 +13,7 @@
  * donc qu'à une chose : que la page s'ouvre encore quand il n'y a pas de
  * réseau du tout.
  */
-const CACHE = "pilitrans-v4";
+const CACHE = "pilitrans-v5";
 const COQUILLE = ["/chauffeur", "/manifest.webmanifest", "/icone.svg"];
 
 self.addEventListener("install", (evenement) => {

@@ -8,7 +8,13 @@ import { createHash } from "node:crypto";
  * utilisables partout.
  */
 
-/** Dossier de rangement, pour ne pas mélanger avec d'autres projets du compte. */
+/**
+ * Dossier de rangement, pour ne pas mélanger avec d'autres projets du compte.
+ *
+ * **Ne pas renommer** malgré le changement de nom de l'exploitation : les
+ * images déjà téléversées vivent sous ce préfixe, et leurs URL sont écrites
+ * en base. Le dossier est un identifiant technique, pas un libellé.
+ */
 export const DOSSIER_IMAGES = "pilitrans";
 
 /**

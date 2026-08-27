@@ -1,5 +1,5 @@
 // ============================================================
-//  PILITrans — schéma Prisma
+//  MS Trans — schéma Prisma
 //  Gestion de flotte frigorifique (2 camions, extensible à N)
 //  Stack : Next.js + Prisma + PostgreSQL
 //  Multi-devise : GNF (base) + XOF (franc CFA, côté Sénégal)

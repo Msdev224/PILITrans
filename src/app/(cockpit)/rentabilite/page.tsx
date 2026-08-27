@@ -16,7 +16,7 @@ import {
 } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Rentabilité par véhicule — PILITrans" };
+export const metadata = { title: "Rentabilité par véhicule" };
 
 export default async function RentabilitePage() {
   const periode = moisCourant();

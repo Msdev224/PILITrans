@@ -21,9 +21,11 @@ interface EvenementInstallation extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+// Identifiant technique, conservé : le renommer réafficherait l'invite à
+// tous ceux qui l'ont déjà écartée.
 const CLE_REFUS = "pilitrans-installation-refusee";
 
-export function InviteInstallation() {
+export function InviteInstallation({ nom }: { nom: string }) {
   const [invite, setInvite] = useState<EvenementInstallation | null>(null);
   const [surIos, setSurIos] = useState(false);
   const [masquee, setMasquee] = useState(true);
@@ -80,7 +82,7 @@ export function InviteInstallation() {
   return (
     <div className="ph-install">
       <div className="ph-install-texte">
-        <b>Installer PILITrans</b>
+        <b>Installer {nom}</b>
         <p>
           {surIos
             ? "Appuie sur Partager, puis « Sur l'écran d'accueil ». L'application s'ouvrira seule, même sans réseau."

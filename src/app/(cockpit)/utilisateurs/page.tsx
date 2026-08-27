@@ -13,7 +13,7 @@ import { formatDate, n } from "@/lib/utils";
 import type { Role } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Comptes — PILITrans" };
+export const metadata = { title: "Comptes" };
 
 const LIBELLE_DOMAINE: Record<string, string> = {
   voyages: "Voyages",

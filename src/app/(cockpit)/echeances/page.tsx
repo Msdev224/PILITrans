@@ -12,7 +12,7 @@ import { formatDate, LIBELLE_TYPE_ECHEANCE, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Échéances — PILITrans" };
+export const metadata = { title: "Échéances" };
 
 export default async function EcheancesPage() {
   const [session, echeances, parametres, fil, camions] = await Promise.all([

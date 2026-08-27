@@ -22,7 +22,7 @@ import { formatDate, formatDecimal, formatNombre, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Réclamations — PILITrans" };
+export const metadata = { title: "Réclamations" };
 
 const LIBELLE_TYPE: Record<string, string> = {
   QUANTITE: "Quantité",

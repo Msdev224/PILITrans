@@ -17,7 +17,7 @@ import { formatDate, formatNombre, LIBELLE_MODE_REMUNERATION, n } from "@/lib/ut
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Chauffeurs — PILITrans" };
+export const metadata = { title: "Chauffeurs" };
 
 export default async function ChauffeursPage() {
   const periode = moisCourant();

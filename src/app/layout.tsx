@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Inter, Space_Grotesk } from "next/font/google";
 
 import "./globals.css";
+import { ACCROCHE_APPLICATION, NOM_APPLICATION } from "@/lib/marque";
+import { marqueEntreprise } from "@/lib/donnees/accueil";
 
 const titre = Space_Grotesk({
   subsets: ["latin"],
@@ -40,9 +42,34 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export const metadata: Metadata = {
+/**
+ * Le nom de l'exploitation vient des Paramètres, pas du code.
+ *
+ * `template` évite de le répéter sur chaque écran : une page ne déclare que
+ * son propre titre (« Voyages »), le nom est ajouté ici. Si la base est
+ * injoignable — build, première installation — on retombe sur la constante
+ * plutôt que de faire échouer le rendu pour un libellé.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  let nom = NOM_APPLICATION;
+  let accroche = ACCROCHE_APPLICATION;
+  try {
+    const marque = await marqueEntreprise();
+    nom = marque.raisonSociale;
+    accroche = marque.accroche;
+  } catch {
+    // Repli silencieux : un titre par défaut vaut mieux qu'une page en erreur.
+  }
+
+  return {
+    ...metadataBase,
+    title: { default: `${nom} — ${accroche}`, template: `%s — ${nom}` },
+    appleWebApp: { capable: true, title: nom, statusBarStyle: "black-translucent" },
+  };
+}
+
+const metadataBase: Metadata = {
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "PILITrans", statusBarStyle: "black-translucent" },
   /*
    * Les icônes ne sont plus déclarées ici.
    *
@@ -50,7 +77,6 @@ export const metadata: Metadata = {
    * logo de l'entreprise, et Next les câble tout seul. Les déclarer aussi ici
    * ferait gagner celles-ci et le logo ne s'afficherait jamais.
    */
-  title: "PILITrans — Cockpit flotte frigo",
   description:
     "Gestion de flotte pour le transport frigorifique transfrontalier Guinée ⇄ Sénégal : voyages, carburant, chaîne du froid, rentabilité par camion.",
 };

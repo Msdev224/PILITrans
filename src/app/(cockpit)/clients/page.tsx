@@ -14,7 +14,7 @@ import { formatNombre, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Clients — PILITrans" };
+export const metadata = { title: "Clients" };
 
 interface Props {
   searchParams: Promise<{ q?: string }>;

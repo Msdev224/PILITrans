@@ -25,7 +25,7 @@ import { formatDateCourte, formatGnf, formatNombre, n } from "@/lib/utils";
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Factures — PILITrans" };
+export const metadata = { title: "Factures" };
 
 const BADGE_STATUT: Record<string, string> = {
   EMISE: "b-idle",

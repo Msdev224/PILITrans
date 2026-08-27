@@ -19,9 +19,10 @@ import {
   n,
 } from "@/lib/utils";
 import { LIBELLE_TYPE_PERIODE, periodeDeType, type TypePeriode } from "@/lib/periode";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Rapport — PILITrans" };
+export const metadata = { title: "Rapport" };
 
 const TYPES: TypePeriode[] = ["MOIS", "TRIMESTRE", "SEMESTRE", "ANNEE"];
 
@@ -91,7 +92,7 @@ export default async function RapportPage({ searchParams }: Props) {
         {/* ---------- En-tête du document ---------- */}
         <div className="rapport-tete">
           <div>
-            <h2>{parametres?.raisonSociale ?? "PILITrans"}</h2>
+            <h2>{parametres?.raisonSociale ?? NOM_APPLICATION}</h2>
             <p className="t-sub">
               Rapport d&apos;exploitation · {periode.libelle} · établi le {formatDate(new Date())}
             </p>

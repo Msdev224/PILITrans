@@ -1,5 +1,5 @@
 // ============================================================
-//  PILITrans — cœur métier (fonctions pures, sans framework)
+//  MS Trans — cœur métier (fonctions pures, sans framework)
 //  Réutilisable tel quel dans le build Next.js / Server Actions.
 // ============================================================
 

@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDecimal, formatNombre, n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Analyses — PILITrans" };
+export const metadata = { title: "Analyses" };
 
 export default async function AnalysesPage() {
   const [session, vue, parametres, fil] = await Promise.all([

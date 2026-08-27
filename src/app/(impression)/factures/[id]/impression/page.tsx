@@ -11,6 +11,7 @@ import { BoutonImprimer } from "./bouton-imprimer";
 import { urlLogo } from "@/lib/images";
 import { vueLignes } from "@/lib/donnees/marchandises";
 import { formatQuantite } from "@/lib/donnees/unites";
+import { NOM_APPLICATION } from "@/lib/marque";
 
 export const dynamic = "force-dynamic";
 
@@ -94,14 +95,14 @@ export default async function ImpressionFacturePage({
                   <>
                     <span className="dot" />
                     <div>
-                      <h1>{parametres?.raisonSociale ?? "PILITrans"}</h1>
+                      <h1>{parametres?.raisonSociale ?? NOM_APPLICATION}</h1>
                       <span>Transport frigorifique</span>
                     </div>
                   </>
                 )}
               </div>
               <div className="fac-emet">
-                <b>{parametres?.raisonSociale ?? "PILITrans SARL"}</b>
+                <b>{parametres?.raisonSociale ?? NOM_APPLICATION}</b>
                 <br />
                 {parametres?.adresse ?? "Conakry, Guinée"}
                 <br />
@@ -414,7 +415,7 @@ export default async function ImpressionFacturePage({
           <div className="fac-sign">
             <div className="stamp">
               <div className="rule" />
-              Cachet &amp; signature — {parametres?.raisonSociale ?? "PILITrans"}
+              Cachet &amp; signature — {parametres?.raisonSociale ?? NOM_APPLICATION}
             </div>
           </div>
 
@@ -442,4 +443,4 @@ function Cellule({ libelle, valeur, route }: { libelle: string; valeur: string; 
   );
 }
 
-export const metadata = { title: "Facture — PILITrans" };
+export const metadata = { title: "Facture" };

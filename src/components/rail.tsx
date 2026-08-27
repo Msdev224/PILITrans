@@ -23,6 +23,7 @@ import {
   IconeTriangle,
   IconeVoyages,
 } from "@/components/icones";
+import type { MarqueEntreprise } from "@/lib/donnees/accueil";
 import { peut, type Permission } from "@/lib/permissions";
 import { formatMillions } from "@/lib/utils";
 
@@ -53,10 +54,12 @@ export function Rail({
   nbAlertes,
   resume,
   role,
+  marque,
 }: {
   nbAlertes: number;
   resume: ResumeRail;
   role: Role;
+  marque: MarqueEntreprise;
 }) {
   const chemin = usePathname();
 
@@ -140,11 +143,23 @@ export function Rail({
 
   return (
     <aside className="rail">
-      <div className="brand" title="PILITrans — cockpit flotte frigo">
+      {/* Le logo porte déjà le nom de l'exploitation : l'écrire à côté le
+          répétait, sur deux lignes, en poussant l'accroche sur trois. Quand un
+          logo existe, il tient seul — et l'icône carrée prend le relais dès que
+          le rail se réduit, un logo allongé n'étant plus lisible à 30 px. */}
+      <div className="brand" title={`${marque.raisonSociale} — ${marque.accroche}`}>
         <div className="dot" />
+        {marque.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={marque.logoUrl} alt={marque.raisonSociale} className="rail-logo" />
+        ) : null}
+        {marque.iconeUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={marque.iconeUrl} alt="" aria-hidden className="rail-icone" />
+        ) : null}
         <div className="rail-texte">
-          <h1>PILITrans</h1>
-          <span>Cockpit flotte frigo</span>
+          <h1>{marque.raisonSociale}</h1>
+          <span>{marque.accroche}</span>
         </div>
       </div>
 

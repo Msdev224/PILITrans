@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Pays — PILITrans" };
+export const metadata = { title: "Pays" };
 
 export default async function PaysPage() {
   const [session, pays, parametres, fil] = await Promise.all([

@@ -39,7 +39,7 @@ import {
 import { SiPeut } from "@/components/si-peut";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Voyages — PILITrans" };
+export const metadata = { title: "Voyages" };
 
 // Codes pays courts pour le badge « INTL · SN ».
 

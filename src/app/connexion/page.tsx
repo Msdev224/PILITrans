@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { textesAccueil } from "@/lib/donnees/accueil";
+import { accroche, textesAccueil } from "@/lib/donnees/accueil";
 import { urlLogo } from "@/lib/images";
 import { indicatifsPays } from "@/lib/donnees/pays";
 
 import { FormulaireConnexion } from "./formulaire-connexion";
 
-export const metadata: Metadata = { title: "Connexion — PILITrans" };
+export const metadata: Metadata = { title: "Connexion" };
 
 // Les textes viennent des Paramètres : la page doit être rendue à la demande.
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function ConnexionPage() {
           )}
           <div>
             <h1>{t.raisonSociale}</h1>
-            <span>{t.surtitre.includes("·") ? t.surtitre.split("·").pop()?.trim() : t.surtitre}</span>
+            <span>{accroche(t.surtitre)}</span>
           </div>
         </div>
 

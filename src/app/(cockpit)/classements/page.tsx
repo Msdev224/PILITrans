@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatDecimal, formatNombre, formatSigne, n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Classements — PILITrans" };
+export const metadata = { title: "Classements" };
 
 export default async function ClassementsPage() {
   const periode = moisCourant();

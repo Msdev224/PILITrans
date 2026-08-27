@@ -3,6 +3,7 @@ import { BoutonDeconnexion } from "@/components/chauffeur/bouton-deconnexion";
 import { EnregistrementServiceWorker } from "@/components/chauffeur/enregistrement-sw";
 import { EtatReseau } from "@/components/chauffeur/etat-reseau";
 import { InviteInstallation } from "@/components/chauffeur/invite-installation";
+import { marqueEntreprise } from "@/lib/donnees/accueil";
 import { FournisseurFile } from "@/components/chauffeur/file-attente";
 import {
   BoutonAvancer,
@@ -29,7 +30,7 @@ import { formatQuantite } from "@/lib/donnees/unites";
 import { paysActifs } from "@/lib/donnees/pays";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Espace chauffeur — PILITrans" };
+export const metadata = { title: "Espace chauffeur" };
 
 /** Libellé du bouton d'avancement, selon l'état de la mission. */
 const PROCHAINE_ETAPE: Record<string, string> = {
@@ -74,6 +75,8 @@ export default async function EspaceChauffeurPage() {
   const espace = session.user.chauffeurId ? await espaceChauffeur(session.user.chauffeurId) : null;
   // Les pays viennent de la base : le chauffeur y désigne le poste de douane.
   const pays = await paysActifs();
+  // L'invite d'installation porte le nom de l'exploitation, pas celui du code.
+  const marque = await marqueEntreprise();
 
   if (!espace) {
     return (
@@ -145,7 +148,7 @@ export default async function EspaceChauffeurPage() {
       </div>
 
       <div className="ph-body">
-        <InviteInstallation />
+        <InviteInstallation nom={marque.raisonSociale} />
         <EtatReseau />
 
         {/* ---------- Caisse ---------- */}

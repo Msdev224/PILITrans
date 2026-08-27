@@ -292,7 +292,7 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
       <input
             name="smsExpediteur"
             defaultValue={val("smsExpediteur", parametres.smsExpediteur)}
-            placeholder="PILITRANS"
+            placeholder="MSTRANS"
             maxLength={11}
             readOnly={!smsActif}
           />
@@ -302,7 +302,7 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
           label="URL publique de l'application"
           aide="Sert à composer le lien de facture envoyé au client."
         >
-          <input name="urlApplication" defaultValue={val("urlApplication", parametres.urlApplication)} placeholder="https://pilitrans.gn" readOnly={!smsActif} />
+          <input name="urlApplication" defaultValue={val("urlApplication", parametres.urlApplication)} placeholder="https://mstrans.gn" readOnly={!smsActif} />
         </Champ>
 
         <div className="full mt-1 border-t border-[var(--line-soft)] pt-3">

@@ -1,4 +1,4 @@
-# PILITrans
+# MS Trans
 
 Gestion de flotte pour le transport frigorifique transfrontalier (Guinée ⇄ Sénégal).
 Un gérant pilote le parc ; les chauffeurs saisissent depuis le téléphone de bord.

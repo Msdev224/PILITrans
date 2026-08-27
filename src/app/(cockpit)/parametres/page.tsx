@@ -14,7 +14,7 @@ import { n, nOuNull } from "@/lib/utils";
 import { HistoriqueTaux } from "@/components/parametres/historique-taux";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Paramètres — PILITrans" };
+export const metadata = { title: "Paramètres" };
 
 export default async function ParametresPage() {
   const [session, parametres, fil, notifications, enAttente, indicatifs] = await Promise.all([

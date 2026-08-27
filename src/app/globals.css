@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ============================================================
-   PILITrans — jetons de design
+   MS Trans — jetons de design
    Repris tels quels de docs/maquette.html (source de vérité).
    ============================================================ */
 @layer base {
@@ -119,6 +119,33 @@
     50% {
       box-shadow: 0 0 0 7px rgba(15, 163, 177, 0.06);
     }
+  }
+  /* Un logo téléversé arrive presque toujours sur fond blanc — le JPEG ne
+     porte pas de transparence. Plutôt que de laisser un rectangle blanc flotter
+     sur le marine, on l'assume : pastille blanche, coins arrondis, marge
+     régulière. Le résultat se lit comme un badge, pas comme un défaut. */
+  .rail-logo {
+    max-height: 38px;
+    max-width: 172px;
+    object-fit: contain;
+    background: #fff;
+    padding: 6px 9px;
+    border-radius: 9px;
+    flex-shrink: 0;
+  }
+  /* Relais du rail replié : carrée, donc encore lisible à 30 px. */
+  .rail-icone {
+    display: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  /* Le logo se suffit : il porte le nom, l'écrire deux fois n'apprend rien. */
+  .brand:has(.rail-logo) .dot,
+  .brand:has(.rail-logo) .rail-texte {
+    display: none;
   }
   .brand h1 {
     font-size: 19px;
@@ -3193,6 +3220,22 @@
     .brand {
       justify-content: center;
       padding: 6px 0 14px;
+    }
+    .rail-logo {
+      display: none;
+    }
+    .rail-icone {
+      display: block;
+    }
+    /* La pastille revient si aucune icône carrée n'a été téléversée : à cette
+       largeur le logo est masqué, sans elle la marque serait vide.
+       Même forme que la règle générale — une media query n'ajoute pas de
+       spécificité, un sélecteur plus court ne l'emporterait pas. */
+    .brand:has(.rail-logo) .dot {
+      display: block;
+    }
+    .brand:has(.rail-icone) .dot {
+      display: none;
     }
     .nav {
       width: 100%;

@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDateCourte, n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Dossiers — PILITrans" };
+export const metadata = { title: "Dossiers" };
 
 const FILTRES = [
   { cle: "tous", libelle: "Tous" },

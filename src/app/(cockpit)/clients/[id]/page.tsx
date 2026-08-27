@@ -13,7 +13,7 @@ import { formatTelephone } from "@/lib/telephone";
 import { formatDate, formatGnf, formatNombre, LIBELLE_STATUT_VOYAGE, n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Fiche client — PILITrans" };
+export const metadata = { title: "Fiche client" };
 
 const BADGE_FACTURE: Record<string, string> = {
   PAYEE: "b-go",

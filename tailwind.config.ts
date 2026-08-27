@@ -6,7 +6,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // --- Marque PILITrans (docs/maquette.html) ---
+        // --- Marque MS Trans (docs/maquette.html) ---
         ink: "#0F1F28", "muted-2": "#8A99A0",
         line: "#E3E9EB", "line-soft": "#EEF2F3",
         marque: "#0FA3B1", "accent-2": "#67C4CD", "accent-ink": "#097782", "accent-bg": "#E6F5F6",
@@ -18,7 +18,7 @@ const config: Config = {
 
         // --- Jetons sémantiques attendus par shadcn/ui ---
         // Câblés sur les variables de la maquette : les composants shadcn
-        // héritent donc du design PILITrans sans thème parallèle à maintenir.
+        // héritent donc du design MS Trans sans thème parallèle à maintenir.
         background: "var(--surface)",
         foreground: "var(--ink)",
         border: "var(--line)",

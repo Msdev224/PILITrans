@@ -1,5 +1,5 @@
 /**
- * Seed PILITrans — données de démonstration alignées sur la maquette.
+ * Seed MS Trans — données de démonstration alignées sur la maquette.
  * Lancer sur une base vide :  npm run db:push && npm run db:seed
  */
 import { Devise, PrismaClient } from "@prisma/client";
@@ -37,7 +37,7 @@ async function main() {
   // --- Paramètres (identité + config) ---
   await db.parametres.create({
     data: {
-      raisonSociale: "PILITrans SARL",
+      raisonSociale: "MS Trans",
       adresse: "Conakry, Guinée",
       // Jeu de démonstration : on affiche les identifiants sur l'écran de
       // connexion. À décocher dans les Paramètres avant toute mise en service.

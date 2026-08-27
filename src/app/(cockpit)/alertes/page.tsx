@@ -24,7 +24,7 @@ import { prisma } from "@/lib/prisma";
 import { n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Alertes — PILITrans" };
+export const metadata = { title: "Alertes" };
 
 const CLASSE_SEVERITE: Record<string, string> = {
   URGENT: "crit",

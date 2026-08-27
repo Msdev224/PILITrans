@@ -22,7 +22,7 @@ import {
 } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Réparations — PILITrans" };
+export const metadata = { title: "Réparations" };
 
 const BADGE: Record<string, string> = {
   A_FAIRE: "b-idle",

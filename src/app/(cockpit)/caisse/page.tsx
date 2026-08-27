@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatGnf, formatNombre, formatSigne, n } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Caisse — PILITrans" };
+export const metadata = { title: "Caisse" };
 
 export default async function CaissePage() {
   const [session, tresor, parametres, fil] = await Promise.all([
