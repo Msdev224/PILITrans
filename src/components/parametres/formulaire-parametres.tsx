@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { enregistrerParametres, type EtatParametres } from "@/actions/parametres";
 import { ChampTelephone } from "@/components/champ-telephone";
+import { ChampPhoto } from "@/components/equipe/champ-photo";
 import { ACCUEIL_DEFAUT } from "@/lib/accueil-defaut";
 
 export interface ParametresEditables {
@@ -101,8 +102,18 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
           <input name="nif" defaultValue={val("nif", parametres.nif)} />
         </Champ>
         <div className="full">
-          <Champ label="URL du logo" aide="Optionnel — image affichée sur les documents.">
-            <input name="logoUrl" defaultValue={val("logoUrl", parametres.logoUrl)} />
+          {/* Le champ demandait une URL à coller, ce qui supposait d'avoir déjà
+              hébergé l'image ailleurs. Personne ne l'a jamais rempli. */}
+          <Champ
+            label="Logo de l'entreprise"
+            aide="Affiché en tête des factures et sur l'écran de connexion. Les proportions sont conservées."
+          >
+            <ChampPhoto
+              nom="logoUrl"
+              valeur={parametres.logoUrl}
+              forme="libre"
+              libelle="Logo de l'entreprise"
+            />
           </Champ>
         </div>
       </Section>

@@ -43,14 +43,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "PILITrans", statusBarStyle: "black-translucent" },
-  // iOS ignore le manifeste pour l'icône d'accueil : il lui faut ce PNG.
-  icons: {
-    icon: [
-      { url: "/icone-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icone.svg", type: "image/svg+xml" },
-    ],
-    apple: "/apple-touch-icon.png",
-  },
+  /*
+   * Les icônes ne sont plus déclarées ici.
+   *
+   * `src/app/icon.tsx` et `src/app/apple-icon.tsx` les produisent à partir du
+   * logo de l'entreprise, et Next les câble tout seul. Les déclarer aussi ici
+   * ferait gagner celles-ci et le logo ne s'afficherait jamais.
+   */
   title: "PILITrans — Cockpit flotte frigo",
   description:
     "Gestion de flotte pour le transport frigorifique transfrontalier Guinée ⇄ Sénégal : voyages, carburant, chaîne du froid, rentabilité par camion.",

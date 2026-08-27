@@ -54,3 +54,16 @@ export function urlImage(valeur: string | null | undefined, cote: number): strin
     `/image/upload/c_fill,g_auto,w_${cote},h_${cote},q_auto,f_auto/`,
   );
 }
+
+/**
+ * URL d'un logo, redimensionnée sans le déformer ni le rogner.
+ *
+ * `urlImage` recadre en carré, ce qui convient à un portrait mais amputerait
+ * un logo large. Ici on borne la largeur et on laisse la hauteur suivre.
+ */
+export function urlLogo(valeur: string | null | undefined, largeur: number): string | null {
+  if (!valeur) return null;
+  if (!estUrlHebergee(valeur)) return valeur;
+
+  return valeur.replace("/image/upload/", `/image/upload/c_limit,w_${largeur},q_auto,f_auto/`);
+}

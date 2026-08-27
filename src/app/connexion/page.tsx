@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { textesAccueil } from "@/lib/donnees/accueil";
+import { urlLogo } from "@/lib/images";
 import { indicatifsPays } from "@/lib/donnees/pays";
 
 import { FormulaireConnexion } from "./formulaire-connexion";
@@ -27,7 +28,12 @@ export default async function ConnexionPage() {
 
       <div className="login-panel">
         <div className="lg-brand">
-          <span className="dot" />
+          {t.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={urlLogo(t.logoUrl, 160) ?? t.logoUrl} alt={t.raisonSociale} className="lg-logo" />
+          ) : (
+            <span className="dot" />
+          )}
           <div>
             <h1>{t.raisonSociale}</h1>
             <span>{t.surtitre.includes("·") ? t.surtitre.split("·").pop()?.trim() : t.surtitre}</span>

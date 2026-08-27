@@ -18,8 +18,13 @@ export const config = {
    * Ces deux derniers étaient absents de la liste : le navigateur les recevait
    * en redirection 307 vers /connexion, ce qui empêchait l'installation de
    * l'application et tout fonctionnement hors ligne.
+   *
+   * `icon` et `apple-icon` sont produits par `src/app/icon.tsx` et
+   * `apple-icon.tsx`. Sans exclusion, la favicon partait elle aussi en 307 et
+   * l'onglet restait sans icône sur la page de connexion — donc précisément
+   * là où le premier visiteur la regarde.
    */
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|webp|ico|webmanifest)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|webp|ico|webmanifest)$).*)",
   ],
 };

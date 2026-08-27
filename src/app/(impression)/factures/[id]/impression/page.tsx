@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDecimal, formatNombre, n, nOuNull } from "@/lib/utils";
 
 import { BoutonImprimer } from "./bouton-imprimer";
+import { urlLogo } from "@/lib/images";
 import { vueLignes } from "@/lib/donnees/marchandises";
 import { formatQuantite } from "@/lib/donnees/unites";
 
@@ -75,12 +76,29 @@ export default async function ImpressionFacturePage({
           {/* ---------- En-tête ---------- */}
           <div className="fac-head">
             <div>
+              {/*
+                Avec un logo, il porte seul l'identité.
+                Le garder à côté de la raison sociale en gros la répétait — le
+                logo la contient déjà — et la poussait sur deux lignes. Le nom
+                complet reste juste en dessous, dans le bloc émetteur.
+              */}
               <div className="fac-brand">
-                <span className="dot" />
-                <div>
-                  <h1>{parametres?.raisonSociale ?? "PILITrans"}</h1>
-                  <span>Transport frigorifique</span>
-                </div>
+                {parametres?.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={urlLogo(parametres.logoUrl, 320) ?? parametres.logoUrl}
+                    alt={parametres.raisonSociale ?? "Logo"}
+                    className="fac-logo"
+                  />
+                ) : (
+                  <>
+                    <span className="dot" />
+                    <div>
+                      <h1>{parametres?.raisonSociale ?? "PILITrans"}</h1>
+                      <span>Transport frigorifique</span>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="fac-emet">
                 <b>{parametres?.raisonSociale ?? "PILITrans SARL"}</b>

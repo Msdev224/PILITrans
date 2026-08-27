@@ -21,6 +21,8 @@ export interface TextesAccueil {
   mention: string;
   sousTitre: string;
   afficherDemo: boolean;
+  /** Logo de l'entreprise, s'il a été téléversé. */
+  logoUrl: string | null;
 }
 
 /** Un champ vide ou absent retombe sur le libellé d'origine. */
@@ -39,6 +41,7 @@ export async function textesAccueil(): Promise<TextesAccueil> {
       accueilMention: true,
       connexionSousTitre: true,
       accueilAfficherDemo: true,
+      logoUrl: true,
     },
   });
 
@@ -50,5 +53,6 @@ export async function textesAccueil(): Promise<TextesAccueil> {
     mention: ou(p?.accueilMention, ACCUEIL_DEFAUT.mention),
     sousTitre: ou(p?.connexionSousTitre, ACCUEIL_DEFAUT.sousTitre),
     afficherDemo: p?.accueilAfficherDemo ?? false,
+    logoUrl: p?.logoUrl ?? null,
   };
 }

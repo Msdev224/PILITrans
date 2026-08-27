@@ -17,7 +17,21 @@ const POIDS_MAX = 400 * 1024;
  * n'a pas sa place dans une colonne de base de données. Après traitement il
  * reste quelques dizaines de kilo-octets.
  */
-export function ChampPhoto({ nom, valeur }: { nom: string; valeur?: string | null }) {
+export function ChampPhoto({
+  nom,
+  valeur,
+  forme = "carre",
+  libelle = "Photo du chauffeur",
+}: {
+  nom: string;
+  valeur?: string | null;
+  /**
+   * `carre` recadre au centre — un visage, un camion.
+   * `libre` conserve les proportions : un logo recadré en carré serait amputé.
+   */
+  forme?: "carre" | "libre";
+  libelle?: string;
+}) {
   const [apercu, setApercu] = useState<string | null>(valeur ?? null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
@@ -35,7 +49,7 @@ export function ChampPhoto({ nom, valeur }: { nom: string; valeur?: string | nul
 
     let reduite: string;
     try {
-      reduite = await reduire(f);
+      reduite = await reduire(f, forme);
     } catch {
       setErreur("Image illisible. Essayez une autre photo.");
       return;
@@ -70,10 +84,10 @@ export function ChampPhoto({ nom, valeur }: { nom: string; valeur?: string | nul
       {/* Valeur réellement soumise : l'image réduite, en data URI. */}
       <input type="hidden" name={nom} value={apercu ?? ""} />
 
-      <div className="photo-apercu">
+      <div className={`photo-apercu ${forme === "libre" ? "libre" : ""}`}>
         {apercu ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={apercu} alt="Photo du chauffeur" />
+          <img src={apercu} alt={libelle} />
         ) : (
           <span>Aucune photo</span>
         )}
@@ -107,8 +121,14 @@ export function ChampPhoto({ nom, valeur }: { nom: string; valeur?: string | nul
   );
 }
 
-/** Recadre au centre en carré, réduit à `COTE`, et encode en JPEG. */
-function reduire(f: File): Promise<string> {
+/**
+ * Réduit l'image et l'encode en JPEG.
+ *
+ * En `carre`, on recadre au centre : c'est ce qu'on veut d'un portrait. En
+ * `libre`, on conserve les proportions et on borne le plus grand côté — un
+ * logo large recadré en carré perdrait la moitié de son nom.
+ */
+function reduire(f: File, forme: "carre" | "libre"): Promise<string> {
   return new Promise((resoudre, rejeter) => {
     const lecteur = new FileReader();
     lecteur.onerror = () => rejeter(new Error("lecture"));
@@ -116,24 +136,35 @@ function reduire(f: File): Promise<string> {
       const img = new Image();
       img.onerror = () => rejeter(new Error("décodage"));
       img.onload = () => {
-        const cote = Math.min(img.width, img.height);
         const toile = document.createElement("canvas");
-        toile.width = COTE;
-        toile.height = COTE;
         const ctx = toile.getContext("2d");
         if (!ctx) return rejeter(new Error("canvas"));
 
-        ctx.drawImage(
-          img,
-          (img.width - cote) / 2,
-          (img.height - cote) / 2,
-          cote,
-          cote,
-          0,
-          0,
-          COTE,
-          COTE,
-        );
+        if (forme === "libre") {
+          const facteur = Math.min(1, COTE / Math.max(img.width, img.height));
+          toile.width = Math.round(img.width * facteur);
+          toile.height = Math.round(img.height * facteur);
+          // Fond blanc : le JPEG ne gère pas la transparence, et un logo
+          // transparent sortirait sur fond noir.
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, toile.width, toile.height);
+          ctx.drawImage(img, 0, 0, toile.width, toile.height);
+        } else {
+          const cote = Math.min(img.width, img.height);
+          toile.width = COTE;
+          toile.height = COTE;
+          ctx.drawImage(
+            img,
+            (img.width - cote) / 2,
+            (img.height - cote) / 2,
+            cote,
+            cote,
+            0,
+            0,
+            COTE,
+            COTE,
+          );
+        }
 
         // On baisse la qualité tant que l'image dépasse le poids autorisé.
         let qualite = 0.8;
