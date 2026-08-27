@@ -28,7 +28,16 @@ const schemaParametres = z.object({
   email: texteOptionnel.pipe(z.string().email("Adresse e-mail invalide").optional()),
   rccm: texteOptionnel,
   nif: texteOptionnel,
-  logoUrl: texteOptionnel,
+  /*
+   * Plafond de taille, comme sur les photos de chauffeur et de camion.
+   *
+   * Le navigateur réduit déjà l'image avant l'envoi, mais rien n'oblige une
+   * requête à passer par le formulaire : sans borne, une image de plusieurs
+   * mégaoctets entrerait dans une colonne texte et serait relue à chaque
+   * affichage de facture.
+   */
+  logoUrl: texteOptionnel.pipe(z.string().max(600_000, "Logo trop lourd").optional()),
+  iconeUrl: texteOptionnel.pipe(z.string().max(600_000, "Icône trop lourde").optional()),
 
   // Paiement
   orangeMoney: texteOptionnel,
@@ -116,6 +125,7 @@ export async function enregistrerParametres(
     rccm: d.rccm ?? null,
     nif: d.nif ?? null,
     logoUrl: d.logoUrl ?? null,
+    iconeUrl: d.iconeUrl ?? null,
     orangeMoney: d.orangeMoney ?? null,
     banque: d.banque ?? null,
     compteBancaire: d.compteBancaire ?? null,

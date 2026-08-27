@@ -951,6 +951,13 @@ model Parametres {
   rccm          String?
   nif           String?
   logoUrl       String?
+  /**
+   * Icône carrée de l'application : onglet du navigateur, écran d'accueil.
+   * Distincte du logo, et c'est volontaire : un logo large qui porte le nom de
+   * l'entreprise devient illisible à seize pixels. Une icône veut un monogramme
+   * ou un symbole. Laissée vide, on retombe sur le logo, puis sur la marque.
+   */
+  iconeUrl      String?
 
   // Paiement
   orangeMoney    String?
@@ -1006,6 +1013,7 @@ model Parametres {
 
   // --- Caisse de l'entreprise ---
   /**
+   * /**
    * /**
    * /**
    * /**

@@ -16,6 +16,7 @@ export interface ParametresEditables {
   rccm: string | null;
   nif: string | null;
   logoUrl: string | null;
+  iconeUrl: string | null;
   orangeMoney: string | null;
   banque: string | null;
   compteBancaire: string | null;
@@ -113,6 +114,21 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
               valeur={parametres.logoUrl}
               forme="libre"
               libelle="Logo de l'entreprise"
+            />
+          </Champ>
+        </div>
+
+        <div className="full">
+          {/* Séparée du logo : un logo large lu à seize pixels dans un onglet
+              ne se distingue plus. Une icône veut un monogramme. */}
+          <Champ
+            label="Icône de l'application"
+            aide="Carrée. Utilisée dans l'onglet du navigateur et sur l'écran d'accueil des téléphones. Laissée vide, le logo est repris."
+          >
+            <ChampPhoto
+              nom="iconeUrl"
+              valeur={parametres.iconeUrl}
+              libelle="Icône de l'application"
             />
           </Champ>
         </div>

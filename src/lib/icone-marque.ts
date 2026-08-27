@@ -50,10 +50,18 @@ async function chargerLogo(valeur: string): Promise<Buffer | null> {
 
 export async function iconePng(cote: number): Promise<Buffer> {
   const parametres = await prisma.parametres
-    .findFirst({ select: { logoUrl: true } })
+    .findFirst({ select: { iconeUrl: true, logoUrl: true } })
     .catch(() => null);
 
-  const brut = parametres?.logoUrl ? await chargerLogo(parametres.logoUrl) : null;
+  /*
+   * L'icône dédiée prime sur le logo.
+   *
+   * Un logo large qui porte le nom de l'entreprise devient illisible à seize
+   * pixels : on préfère un monogramme quand il existe. Sans icône dédiée, le
+   * logo fait l'affaire — mieux vaut un logo tassé que la marque générique.
+   */
+  const source = parametres?.iconeUrl ?? parametres?.logoUrl ?? null;
+  const brut = source ? await chargerLogo(source) : null;
   if (!brut) return sharp(marqueParDefaut(cote)).png().toBuffer();
 
   try {

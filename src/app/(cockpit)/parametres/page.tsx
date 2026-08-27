@@ -35,6 +35,7 @@ export default async function ParametresPage() {
     rccm: parametres?.rccm ?? null,
     nif: parametres?.nif ?? null,
     logoUrl: parametres?.logoUrl ?? null,
+    iconeUrl: parametres?.iconeUrl ?? null,
     orangeMoney: parametres?.orangeMoney ?? null,
     banque: parametres?.banque ?? null,
     compteBancaire: parametres?.compteBancaire ?? null,
