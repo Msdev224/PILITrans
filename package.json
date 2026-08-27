@@ -20,7 +20,8 @@
     "db:deploy": "prisma migrate deploy",
     "creer-gerant": "tsx scripts/creer-gerant.ts",
     "reinitialiser": "tsx scripts/reinitialiser.ts",
-    "env:vercel": "tsx scripts/env-production.ts"
+    "env:vercel": "tsx scripts/env-production.ts",
+    "verifier-cloudinary": "tsx scripts/verifier-cloudinary.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
