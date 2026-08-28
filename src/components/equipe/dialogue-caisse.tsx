@@ -229,7 +229,24 @@ export function DialogueCaisse({
               ) : missions.length > 0 ? (
                 <div className="field">
                   <label>Mission financée</label>
-                  <select name="voyageId" defaultValue="">
+                  {/*
+                   * Une seule mission en cours : elle est présélectionnée.
+                   *
+                   * « Aucune mission précise » était le choix par défaut, y
+                   * compris quand le chauffeur roulait pour une course unique.
+                   * On remettait l'argent, on ne touchait pas au champ, et
+                   * l'avance restait détachée : le « reste à justifier » du
+                   * voyage demeurait à zéro et son rapport annonçait « aucune
+                   * avance ». Le défaut le plus coûteux est celui qui ne
+                   * signale rien.
+                   *
+                   * À plusieurs missions, aucun choix n'est évident : on
+                   * continue de demander.
+                   */}
+                  <select
+                    name="voyageId"
+                    defaultValue={missions.length === 1 ? missions[0].id : ""}
+                  >
                     <option value="">— Aucune mission précise —</option>
                     {missions.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -237,6 +254,11 @@ export function DialogueCaisse({
                       </option>
                     ))}
                   </select>
+                  <span className="text-[11px] text-[var(--muted-2)]">
+                    {missions.length === 1
+                      ? "Rattachée à la mission en cours. À laisser vide seulement si cet argent ne la finance pas."
+                      : "Sans mission, l'avance n'entre pas dans le « reste à justifier » du voyage."}
+                  </span>
                 </div>
               ) : null}
             </div>
