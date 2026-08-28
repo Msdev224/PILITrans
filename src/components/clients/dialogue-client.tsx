@@ -52,7 +52,7 @@ export function DialogueClient({ indicatifs, client, declencheur }: {
   return (
     <Dialog open={ouvert} onOpenChange={setOuvert}>
       <DialogTrigger asChild>{declencheur}</DialogTrigger>
-      <DialogContent className="modal max-h-[90vh] max-w-[540px] gap-0 overflow-auto p-0">
+      <DialogContent className="modal max-w-[540px] gap-0 p-0">
         <DialogHeader className="modal-tete">
           <DialogTitle>{edition ? `Modifier ${client.nom}` : "Ajouter un client"}</DialogTitle>
         </DialogHeader>

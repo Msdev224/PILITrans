@@ -1117,6 +1117,15 @@
     flex-direction: column;
     gap: 6px;
     margin-bottom: 15px;
+    /* Même raison qu'au-dessus, un cran plus bas : sans cela le champ refuse
+       de se réduire sous la largeur de son contenu et repousse la piste. */
+    min-width: 0;
+  }
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    min-width: 0;
   }
   .field label {
     font-size: 11.5px;
@@ -1275,10 +1284,49 @@
   }
 
   /* ---------- Modale (habillage maquette sur Dialog Radix) ---------- */
+  /*
+   * Coquille de dialogue : bornée à l'écran, et seul le corps défile.
+   *
+   * Rien ne limitait la hauteur : sur un portable de 800 px, le dialogue de
+   * caisse descendait à 827 px, le pied « Annuler / Enregistrer » se retrouvait
+   * hors champ et aucun défilement ne permettait de l'atteindre. Le formulaire
+   * était rempli mais impossible à valider.
+   *
+   * Deux dialogues portaient un correctif local — `max-h-[90vh] overflow-auto`
+   * — qui faisait défiler l'en-tête et le pied avec le contenu. La règle vit
+   * désormais ici, pour les vingt et un.
+   */
   .modal {
     border-radius: 18px;
     box-shadow: var(--sh-lg);
     border: none;
+    display: flex;
+    flex-direction: column;
+    /* `dvh` et non `vh` : sur mobile, `vh` compte la barre d'URL rétractée et
+       déborde de ce qu'on voit réellement. */
+    max-height: calc(100dvh - 32px);
+  }
+  /*
+   * Un `<form>` s'interpose entre la coquille et ses blocs.
+   *
+   * Sans cette règle, il est le seul enfant flex : il prend la hauteur de son
+   * contenu, le corps ne rétrécit jamais et le pied sort du cadre — le
+   * dialogue paraissait borné alors que son bouton était 96 px plus bas.
+   * `min-height: 0` est indispensable à chaque niveau : un élément flex refuse
+   * par défaut de se réduire sous la hauteur de son contenu.
+   */
+  .modal > form,
+  .modal > div:has(> .modal-corps) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .modal-tete,
+  .modal-pied {
+    /* L'en-tête nomme le dialogue, le pied porte l'action : ni l'un ni l'autre
+       ne doit disparaître au défilement. */
+    flex: 0 0 auto;
   }
   .modal-tete {
     display: flex;
@@ -1296,6 +1344,12 @@
   }
   .modal-corps {
     padding: 19px 22px;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    /* Indispensable : un élément flex refuse par défaut de se réduire sous la
+       hauteur de son contenu (`min-height: auto`). C'est précisément ce qui
+       faisait déborder le dialogue au lieu de le faire défiler. */
+    min-height: 0;
   }
   .modal-pied {
     display: flex;
@@ -1304,9 +1358,20 @@
     padding: 15px 22px;
     border-top: 1px solid var(--line);
   }
+  /*
+   * `minmax(0, 1fr)` et non `1fr`.
+   *
+   * `1fr` vaut `minmax(auto, 1fr)` : le minimum d'une piste est le contenu le
+   * plus large qu'elle porte. Un libellé long dans un menu déroulant —
+   * « Koundara → Dakar (KD-2026-041) », « Chargement / déchargement » —
+   * élargissait donc la colonne au-delà du dialogue. Mesuré : deux pistes de
+   * 269 et 231 px dans un corps de 416 px utiles, cinq champs sortant de 77 px
+   * à droite. `minmax(0, …)` autorise la piste à descendre sous son contenu ;
+   * les champs, eux, se chargent de tronquer proprement.
+   */
   .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 14px;
   }
   .form-grid .full {

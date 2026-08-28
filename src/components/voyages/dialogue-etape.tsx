@@ -69,7 +69,7 @@ export function DialogueEtape({ voyageId, pays, etape, ravitaillements, declench
   return (
     <Dialog open={ouvert} onOpenChange={setOuvert}>
       <DialogTrigger asChild>{declencheur}</DialogTrigger>
-      <DialogContent className="modal max-h-[90vh] max-w-[600px] gap-0 overflow-auto p-0">
+      <DialogContent className="modal max-w-[600px] gap-0 p-0">
         <DialogHeader className="modal-tete">
           <DialogTitle>{edition ? "Modifier l'étape" : "Ajouter une étape"}</DialogTitle>
         </DialogHeader>

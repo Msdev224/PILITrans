@@ -211,7 +211,19 @@ export function DialogueCaisse({
               {type === "AVANCE" ? (
                 <div className="field">
                   <label>Objet de la remise</label>
-                  <select name="objet" defaultValue="PER_DIEM">
+                  {/*
+                   * Aucun objet par défaut.
+                   *
+                   * « Per diem / restauration » était présélectionné : une
+                   * avance pour le gasoil ou la douane s'enregistrait comme
+                   * de la nourriture dès qu'on ne touchait pas au champ. Or
+                   * ce champ existe précisément pour distinguer les
+                   * enveloppes — et savoir si ce qui était prévu pour manger
+                   * a servi au gasoil. Un objet inconnu se repère et se
+                   * corrige ; un objet faux passe inaperçu.
+                   */}
+                  <select name="objet" defaultValue="">
+                    <option value="">— à préciser —</option>
                     {OBJETS_REMISE.map((o) => (
                       <option key={o} value={o}>
                         {LIBELLE_TYPE_DEPENSE[o] ?? o}
