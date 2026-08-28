@@ -78,7 +78,10 @@ export async function vueDepenses(
 ): Promise<VueDepenses> {
   const { filtre = "toutes", recherche = "" } = options;
 
+  // L'écran est mensuel : ramener tout l'historique pour n'en afficher qu'un
+  // mois faisait grossir la requête indéfiniment, sans rien montrer de plus.
   const depenses = await prisma.depense.findMany({
+    where: { date: { gte: periode.debut, lt: periode.fin } },
     include: { voyage: { include: { camion: true } }, camion: true },
     orderBy: { date: "desc" },
   });

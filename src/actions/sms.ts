@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { exigerPermission } from "@/lib/autorisation";
+import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { smsConfigure } from "@/lib/sms/nimba";
 import { tenterEnvoi } from "@/lib/sms/notifications";
@@ -20,6 +21,40 @@ async function droitEcriture() {
  * partir est conservé et s'enverra en une fois, le jour où les identifiants
  * Nimba seront renseignés.
  */
+/**
+ * Abandonne les messages en file — sans les envoyer.
+ *
+ * `viderFileSms()` porte un nom trompeur qu'on lui garde par compatibilité :
+ * elle **envoie** la file, elle ne la vide pas. Quand l'envoi échoue de façon
+ * répétée — nom d'expéditeur refusé, numéro invalide — il faut pouvoir
+ * renoncer. Les messages passent en « annulé » plutôt que d'être supprimés :
+ * ce qu'on a voulu dire à un client reste consultable, même si ce n'est jamais
+ * parti.
+ */
+export async function abandonnerFileSms(): Promise<{ abandonnes: number; message: string }> {
+  await droitEcriture();
+
+  const { count } = await prisma.notificationSms.updateMany({
+    where: { statut: { in: ["EN_ATTENTE", "ECHEC"] } },
+    data: { statut: "ANNULE" },
+  });
+
+  await journaliser({
+    action: "sms.file.abandonnee",
+    objet: "NotificationSms",
+    libelle: `${count} message(s) SMS abandonné(s) sans envoi`,
+  });
+
+  revalidatePath("/parametres");
+  return {
+    abandonnes: count,
+    message:
+      count > 0
+        ? `${count} message(s) abandonné(s). Ils restent consultables, marqués « annulé ».`
+        : "Aucun message à abandonner.",
+  };
+}
+
 export async function viderFileSms(): Promise<{ envoyes: number; echecs: number; message: string }> {
   await droitEcriture();
 

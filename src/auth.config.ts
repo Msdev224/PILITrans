@@ -21,7 +21,15 @@ export const authConfig = {
    */
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 24 * 7,
+    /*
+     * Plafond absolu, pas la règle.
+     *
+     * Le middleware tourne en edge et ne peut pas lire la base : la durée
+     * réglée dans les Paramètres est appliquée par `sessionRequise()`, qui a
+     * accès à la base. Ce plafond de trente jours n'est qu'un garde-fou pour
+     * le cas où le jeton circulerait sans jamais passer par une page.
+     */
+    maxAge: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24,
   },
   trustHost: true,
@@ -59,6 +67,16 @@ export const authConfig = {
           : true;
       }
       if (!connecte) return false;
+
+      /*
+       * Sortie de secours d'une session révoquée.
+       *
+       * Le middleware ne peut pas savoir qu'un compte a été désactivé — il
+       * tourne en edge, sans accès à la base. Il doit donc laisser passer cet
+       * écran pour tout visiteur porteur d'un jeton, sinon la redirection
+       * qu'émet `sessionRequise()` reboucle indéfiniment.
+       */
+      if (chemin.startsWith("/acces-retire")) return true;
 
       // L'espace mobile appartient au chauffeur ; le gérant y accède pour
       // dépanner depuis le bureau.

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { sessionRequise } from "@/auth";
-import { conformiteFroid } from "@/lib/calculs";
+import { joursEntre, conformiteFroid } from "@/lib/calculs";
 import { ficheFacture } from "@/lib/donnees/factures";
 import { montantEnLettres } from "@/lib/lettres";
 import { prisma } from "@/lib/prisma";
@@ -49,9 +49,37 @@ export default async function ImpressionFacturePage({
   const froidConforme = releves.length > 0 && conformes.length === releves.length;
   const consigneFroid = releves.length > 0 ? nOuNull(releves[0].consigne) : undefined;
 
-  const tva = nOuNull(parametres?.tvaTaux) ?? 0;
-  const montantTva = Math.round((ligne.montantGnf * tva) / 100);
-  const total = ligne.montantGnf + montantTva;
+  /*
+   * Le document porte sa propre TVA et sa propre identité.
+   *
+   * Tout était lu dans les Paramètres à l'impression : changer de taux,
+   * d'adresse ou de numéro de compte réécrivait toutes les factures passées,
+   * et un duplicata remis lors d'un contrôle ne correspondait plus à
+   * l'original. `emetteur` retombe sur les Paramètres uniquement pour les
+   * factures antérieures à la reprise.
+   */
+  const emetteur = {
+    raisonSociale: facture.emetteurRaisonSociale ?? parametres?.raisonSociale ?? NOM_APPLICATION,
+    adresse: facture.emetteurAdresse ?? parametres?.adresse ?? "Conakry, Guinée",
+    telephone: facture.emetteurTelephone ?? parametres?.telephone ?? null,
+    email: facture.emetteurEmail ?? parametres?.email ?? null,
+    rccm: facture.emetteurRccm ?? parametres?.rccm ?? null,
+    nif: facture.emetteurNif ?? parametres?.nif ?? null,
+    orangeMoney: facture.emetteurOrangeMoney ?? parametres?.orangeMoney ?? null,
+    banque: facture.emetteurBanque ?? parametres?.banque ?? null,
+    compte: facture.emetteurCompte ?? parametres?.compteBancaire ?? null,
+    conditions: facture.emetteurConditions ?? parametres?.conditionsPaiement ?? null,
+  };
+
+  // Délai déduit du document, pas des Paramètres : sinon une facture ancienne
+  // afficherait le délai en vigueur aujourd'hui, jamais celui qu'elle portait.
+  const delaiAffiche = facture.echeance
+    ? joursEntre(facture.dateEmission, facture.echeance)
+    : (parametres?.delaiPaiementJours ?? 14);
+
+  const tva = n(facture.tauxTva);
+  const montantTva = n(facture.montantTvaGnf);
+  const total = n(facture.totalTtcGnf) || ligne.montantGnf + montantTva;
 
   // Équivalent CFA : direct si la facture est libellée en CFA, sinon converti
   // au taux de référence — c'est une indication, pas le montant dû.
@@ -63,7 +91,7 @@ export default async function ImpressionFacturePage({
         ? Math.round(total / tauxReference)
         : null;
 
-  const identite = [parametres?.rccm ? `RCCM : ${parametres.rccm}` : null, parametres?.nif ? `NIF : ${parametres.nif}` : null]
+  const identite = [emetteur.rccm ? `RCCM : ${emetteur.rccm}` : null, emetteur.nif ? `NIF : ${emetteur.nif}` : null]
     .filter(Boolean)
     .join(" · ");
 
@@ -95,18 +123,18 @@ export default async function ImpressionFacturePage({
                   <>
                     <span className="dot" />
                     <div>
-                      <h1>{parametres?.raisonSociale ?? NOM_APPLICATION}</h1>
+                      <h1>{emetteur.raisonSociale}</h1>
                       <span>Transport frigorifique</span>
                     </div>
                   </>
                 )}
               </div>
               <div className="fac-emet">
-                <b>{parametres?.raisonSociale ?? NOM_APPLICATION}</b>
+                <b>{emetteur.raisonSociale}</b>
                 <br />
-                {parametres?.adresse ?? "Conakry, Guinée"}
+                {emetteur.adresse}
                 <br />
-                {[parametres?.telephone, parametres?.email].filter(Boolean).join(" · ")}
+                {[emetteur.telephone, emetteur.email].filter(Boolean).join(" · ")}
                 {identite ? (
                   <>
                     <br />
@@ -287,20 +315,20 @@ export default async function ImpressionFacturePage({
               <div className="line">
                 {facture.echeance ? (
                   <>
-                    <b>Échéance :</b> {jjmmaaaa(facture.echeance)} (net {parametres?.delaiPaiementJours ?? 14}{" "}
+                    <b>Échéance :</b> {jjmmaaaa(facture.echeance)} (net {delaiAffiche}{" "}
                     jours)
                     <br />
                   </>
                 ) : null}
-                {parametres?.orangeMoney ? (
+                {emetteur.orangeMoney ? (
                   <>
-                    <b>Orange Money :</b> {parametres.orangeMoney}
+                    <b>Orange Money :</b> {emetteur.orangeMoney}
                     <br />
                   </>
                 ) : null}
-                {parametres?.banque || parametres?.compteBancaire ? (
+                {emetteur.banque || emetteur.compte ? (
                   <>
-                    <b>Virement :</b> {[parametres.banque, parametres.compteBancaire].filter(Boolean).join(" · ")}
+                    <b>Virement :</b> {[emetteur.banque, emetteur.compte].filter(Boolean).join(" · ")}
                     <br />
                   </>
                 ) : null}
@@ -349,10 +377,10 @@ export default async function ImpressionFacturePage({
                 {facture.marchandiseAssuree
                   ? "Marchandise assurée pendant le transport."
                   : "Marchandise non assurée par le transporteur."}
-                {parametres?.conditionsPaiement ? (
+                {emetteur.conditions ? (
                   <>
                     <br />
-                    {parametres.conditionsPaiement}
+                    {emetteur.conditions}
                   </>
                 ) : null}
               </div>
@@ -415,17 +443,17 @@ export default async function ImpressionFacturePage({
           <div className="fac-sign">
             <div className="stamp">
               <div className="rule" />
-              Cachet &amp; signature — {parametres?.raisonSociale ?? NOM_APPLICATION}
+              Cachet &amp; signature — {emetteur.raisonSociale}
             </div>
           </div>
 
           <div className="fac-foot">
-            {[parametres?.raisonSociale, "Transport frigorifique", parametres?.adresse, identite]
+            {[emetteur.raisonSociale, "Transport frigorifique", emetteur.adresse, identite]
               .filter(Boolean)
               .join(" · ")}
             <br />
             Merci de votre confiance.
-            {parametres?.email ? ` Pour toute question relative à cette facture : ${parametres.email}` : ""}
+            {emetteur.email ? ` Pour toute question relative à cette facture : ${emetteur.email}` : ""}
           </div>
         </div>
       </div>

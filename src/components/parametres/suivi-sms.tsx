@@ -3,7 +3,7 @@
 import type { NotificationSms } from "@prisma/client";
 import { useState, useTransition } from "react";
 
-import { annulerNotification, viderFileSms } from "@/actions/sms";
+import { abandonnerFileSms, annulerNotification, viderFileSms } from "@/actions/sms";
 import { IconeCorbeille } from "@/components/icones";
 import { formatDate } from "@/lib/utils";
 
@@ -48,19 +48,45 @@ export function SuiviSms({
           </span>
         </h3>
         {enAttente > 0 ? (
-          <button
-            type="button"
-            className="btn primary px-3 py-1.5 text-[12.5px]"
-            disabled={enCours}
-            onClick={() =>
-              demarrer(async () => {
-                const r = await viderFileSms();
-                setResultat(r.message);
-              })
-            }
-          >
-            {enCours ? "Envoi…" : "Vider la file"}
-          </button>
+          <div className="flex items-center gap-2">
+            {/*
+              Deux gestes distincts, et ils l'étaient mal.
+              Un seul bouton portait « Vider la file » alors qu'il tentait
+              l'envoi : quand l'envoi échouait — nom d'expéditeur refusé, par
+              exemple — la file restait pleine et on cliquait en boucle sans
+              comprendre. L'intitulé dit maintenant ce que chacun fait.
+            */}
+            <button
+              type="button"
+              className="btn ghost px-3 py-1.5 text-[12.5px]"
+              disabled={enCours}
+              onClick={() =>
+                demarrer(async () => {
+                  if (!confirm(
+                    `Abandonner ${enAttente} message(s) sans les envoyer ?\n\n` +
+                      "Ils resteront consultables, marqués « annulé ».",
+                  )) return;
+                  const r = await abandonnerFileSms();
+                  setResultat(r.message);
+                })
+              }
+            >
+              Abandonner
+            </button>
+            <button
+              type="button"
+              className="btn primary px-3 py-1.5 text-[12.5px]"
+              disabled={enCours}
+              onClick={() =>
+                demarrer(async () => {
+                  const r = await viderFileSms();
+                  setResultat(r.message);
+                })
+              }
+            >
+              {enCours ? "Envoi…" : "Envoyer maintenant"}
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -96,9 +122,10 @@ export function SuiviSms({
                     </td>
                     <td>
                       <span className={`badge ${badge.classe}`}>{badge.libelle}</span>
-                      {notif.erreur ? (
-                        <div className="t-sub text-[var(--neg)]">{notif.erreur}</div>
-                      ) : null}
+                      {/* Classe dédiée : `.t-sub` interdit le retour à la ligne
+                          dans un tableau, et le motif du refus — la seule chose
+                          qui dise quoi corriger — se retrouvait coupé net. */}
+                      {notif.erreur ? <div className="sms-erreur">{notif.erreur}</div> : null}
                     </td>
                     <td>
                       {notif.statut === "EN_ATTENTE" || notif.statut === "ECHEC" ? (

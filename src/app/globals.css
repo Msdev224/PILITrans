@@ -97,6 +97,47 @@
     overflow: auto;
   }
 
+  /* --- Sortie d'une session révoquée --- */
+  .ar-page {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: var(--fond);
+  }
+  .ar-carte {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 440px;
+    text-align: center;
+  }
+  .ar-carte h1 {
+    font-family: var(--police-titre), "Space Grotesk", sans-serif;
+    font-size: 22px;
+    margin: 0 0 12px;
+    color: var(--ink);
+  }
+  .ar-carte p {
+    color: var(--muted);
+    font-size: 14.5px;
+    line-height: 1.6;
+    margin: 0 0 24px;
+  }
+  .ar-btn {
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 12px 22px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 48px;
+  }
+  .ar-btn:hover { background: var(--accent-ink); }
+
   .brand {
     display: flex;
     align-items: center;
@@ -433,6 +474,18 @@
   .tbl .t-sub.mono,
   .tbl td .t-sub {
     white-space: nowrap;
+  }
+
+  /* Motif d'un refus SMS : il doit se lire en entier.
+     `.t-sub` interdit le retour à la ligne — utile pour une date, désastreux
+     pour la phrase qui explique comment corriger l'envoi. */
+  .sms-erreur {
+    margin-top: 4px;
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--neg);
+    white-space: normal;
+    max-width: 320px;
   }
 
   .kpi .val-texte {
@@ -2119,6 +2172,151 @@
     font-weight: 600;
   }
 
+  /* ============================================================
+     Rapport de mission — un document par voyage.
+     Repris des jetons de la facture : mêmes marges, même densité, pour que
+     les deux documents se rangent dans le même dossier sans détonner.
+     ============================================================ */
+  .rm {
+    padding: 30px 34px 26px;
+    color: var(--ink);
+  }
+  .rm-tete {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .rm-enseigne {
+    font-family: var(--police-titre), "Space Grotesk", sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .rm-sous {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .rm-titre { text-align: right; }
+  .rm-doc {
+    font-family: var(--police-titre), "Space Grotesk", sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .rm-ref {
+    font-family: var(--police-mono), "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--accent-ink, #097782);
+    margin-top: 2px;
+  }
+  .rm-edite { font-size: 10.5px; color: var(--muted-2); margin-top: 2px; }
+
+  /* Bandeau d'identité : quatre colonnes qui tiennent sur une ligne de A4. */
+  .rm-bandeau {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin: 16px 0 20px;
+  }
+  .rm-case { background: #fff; padding: 8px 10px; }
+  .rm-l {
+    font-size: 9px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+  }
+  .rm-v { font-size: 12px; font-weight: 600; margin-top: 2px; }
+  .rm-tag {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--intl-bg, #e9f0f8);
+    color: var(--intl, #3b6ea5);
+  }
+  .rm-tag.vide { background: var(--vide-bg, #eeeaf3); color: var(--vide, #5e4b7a); }
+
+  .rm-bloc { margin-bottom: 18px; break-inside: avoid; }
+  .rm-bloc h2 {
+    font-family: var(--police-titre), "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 7px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .rm-tbl { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .rm-tbl th {
+    text-align: left;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    font-weight: 600;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rm-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
+  .rm-tbl tr:last-child td { border-bottom: 0; }
+  /* Les chiffres s'alignent sur la virgule : une colonne de montants se
+     compare d'un coup d'œil, pas en la lisant ligne à ligne. */
+  .rm-tbl .num {
+    text-align: right;
+    font-family: var(--police-mono), "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .rm-tbl .rm-total td {
+    border-top: 1.5px solid var(--ink);
+    border-bottom: 0;
+    font-weight: 700;
+    padding-top: 7px;
+  }
+  .rm-tbl .rm-poste td { color: var(--muted); }
+  .rm-mini { font-size: 10px; color: var(--muted-2); font-weight: 400; }
+  .rm-argent td:first-child { width: 70%; }
+  .rm-argent { margin-bottom: 10px; }
+
+  .rm-alerte { color: var(--neg, #b23a34); }
+  .rm-vide { font-size: 11.5px; color: var(--muted-2); margin: 4px 0 0; }
+  .rm-note { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
+
+  .rm-pied {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-top: 26px;
+    break-inside: avoid;
+  }
+  .rm-signature {
+    border-top: 1px solid var(--line);
+    padding-top: 6px;
+    font-size: 10.5px;
+    color: var(--muted-2);
+    /* De la place pour signer à la main : ce document se classe en papier. */
+    min-height: 54px;
+  }
+  .rm-mention {
+    margin-top: 14px;
+    font-size: 9.5px;
+    color: var(--muted-2);
+    line-height: 1.5;
+  }
+
   @media print {
     /* Sans cette instruction, le navigateur supprime fonds et aplats : le
        total en blanc sur fond sombre devient blanc sur blanc, et la pastille
@@ -2147,10 +2345,19 @@
       border-radius: 0;
       max-width: none;
     }
-    .feuille-pad {
+    .feuille-pad,
+    .rm {
       /* Les marges viennent désormais de `@page` : les cumuler repoussait le
-         pied de page sur une seconde feuille. */
+         pied de page sur une seconde feuille. Le rapport de mission suit la
+         même règle que la facture — il a son propre retrait à l'écran, qui
+         n'a plus lieu d'être une fois la marge du papier posée. */
       padding: 0;
+    }
+    /* Un bloc coupé entre deux feuilles se relit mal : chacun reste entier. */
+    .rm-bloc,
+    .rm-bandeau,
+    .rm-pied {
+      break-inside: avoid;
     }
 
     /*
@@ -2321,12 +2528,85 @@
     color: var(--intl);
   }
 
-  /* Champs : cible tactile large, saisie au pouce dans la cabine. */
+  /* --- Volets : une section repliable par étape de la mission --- */
+  .ph-volet {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .ph-volet > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* 56 px : c'est la cible qu'on vise en premier sur cet écran. */
+    min-height: 56px;
+    padding: 14px 16px;
+    cursor: pointer;
+    list-style: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ph-volet > summary::-webkit-details-marker { display: none; }
+  .ph-volet-titre {
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--ink);
+    flex: 1;
+  }
+  .ph-volet-indice {
+    font-size: 12px;
+    color: var(--muted-2);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .ph-volet-fleche {
+    color: var(--muted-2);
+    flex-shrink: 0;
+    transition: transform 0.18s ease;
+  }
+  .ph-volet[open] > summary .ph-volet-fleche { transform: rotate(180deg); }
+  .ph-volet[open] > summary { border-bottom: 1px solid var(--line-soft); }
+  .ph-volet-corps { padding: 14px 16px 16px; }
+  /* Repli explicite.
+     Le masquage d'un `<details>` fermé est normalement assuré par la feuille de
+     style du navigateur ; ici le contenu restait affiché — Preflight de
+     Tailwind réinitialise l'affichage des éléments et neutralise cette règle.
+     On ne s'en remet donc pas à elle : les 22 champs et 10 boutons seraient
+     tous restés à l'écran, et le repli n'aurait servi à rien. */
+  .ph-volet:not([open]) > .ph-volet-corps { display: none; }
+  .ph-volet > summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ph-volet-fleche { transition: none; }
+  }
+
+  /* Une marchandise dans un volet : séparée de la suivante, pas encadrée —
+     l'encadrement est déjà porté par le volet. */
+  .ph-marchandise + .ph-marchandise {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  /* Consigne d'étape : ce que le chauffeur a à faire, en une phrase. */
+  .ph-consigne {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--accent-2, #67C4CD);
+  }
+
+  /* Champs : cible tactile large, saisie au pouce dans la cabine.
+     48 px de haut, minimum retenu par Android — la recommandation Apple est de
+     44. Le cadre mesurait 41 px : l'écart est faible, mais la norme vise
+     précisément l'usage réel, main qui tremble et véhicule sur un bas-côté. */
   .ph-champ {
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 9px 11px;
-    font-size: 12.5px;
+    padding: 12px 13px;
+    min-height: 48px;
+    font-size: 14px;
     margin-top: 8px;
     display: flex;
     justify-content: space-between;
@@ -2603,6 +2883,8 @@
     color: var(--accent-ink);
     font-weight: 600;
   }
+  /* Bouton d'action : 52 px. Il valide un chargement, une livraison ou une
+     dépense — se tromper de bouton coûte une correction au bureau. */
   .ph-btn {
     display: block;
     width: 100%;
@@ -2611,9 +2893,10 @@
     color: #fff;
     border: none;
     border-radius: 11px;
-    padding: 13px;
+    padding: 15px 13px;
+    min-height: 52px;
     font-weight: 600;
-    font-size: 13.5px;
+    font-size: 15px;
     font-family: inherit;
     margin-top: 12px;
     cursor: pointer;
@@ -2767,6 +3050,17 @@
     border: 1px solid var(--line);
   }
 
+  /* Geste refusé, expliqué sur place plutôt que proposé pour rien. */
+  .mention-bloquee {
+    font-size: 12.5px;
+    color: var(--muted);
+    background: var(--line-soft);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 11px;
+    cursor: help;
+  }
+
   /* --- Mission annulée : consultable, figée --- */
   .bandeau-annule {
     border: 1px solid var(--line);
@@ -2821,12 +3115,32 @@
    * croire à un bouton.
    */
   @media print {
+    /* Le titre de l'écran reste — c'est l'en-tête du document. Les commandes,
+       elles, n'ont rien à faire sur du papier : taux de change, cloche
+       d'alertes et avatar sont des repères d'écran. */
     .no-print,
     .rail,
     .barre-haut,
     .acts,
-    .actions-cell {
+    .actions-cell,
+    .top .chip,
+    .top .avatar {
       display: none !important;
+    }
+    /*
+     * La grille doit s'effondrer avec le rail.
+     *
+     * `display: none` retire le rail du flux, mais PAS sa piste : `.zone`
+     * glissait dans la colonne de 244 px prévue pour le menu, et les 1 196 px
+     * restants s'imprimaient vides. Tous les rapports sortaient sur un
+     * cinquième de la largeur du papier.
+     */
+    .app {
+      display: block !important;
+      min-height: 0 !important;
+    }
+    .zone {
+      display: block !important;
     }
     .wrap {
       padding: 0 !important;

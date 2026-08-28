@@ -62,12 +62,15 @@ export interface EtatFacture {
  * il doit toujours refléter les montants réels.
  */
 function statutDeduit(
-  montantGnf: number,
+  totalDuGnf: number,
   payeGnf: number,
   echeance: Date | null,
   aujourdhui = new Date(),
 ): StatutFacture {
-  if (payeGnf >= montantGnf && montantGnf > 0) return "PAYEE";
+  // `totalDuGnf` est le TTC, jamais le hors-taxe : le document réclame la TVA
+  // au client, une facture soldée du seul HT laisserait la taxe impayée alors
+  // qu'elle reste due à l'administration.
+  if (payeGnf >= totalDuGnf && totalDuGnf > 0) return "PAYEE";
   if (echeance && echeance < aujourdhui) return "EN_RETARD";
   if (payeGnf > 0) return "PARTIELLE";
   return "EMISE";
@@ -139,6 +142,18 @@ export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promi
   const refus = await refusMissionAnnulee(saisie.data.voyageId);
   if (refus) return { erreur: refus };
 
+  /*
+   * TVA calculée ici, et figée sur le document.
+   *
+   * Elle était appliquée au moment d'imprimer, à partir des Paramètres du
+   * jour : le client recevait un total TTC que ni les créances ni le passage
+   * à « payée » ne connaissaient, et une réimpression après changement de taux
+   * ne reproduisait plus l'original.
+   */
+  const tauxTva = n(parametres?.tvaTaux);
+  const montantTvaGnf = Math.round((montantGnf * tauxTva) / 100);
+  const totalTtcGnf = montantGnf + montantTvaGnf;
+
   const numero = await numeroLibre(parametres?.prefixeFacture ?? "FAC", echeance.getFullYear());
 
   const creee = await prisma.facture.create({
@@ -149,9 +164,24 @@ export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promi
       montant: saisie.data.montant,
       devise: saisie.data.devise,
       montantGnf,
+      tauxTva,
+      montantTvaGnf,
+      totalTtcGnf,
       dateEmission,
       echeance,
-      statut: statutDeduit(montantGnf, 0, echeance),
+      statut: statutDeduit(totalTtcGnf, 0, echeance),
+      // Identité recopiée : une pièce comptable est opposable parce qu'elle ne
+      // bouge plus. Les Paramètres ne servent plus qu'à la pré-remplir.
+      emetteurRaisonSociale: parametres?.raisonSociale ?? null,
+      emetteurAdresse: parametres?.adresse ?? null,
+      emetteurTelephone: parametres?.telephone ?? null,
+      emetteurEmail: parametres?.email ?? null,
+      emetteurRccm: parametres?.rccm ?? null,
+      emetteurNif: parametres?.nif ?? null,
+      emetteurOrangeMoney: parametres?.orangeMoney ?? null,
+      emetteurBanque: parametres?.banque ?? null,
+      emetteurCompte: parametres?.compteBancaire ?? null,
+      emetteurConditions: parametres?.conditionsPaiement ?? null,
       marchandiseAssuree: saisie.data.marchandiseAssuree,
       tauxPenaliteRetard: saisie.data.tauxPenaliteRetard ?? null,
       afficherEquivalentCfa: saisie.data.afficherEquivalentCfa,
@@ -170,16 +200,26 @@ export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promi
     const recuGnf =
       saisie.data.devise === "GNF" ? recu : Math.round(recu * (montantGnf / saisie.data.montant));
 
-    // Encaisser plus que le montant convenu n'a pas de sens : on plafonne
-    // plutôt que de refuser, la facture est déjà écrite.
-    const plafonne = Math.min(recuGnf, montantGnf);
+    /*
+     * Le versement est enregistré tel quel, y compris s'il dépasse le dû.
+     *
+     * Il était plafonné au montant facturé : un client réglant 5 000 000 sur
+     * une facture de 4 800 000 laissait 200 000 GNF qui n'existaient nulle
+     * part — ni sur la facture, ni en trésorerie, ni au journal, puisque la
+     * trace reprenait elle aussi le montant rogné. L'argent était dans la
+     * caisse et absent des comptes, ce qui est exactement l'écart qu'un
+     * rapprochement doit faire apparaître. Le trop-perçu reste donc visible et
+     * se règle par un avoir.
+     */
+    const verse = recuGnf;
+    const excedent = Math.max(0, recuGnf - totalTtcGnf);
 
     await prisma.paiement.create({
       data: {
         factureId: creee.id,
-        montant: saisie.data.devise === "GNF" ? plafonne : recu,
+        montant: saisie.data.devise === "GNF" ? verse : recu,
         devise: saisie.data.devise,
-        montantGnf: plafonne,
+        montantGnf: verse,
         date: dateEmission,
         // Un règlement reçu à l'émission : le moyen se saisit sur le
         // formulaire de facture, sinon il reste à préciser.
@@ -193,8 +233,10 @@ export async function creerFacture(_etat: EtatFacture, donnees: FormData): Promi
       action: "facture.paiement.enregistre",
       objet: "Facture",
       objetId: creee.id,
-      libelle: `Règlement de ${formatNombre(plafonne)} GNF reçu à l'émission de ${numero}`,
-      montantGnf: plafonne,
+      libelle:
+        `Règlement de ${formatNombre(verse)} GNF reçu à l'émission de ${numero}` +
+        (excedent > 0 ? ` — dont ${formatNombre(excedent)} GNF de trop-perçu` : ""),
+      montantGnf: verse,
     });
   }
 
@@ -232,6 +274,9 @@ export async function modifierFacture(
   const dateEmission = saisie.data.dateEmission ?? existante.dateEmission;
   const echeance = saisie.data.echeance ?? existante.echeance;
   const paye = Number(existante.montantPayeGnf);
+  const tauxFige = Number(existante.tauxTva);
+  const montantTvaCorrige = Math.round((montantGnf * tauxFige) / 100);
+  const totalTtcCorrige = montantGnf + montantTvaCorrige;
 
   await prisma.facture.update({
     where: { id },
@@ -243,9 +288,16 @@ export async function modifierFacture(
       montantGnf,
       dateEmission,
       echeance,
+      /*
+       * La TVA est recalculée au taux DÉJÀ figé sur la facture, pas au taux
+       * courant : corriger un montant ne doit pas requalifier fiscalement un
+       * document émis sous un autre régime.
+       */
+      montantTvaGnf: montantTvaCorrige,
+      totalTtcGnf: totalTtcCorrige,
       // Le statut se recalcule : modifier le montant peut rendre une facture
       // payée à nouveau partielle.
-      statut: statutDeduit(montantGnf, paye, echeance),
+      statut: statutDeduit(totalTtcCorrige, paye, echeance),
       marchandiseAssuree: saisie.data.marchandiseAssuree,
       tauxPenaliteRetard: saisie.data.tauxPenaliteRetard ?? null,
       afficherEquivalentCfa: saisie.data.afficherEquivalentCfa,
@@ -301,21 +353,23 @@ async function recalculerFacture(factureId: string) {
   });
   if (!facture) throw new Error("Facture introuvable.");
 
-  const montantGnf = Number(facture.montantGnf);
+  // Le dû est le TTC. Les factures d'avant la reprise ont un TTC égal au HT,
+  // le repli couvre donc les deux cas sans distinction.
+  const totalDu = Number(facture.totalTtcGnf) || Number(facture.montantGnf);
   const paye = facture.paiements.reduce((total, p) => total + Number(p.montantGnf), 0);
-  const solde = paye >= montantGnf && montantGnf > 0;
+  const solde = paye >= totalDu && totalDu > 0;
 
   await prisma.facture.update({
     where: { id: factureId },
     data: {
       montantPayeGnf: paye,
-      statut: statutDeduit(montantGnf, paye, facture.echeance),
+      statut: statutDeduit(totalDu, paye, facture.echeance),
       // La date de paiement marque le SOLDE, donc le dernier versement.
       datePaiement: solde ? facture.paiements[facture.paiements.length - 1].date : null,
     },
   });
 
-  return { facture, paye, reste: Math.max(montantGnf - paye, 0) };
+  return { facture, paye, reste: Math.max(totalDu - paye, 0) };
 }
 
 /** Enregistre un versement. Une facture peut en recevoir plusieurs. */

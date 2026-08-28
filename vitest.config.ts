@@ -29,7 +29,7 @@ export default defineConfig({
         test: {
           name: "node",
           environment: "node",
-          include: ["tests/{unite,donnees,integration}/**/*.test.ts"],
+          include: ["tests/{unite,donnees,integration,actions}/**/*.test.ts"],
         },
       },
       {

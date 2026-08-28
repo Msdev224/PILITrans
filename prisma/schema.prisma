@@ -179,9 +179,25 @@ model Utilisateur {
   // Empreinte du mot de passe (scrypt) — jamais le mot de passe en clair.
   // Requis par le provider « identifiants » d'Auth.js (connexion téléphone + mot de passe).
   motDePasse String?
+  /// Numéro en E.164, sans espace ni ponctuation — « +224620000000 ».
+  ///
+  /// Le numéro affichable garde son formatage ; celui-ci sert à la connexion.
+  /// Sans lui, il fallait charger TOUS les utilisateurs, empreinte comprise, et
+  /// les comparer un à un à chaque tentative — un balayage complet de la table
+  /// déclenché par une requête anonyme.
+  telephoneNormalise String? @unique
   role       Role     @default(CHAUFFEUR)
   actif      Boolean  @default(true)
   createdAt  DateTime @default(now())
+
+  /// Verrou anti-force-brute, en base et non en mémoire.
+  ///
+  /// Le compteur vivait dans une `Map` du processus : sur un hébergement sans
+  /// état, chaque instance repartait de zéro et un attaquant obtenait cinq
+  /// tentatives par instance au lieu de cinq au total.
+  echecsConnexion   Int       @default(0)
+  bloqueJusqua      DateTime?
+  derniereConnexion DateTime?
 
   // un compte CHAUFFEUR est rattaché à une fiche Chauffeur
   chauffeur   Chauffeur? @relation(fields: [chauffeurId], references: [id])
@@ -912,6 +928,39 @@ model Facture {
   montant               Decimal       @db.Decimal(14, 2)
   devise                Devise        @default(GNF)
   montantGnf            Decimal       @default(0) @db.Decimal(16, 2)
+  /**
+   * TVA figée à l'émission — taux ET montant.
+   *
+   * Le taux était lu dans les Paramètres au moment d'imprimer : le document
+   * s'affichait TTC alors que les créances et le passage à « payée » ne
+   * portaient que sur le hors-taxe. Une facture n'était donc jamais soldée du
+   * montant réellement dû, et une réimpression après changement de taux ne
+   * reproduisait pas l'original.
+   */
+  tauxTva               Decimal       @default(0) @db.Decimal(5, 2)
+  montantTvaGnf         Decimal       @default(0) @db.Decimal(16, 2)
+  /// Ce que le client doit réellement : hors-taxe + TVA. Sert de référence aux
+  /// créances comme au statut.
+  totalTtcGnf           Decimal       @default(0) @db.Decimal(16, 2)
+
+  /**
+   * Identité de l'émetteur, recopiée à l'émission.
+   *
+   * Une pièce comptable est opposable parce qu'elle ne bouge plus. Ces champs
+   * étaient lus dans les Paramètres à l'impression : changer d'adresse ou de
+   * numéro de compte réécrivait toutes les factures passées, et un duplicata
+   * remis lors d'un contrôle ne correspondait plus à l'original.
+   */
+  emetteurRaisonSociale String?
+  emetteurAdresse       String?
+  emetteurTelephone     String?
+  emetteurEmail         String?
+  emetteurRccm          String?
+  emetteurNif           String?
+  emetteurOrangeMoney   String?
+  emetteurBanque        String?
+  emetteurCompte        String?
+  emetteurConditions    String?
   /// Date d'émission portée sur le document.
   ///
   /// Distincte de `createdAt` : une facture peut être saisie plusieurs jours
@@ -978,7 +1027,32 @@ model Parametres {
   consigneFroidDefaut Decimal? @db.Decimal(4, 1)
   toleranceFroid      Decimal? @default(1.0) @db.Decimal(3, 1)
   rappelEcheanceJours Int      @default(30)
-  seuilConsoAnormale  Decimal? @db.Decimal(5, 1) // L/100km au-delà = alerte
+  /**
+   * Règles de sécurité et d'affichage, réglables sans toucher au code.
+   *
+   * Elles étaient écrites en dur : le nombre d'essais avant blocage, la durée
+   * du blocage, et la profondeur d'historique balayée par les alertes. Ce sont
+   * des arbitrages d'exploitation — ils dépendent du nombre de chauffeurs, de
+   * la patience du gérant et du volume de voyages, pas du code.
+   */
+  maxEchecsConnexion    Int @default(5)
+  blocageConnexionMin   Int @default(15)
+  /// Profondeur d'historique balayée par les alertes, en jours.
+  fenetreAlertesJours   Int @default(120)
+  /// Durée de validité d'une session, en jours.
+  dureeSessionJours     Int @default(7)
+
+  /// L/100 km au-delà = alerte. Valeur par défaut posée : laissé vide, le
+  /// contrôle ne s'exécutait pas du tout et aucune alerte carburant n'existait.
+  seuilConsoAnormale  Decimal? @default(55) @db.Decimal(5, 1)
+  /**
+   * L/100 km en deçà = alerte.
+   *
+   * La borne haute n'attrape que l'erreur de bonne foi. Qui siphonne ne laisse
+   * pas la consommation monter : il ajuste le compteur ou le niveau déclaré
+   * pour que le ratio retombe dans la norme — ou passe dessous.
+   */
+  seuilConsoBasse     Decimal? @default(15) @db.Decimal(5, 1)
 
   // --- Notifications SMS (Nimba SMS) ---
   /// Interrupteur général. Tant qu'il est faux, rien ne part : les messages

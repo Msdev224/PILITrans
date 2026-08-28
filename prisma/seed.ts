@@ -311,9 +311,12 @@ async function main() {
   // chauffeur finit imputé au camion, et une seule fois.
   await db.mouvementCaisse.createMany({
     data: [
-      { chauffeurId: mamadou.id, type: "AVANCE", montant: 2_000_000, devise: Devise.GNF,
+      // `voyageId` rattache l'avance à sa mission : sans lui, le « reste à
+      // justifier » de la mission reste à zéro quoi qu'on remette au chauffeur,
+      // et le rapport de mission affiche « aucune avance ».
+      { chauffeurId: mamadou.id, voyageId: vDakar.id, type: "AVANCE", montant: 2_000_000, devise: Devise.GNF,
         montantGnf: 2_000_000, motif: "Avance mission Dakar", date: new Date("2026-08-14") },
-      { chauffeurId: mamadou.id, type: "AVANCE", montant: 200_000, devise: Devise.XOF,
+      { chauffeurId: mamadou.id, voyageId: vDakar.id, type: "AVANCE", montant: 200_000, devise: Devise.XOF,
         montantGnf: 2_870_000, motif: "Avance en CFA (frais au Sénégal)", date: new Date("2026-08-15") },
     ],
   });
@@ -341,6 +344,7 @@ async function main() {
         motif,
         date: new Date("2026-08-16"),
         depenseId: depense.id,
+        voyageId: depense.voyageId,
       },
     });
   }

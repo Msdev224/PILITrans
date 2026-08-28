@@ -21,6 +21,8 @@ export interface LigneFacture {
   /** Échéancier aplati — les Decimal ne traversent pas vers le client. */
   versements: VersementVue[];
   montantGnf: number;
+  /** Total réellement dû : hors-taxe + TVA figée sur la facture. */
+  totalDuGnf: number;
   payeGnf: number;
   resteGnf: number;
   /** Jours de retard (0 si dans les temps ou réglée). */
@@ -77,7 +79,17 @@ function construireLigne<T extends LigneFacture["facture"]>(
 ): Omit<LigneFacture, "facture"> & { facture: T } {
   const montantGnf = n(facture.montantGnf);
   const payeGnf = n(facture.montantPayeGnf);
-  const resteGnf = Math.max(montantGnf - payeGnf, 0);
+  /*
+   * Le reste dû se calcule sur le TTC.
+   *
+   * Il portait sur le hors-taxe : une facture de 14 200 000 HT à 18 % affichait
+   * « 14 200 000 GNF dus » quelques centimètres sous un total à payer de
+   * 16 756 000 — deux chiffres contradictoires sur le même document, remis au
+   * client. La pénalité de retard, qui en dérive, était sous-évaluée d'autant.
+   * Le repli couvre les factures antérieures à la reprise.
+   */
+  const totalDuGnf = n(facture.totalTtcGnf) || montantGnf;
+  const resteGnf = Math.max(totalDuGnf - payeGnf, 0);
 
   const echue = facture.echeance != null && facture.echeance < ceJour && resteGnf > 0;
   const joursRetard = echue
@@ -101,7 +113,7 @@ function construireLigne<T extends LigneFacture["facture"]>(
     reference: p.reference,
   }));
 
-  return { facture, versements, montantGnf, payeGnf, resteGnf, joursRetard, penaliteGnf };
+  return { facture, versements, montantGnf, totalDuGnf, payeGnf, resteGnf, joursRetard, penaliteGnf };
 }
 
 function appliquerFiltre(lignes: LigneFacture[], filtre: FiltreFacture): LigneFacture[] {
@@ -127,20 +139,41 @@ export async function vueFactures(
   const { filtre = "toutes", recherche = "", aujourdhui = new Date() } = options;
   const ceJour = debutDeJour(aujourdhui);
 
-  const factures = await prisma.facture.findMany({
-    include: {
-      client: true,
-      voyage: true,
-      paiements: { orderBy: { date: "asc" }, include: { moyen: { select: { nom: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  /*
+   * Deux ensembles, et pas un seul.
+   *
+   * Une créance ne se périme pas : une facture impayée de l'an dernier reste
+   * due, elle doit donc entrer dans l'encours quelle que soit la période
+   * consultée. En revanche l'archive des factures déjà réglées n'a pas à être
+   * rapatriée pour afficher un mois. On prend donc toutes les impayées, plus
+   * les factures de la période.
+   */
+  const [factures, encaisseTotal] = await Promise.all([
+    prisma.facture.findMany({
+      where: {
+        OR: [
+          { statut: { not: "PAYEE" } },
+          { createdAt: { gte: periode.debut, lt: periode.fin } },
+        ],
+      },
+      include: {
+        client: true,
+        voyage: true,
+        paiements: { orderBy: { date: "asc" }, include: { moyen: { select: { nom: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    // Le total encaissé porte sur toute l'histoire : un agrégat le donne sans
+    // rapatrier une ligne de plus.
+    prisma.facture.aggregate({ _sum: { montantPayeGnf: true } }),
+  ]);
 
   const toutes = factures.map((f) => construireLigne(f, ceJour));
 
   const situation = creances(
     factures.map((f) => ({
       montantGnf: n(f.montantGnf),
+      totalTtcGnf: n(f.totalTtcGnf),
       montantPayeGnf: n(f.montantPayeGnf),
       statut: f.statut,
       echeance: f.echeance ?? undefined,
@@ -155,7 +188,9 @@ export async function vueFactures(
   const stats: StatsFactures = {
     encoursGnf: situation.encours,
     enRetardGnf: situation.enRetard,
-    encaisseGnf: situation.encaisse,
+    // Depuis l'agrégat, et non depuis la liste : celle-ci ne porte plus les
+    // factures réglées des périodes antérieures.
+    encaisseGnf: n(encaisseTotal._sum.montantPayeGnf),
     nbOuvertes: toutes.filter((l) => l.facture.statut !== "PAYEE").length,
     nbEnRetard: toutes.filter((l) => l.joursRetard > 0).length,
     encaisseMoisGnf: payeesDuMois.reduce((total, l) => total + l.payeGnf, 0),

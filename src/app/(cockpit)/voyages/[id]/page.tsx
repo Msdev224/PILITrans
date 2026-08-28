@@ -137,6 +137,18 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
       prisAilleurs: false,
     }));
 
+  /*
+   * Une mission déjà réglée ne s'annule pas : l'annulation efface la recette
+   * alors que l'argent, lui, reste en trésorerie. Le serveur le refuse ; on
+   * le dit ici pour ne pas proposer un geste voué à l'échec.
+   */
+  const facturesReglees = voyage.factures.filter((f) => n(f.montantPayeGnf) > 0);
+  const reglementRecu = facturesReglees.length > 0;
+  const motifBlocage = reglementRecu
+    ? `Règlement encaissé sur ${facturesReglees.map((f) => f.numero).join(", ")}. ` +
+      "Retirez d'abord le règlement de la facture, ou passez un avoir."
+    : null;
+
   return (
     <>
       <BarreHaut
@@ -151,6 +163,17 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <Link href="/voyages" className="link text-[13px]">
             ← Retour aux voyages
+          </Link>
+
+          {/* Le rapport de mission réunit sur une feuille ce que le cockpit
+              répartit sur cet écran : quantités, carburant, froid, argent. Il
+              s'ouvre dans la coquille d'impression, sans rail ni barre haute. */}
+          <Link
+            href={`/voyages/${voyage.id}/rapport`}
+            className="btn ghost sm ml-auto mr-2"
+            prefetch={false}
+          >
+            Rapport de mission
           </Link>
 
           {/* Annuler n'efface rien : les frais engagés et l'argent déjà remis
@@ -170,17 +193,25 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
                 }
               />
             ) : (
-              <DialogueAnnulation
-                voyageId={voyage.id}
-                reference={voyage.reference}
-                trajet={`${voyage.villeDepart} → ${voyage.villeArrivee}`}
-                aDesEcritures={fiche.postes.length > 0 || fiche.facture || fiche.troncons.length > 0}
-                declencheur={
-                  <button type="button" className="btn ghost sm">
-                    Annuler la mission
-                  </button>
-                }
-              />
+              reglementRecu ? (
+                /* Le refus est prononcé côté serveur ; l'afficher ici évite
+                   d'ouvrir un dialogue pour n'y proposer qu'un échec. */
+                <span className="mention-bloquee" title={motifBlocage ?? undefined}>
+                  Annulation impossible — règlement encaissé
+                </span>
+              ) : (
+                <DialogueAnnulation
+                  voyageId={voyage.id}
+                  reference={voyage.reference}
+                  trajet={`${voyage.villeDepart} → ${voyage.villeArrivee}`}
+                  aDesEcritures={fiche.postes.length > 0 || fiche.facture || fiche.troncons.length > 0}
+                  declencheur={
+                    <button type="button" className="btn ghost sm">
+                      Annuler la mission
+                    </button>
+                  }
+                />
+              )
             )}
           </SiPeut>
 

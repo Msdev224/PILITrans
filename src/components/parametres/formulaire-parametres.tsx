@@ -33,6 +33,11 @@ export interface ParametresEditables {
   toleranceFroid: number | null;
   rappelEcheanceJours: number;
   seuilConsoAnormale: number | null;
+  seuilConsoBasse: number | null;
+  maxEchecsConnexion: number;
+  blocageConnexionMin: number;
+  fenetreAlertesJours: number;
+  dureeSessionJours: number;
   smsActif: boolean;
   whatsappActif: boolean;
   accueilSurtitre: string | null;
@@ -248,8 +253,15 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
         >
           <input name="rappelEcheanceJours" inputMode="numeric" defaultValue={val("rappelEcheanceJours", parametres.rappelEcheanceJours)} />
         </Champ>
-        <Champ label="Seuil de conso anormale (L/100 km)" aide="Au-delà, une alerte carburant est levée.">
+        <Champ label="Conso maximale (L/100 km)" aide="Au-delà, une alerte carburant est levée.">
           <input name="seuilConsoAnormale" inputMode="decimal" defaultValue={val("seuilConsoAnormale", parametres.seuilConsoAnormale)} />
+        </Champ>
+        <Champ
+          label="Conso minimale (L/100 km)"
+          erreur={err("seuilConsoBasse")}
+          aide="En deçà, alerte aussi : une consommation trop basse signale un kilométrage ou un niveau de réservoir arrangé."
+        >
+          <input name="seuilConsoBasse" inputMode="decimal" defaultValue={val("seuilConsoBasse", parametres.seuilConsoBasse)} />
         </Champ>
       </Section>
 
@@ -447,6 +459,40 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
             </p>
           </div>
         </div>
+      </Section>
+
+      <Section
+        titre="Sécurité & alertes"
+        aide="Des arbitrages d'exploitation, pas des constantes du code : ils dépendent du nombre de chauffeurs et de la façon dont ils se connectent."
+      >
+        <Champ
+          label="Essais avant blocage"
+          erreur={err("maxEchecsConnexion")}
+          aide="Un chauffeur qui tape au pouce sur un téléphone de bord se trompe plus souvent qu'un gérant au clavier. Entre 1 et 20."
+        >
+          <input name="maxEchecsConnexion" inputMode="numeric" defaultValue={val("maxEchecsConnexion", parametres.maxEchecsConnexion)} />
+        </Champ>
+        <Champ
+          label="Durée du blocage (minutes)"
+          erreur={err("blocageConnexionMin")}
+          aide="Chaque nouvel échec repousse la fenêtre : insister prolonge le blocage au lieu de l'épuiser."
+        >
+          <input name="blocageConnexionMin" inputMode="numeric" defaultValue={val("blocageConnexionMin", parametres.blocageConnexionMin)} />
+        </Champ>
+        <Champ
+          label="Durée d'une session (jours)"
+          erreur={err("dureeSessionJours")}
+          aide="Comptée depuis la dernière connexion réussie. Plus la durée est courte, moins un téléphone perdu reste exploitable. 30 jours maximum."
+        >
+          <input name="dureeSessionJours" inputMode="numeric" defaultValue={val("dureeSessionJours", parametres.dureeSessionJours)} />
+        </Champ>
+        <Champ
+          label="Profondeur des alertes (jours)"
+          erreur={err("fenetreAlertesJours")}
+          aide="Au-delà, un écart non traité sort des alertes et reste consultable sur sa fiche. Couvre le délai de règlement le plus long."
+        >
+          <input name="fenetreAlertesJours" inputMode="numeric" defaultValue={val("fenetreAlertesJours", parametres.fenetreAlertesJours)} />
+        </Champ>
       </Section>
 
       <div className="flex justify-end">

@@ -2,7 +2,6 @@
 
 import {
   MotifVoyage,
-  Prisma,
   SegmentTrajet,
   StatutVoyage,
   TypeDepense,
@@ -16,7 +15,7 @@ import { observerTaux } from "@/lib/donnees/taux";
 import { lignesRemise, type LigneRemise } from "@/lib/remise";
 import { LIBELLE_TYPE_DEPENSE, formatNombre } from "@/lib/utils";
 import { journaliser } from "@/lib/journal";
-import { prisma } from "@/lib/prisma";
+import { prisma, type ClientTransaction } from "@/lib/prisma";
 import { notifierAffectationChauffeur, notifierEtapeVoyage } from "@/lib/sms/declencheurs";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
 import { caseACocher, dateBornee, distanceKm, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
@@ -347,7 +346,7 @@ function segmentValide(valeur: string | null | undefined): SegmentTrajet | null 
  * une mission qui n'existe pas.
  */
 async function appliquerRemise(
-  tx: Prisma.TransactionClient,
+  tx: ClientTransaction,
   voyage: { id: string; camionId: string; chauffeurId: string },
   r: Remise,
   lignes: LigneRemise[],
@@ -514,10 +513,40 @@ export async function annulerVoyage(id: string, donnees?: FormData): Promise<voi
 
   const voyage = await prisma.voyage.findUnique({
     where: { id },
-    select: { camionId: true, statut: true, reference: true },
+    select: {
+      camionId: true,
+      statut: true,
+      reference: true,
+      factures: { select: { numero: true, montantPayeGnf: true, statut: true } },
+    },
   });
   if (!voyage) throw new Error("Mission introuvable.");
   if (voyage.statut === "ANNULE") throw new Error("Cette mission est déjà annulée.");
+
+  /*
+   * Une course déjà réglée ne s'annule pas.
+   *
+   * L'annulation fait disparaître la recette de la mission. Si le client a
+   * versé quelque chose, l'argent, lui, reste en trésorerie : on obtiendrait
+   * un encaissement rattaché à une course réputée n'avoir jamais eu lieu, et
+   * une facture payée pointant sur une mission annulée. Le désordre serait
+   * dans les comptes, pas seulement à l'écran.
+   *
+   * La règle porte sur tout règlement, pas seulement sur le solde complet :
+   * un acompte pose exactement le même problème, en plus petit.
+   */
+  const reglees = voyage.factures.filter((f) => Number(f.montantPayeGnf) > 0);
+  if (reglees.length > 0) {
+    const soldees = reglees.filter((f) => f.statut === "PAYEE");
+    throw new Error(
+      `La mission ${voyage.reference} ne peut pas être annulée : ` +
+        (soldees.length > 0
+          ? `le client a réglé ${soldees.map((f) => f.numero).join(", ")}.`
+          : `un acompte a été encaissé sur ${reglees.map((f) => f.numero).join(", ")}.`) +
+        " Pour l'annuler, il faut d'abord régler le sort de l'argent reçu — " +
+        "avoir au client ou remboursement — puis retirer le règlement de la facture.",
+    );
+  }
 
   const brut = donnees?.get("motifAnnulation");
   const motif = typeof brut === "string" ? brut.trim() : "";

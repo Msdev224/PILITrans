@@ -218,9 +218,29 @@ export async function vueVoyages(
 ): Promise<VueVoyages> {
   const { filtre = "tous", recherche = "", aujourdhui = new Date() } = options;
 
+  /*
+   * Bornage de la liste.
+   *
+   * La requête ramenait tous les voyages jamais enregistrés, plus toutes les
+   * dépenses de voyage, pour n'en afficher qu'un mois : le tri et le filtrage
+   * se faisaient en mémoire. L'écran Voyages est celui qu'on ouvre dix fois
+   * par jour ; c'est donc celui qui se serait alourdi le plus vite.
+   *
+   * Deux ensembles seulement sont nécessaires : les voyages de la période
+   * demandée, et ceux qui roulent encore — ces derniers ont pu partir avant et
+   * doivent rester visibles, sinon une mission en cours disparaît de l'écran
+   * le premier jour du mois suivant.
+   */
+  const bornes = {
+    OR: [
+      { dateDepart: { gte: periode.debut, lt: periode.fin } },
+      { statut: { in: [...STATUTS_EN_ROUTE] } },
+    ],
+  };
+
   const [voyages, depenses] = await Promise.all([
     prisma.voyage.findMany({
-      where: { statut: { not: "ANNULE" } },
+      where: { statut: { not: "ANNULE" }, ...bornes },
       include: {
         camion: true,
         chauffeur: true,
@@ -232,7 +252,11 @@ export async function vueVoyages(
       },
       orderBy: { dateDepart: "desc" },
     }),
-    prisma.depense.findMany({ where: { voyageId: { not: null } } }),
+    // Les dépenses suivent le même bornage, par leur voyage : sans cela on
+    // rapatriait tout l'historique des dépenses pour en utiliser un mois.
+    prisma.depense.findMany({
+      where: { voyageId: { not: null }, voyage: { statut: { not: "ANNULE" }, ...bornes } },
+    }),
   ]);
 
   const toutes = voyages.map((v) => construireLigne(v, depenses, aujourdhui));

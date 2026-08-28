@@ -89,6 +89,7 @@ export async function ficheClient(
   const etatCreances = creances(
     factures.map((f) => ({
       montantGnf: n(f.montantGnf),
+      totalTtcGnf: n(f.totalTtcGnf),
       montantPayeGnf: n(f.montantPayeGnf),
       statut: f.statut as "EMISE" | "PARTIELLE" | "PAYEE" | "EN_RETARD",
       echeance: f.echeance ?? undefined,
@@ -130,6 +131,7 @@ export async function ficheClient(
       dateEmission: f.dateEmission,
       echeance: f.echeance,
       montantGnf: n(f.montantGnf),
+      totalTtcGnf: n(f.totalTtcGnf),
       payeGnf: n(f.montantPayeGnf),
       resteGnf: Math.max(n(f.montantGnf) - n(f.montantPayeGnf), 0),
       statut: f.statut,

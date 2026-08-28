@@ -81,14 +81,29 @@ export const ratioCarburantRecette = (carburantGnf: number, recetteGnf: number) 
 
 // ---------- Créances / facturation ----------
 export type StatutFacture = "EMISE" | "PARTIELLE" | "PAYEE" | "EN_RETARD";
-export interface Facture { montantGnf: number; montantPayeGnf: number; statut: StatutFacture; echeance?: Date; }
-/** Encours à recevoir, part en retard, et total encaissé — tout en GNF. */
+export interface Facture {
+  montantGnf: number;
+  /** Total réellement dû par le client : hors-taxe + TVA. */
+  totalTtcGnf?: number;
+  montantPayeGnf: number;
+  statut: StatutFacture;
+  echeance?: Date;
+}
+/**
+ * Encours à recevoir, part en retard, et total encaissé — tout en GNF.
+ *
+ * Le reste dû se calcule sur le TTC : la facture réclame la TVA au client, et
+ * la compter hors taxe faisait apparaître comme soldée une facture à laquelle
+ * il manquait la taxe — due à l'administration quoi qu'il arrive. Le repli sur
+ * le hors-taxe couvre les factures antérieures à la reprise.
+ */
 export function creances(factures: Facture[], aujourdhui = new Date()) {
   let encours = 0, enRetard = 0, encaisse = 0;
   for (const f of factures) {
     encaisse += f.montantPayeGnf;
     if (f.statut === "PAYEE") continue;
-    const reste = f.montantGnf - f.montantPayeGnf;
+    const du = f.totalTtcGnf || f.montantGnf;
+    const reste = du - f.montantPayeGnf;
     encours += reste;
     const echu = f.statut === "EN_RETARD" || (f.echeance !== undefined && f.echeance < aujourdhui);
     if (echu) enRetard += reste;

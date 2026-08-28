@@ -66,6 +66,11 @@ const schemaParametres = z.object({
   toleranceFroid: nombreOptionnel,
   rappelEcheanceJours: nombreOptionnel.pipe(z.number().int().positive("Rappel requis").optional()),
   seuilConsoAnormale: nombreOptionnel,
+  seuilConsoBasse: nombreOptionnel,
+  maxEchecsConnexion: nombreOptionnel,
+  blocageConnexionMin: nombreOptionnel,
+  fenetreAlertesJours: nombreOptionnel,
+  dureeSessionJours: nombreOptionnel,
 
   // Notifications SMS
   smsActif: caseACocher,
@@ -150,6 +155,13 @@ export async function enregistrerParametres(
     toleranceFroid: d.toleranceFroid ?? null,
     rappelEcheanceJours: d.rappelEcheanceJours ?? 30,
     seuilConsoAnormale: d.seuilConsoAnormale ?? null,
+    seuilConsoBasse: d.seuilConsoBasse ?? null,
+    // Bornes de bon sens : un blocage de zéro essai fermerait la porte à tout
+    // le monde, une session de zéro jour déconnecterait à chaque page.
+    maxEchecsConnexion: Math.min(20, Math.max(1, d.maxEchecsConnexion ?? 5)),
+    blocageConnexionMin: Math.min(1440, Math.max(1, d.blocageConnexionMin ?? 15)),
+    fenetreAlertesJours: Math.min(730, Math.max(7, d.fenetreAlertesJours ?? 120)),
+    dureeSessionJours: Math.min(30, Math.max(1, d.dureeSessionJours ?? 7)),
     smsActif: d.smsActif,
     smsExpediteur: d.smsExpediteur ?? null,
     urlApplication: d.urlApplication ?? null,

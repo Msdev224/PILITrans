@@ -161,6 +161,7 @@ async function tableauDeBordBrut(aujourdhui: Date = new Date()): Promise<Tableau
     creances: creances(
       factures.map((f) => ({
         montantGnf: n(f.montantGnf),
+        totalTtcGnf: n(f.totalTtcGnf),
         montantPayeGnf: n(f.montantPayeGnf),
         statut: f.statut,
         echeance: f.echeance ?? undefined,
@@ -178,7 +179,7 @@ async function tableauDeBordBrut(aujourdhui: Date = new Date()): Promise<Tableau
 async function resumeRailBrut(aujourdhui: Date = new Date()) {
   const [camions, factures] = await Promise.all([
     prisma.camion.findMany({ where: { actif: true }, select: { id: true, statut: true } }),
-    prisma.facture.findMany({ select: { montantGnf: true, montantPayeGnf: true, statut: true, echeance: true } }),
+    prisma.facture.findMany({ select: { montantGnf: true, totalTtcGnf: true, montantPayeGnf: true, statut: true, echeance: true } }),
   ]);
 
   const enRoute = camions.filter((c) => c.statut === "EN_VOYAGE").length;
@@ -186,6 +187,7 @@ async function resumeRailBrut(aujourdhui: Date = new Date()) {
   const encours = creances(
     factures.map((f) => ({
       montantGnf: n(f.montantGnf),
+      totalTtcGnf: n(f.totalTtcGnf),
       montantPayeGnf: n(f.montantPayeGnf),
       statut: f.statut,
       echeance: f.echeance ?? undefined,

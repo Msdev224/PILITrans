@@ -3,6 +3,8 @@ import { BoutonDeconnexion } from "@/components/chauffeur/bouton-deconnexion";
 import { EnregistrementServiceWorker } from "@/components/chauffeur/enregistrement-sw";
 import { EtatReseau } from "@/components/chauffeur/etat-reseau";
 import { InviteInstallation } from "@/components/chauffeur/invite-installation";
+import { Volet } from "@/components/chauffeur/volet";
+import { actionAttendue, voletsOuverts } from "@/lib/chauffeur/etapes-utiles";
 import { marqueEntreprise } from "@/lib/donnees/accueil";
 import { FournisseurFile } from "@/components/chauffeur/file-attente";
 import {
@@ -117,6 +119,16 @@ export default async function EspaceChauffeurPage() {
   // Chaque marchandise se suit séparément : unités différentes, écarts
   // différents, et un prélèvement de douane porte sur un article précis.
   const marchandises = mission ? vueLignes(mission.lignes) : [];
+
+  /*
+   * Ce qui s'ouvre dépend de l'état de la mission.
+   *
+   * Tout était déplié en même temps : 22 champs et 10 boutons sur quatre
+   * écrans. Le voyage porte déjà sa machine à états — elle décide désormais de
+   * ce qui est mis en avant, le reste restant à un geste.
+   */
+  const ouverts = mission ? voletsOuverts(mission.statut) : [];
+  const consigneAction = mission ? actionAttendue(mission.statut) : null;
   const dernierReleve = dernier
     ? {
         temperature: n(dernier.temperature),
@@ -145,6 +157,7 @@ export default async function EspaceChauffeurPage() {
                 .join(" · ")
             : "Aucune mission en cours"}
         </div>
+        {consigneAction ? <div className="ph-consigne">{consigneAction}</div> : null}
       </div>
 
       <div className="ph-body">
@@ -269,87 +282,122 @@ export default async function EspaceChauffeurPage() {
             {/* Rotations : uniquement quand la mission en compte plusieurs
                 ou que le camion est une benne. */}
             {mission.camion.carrosserie === "BENNE" || mission.nbRotations > 1 ? (
-              <div className="ph-card">
-                <div className="lab">Rotations du jour</div>
+              <Volet
+                titre="Rotations du jour"
+                ouvert={ouverts.includes("rotations")}
+                indice={`${mission.nbRotations} effectuée${mission.nbRotations > 1 ? "s" : ""}`}
+              >
                 <BoutonRotation
                   voyageId={mission.id}
                   nbRotations={mission.nbRotations}
                   tarifRotation={mission.tarifRotation != null ? n(mission.tarifRotation) : null}
                 />
-              </div>
+              </Volet>
             ) : null}
 
             {/* Chaîne du froid — seulement sur un camion frigorifique. */}
             {mission.camion.refrigere ? (
-              <div className="ph-card">
-                <div className="lab">Chaîne du froid</div>
+              <Volet
+                titre="Chaîne du froid"
+                ouvert={ouverts.includes("froid")}
+                indice={
+                  dernierReleve
+                    ? `${formatDecimal(dernierReleve.temperature)} °C`
+                    : "aucun relevé"
+                }
+              >
                 <FormulaireReleve
                   voyageId={mission.id}
                   consigne={consigneFroid}
                   dernier={dernierReleve}
                 />
-              </div>
+              </Volet>
             ) : null}
 
             {/* ---------- Arrêt / changement de destination ---------- */}
-            <div className="ph-card">
-              <div className="lab">Signaler un arrêt</div>
+            <Volet titre="Signaler un arrêt" ouvert={ouverts.includes("arret")}>
               <FormulaireArret voyageId={mission.id} villeActuelle={mission.villeArrivee} />
-            </div>
+            </Volet>
 
-            {/* ---------- Chargement & livraison ---------- */}
-            {marchandises.map((m) => (
-              <div key={m.id} className="ph-card">
-                <div className="lab">
-                  {m.designation}
-                  {m.client ? <span className="ph-aide"> — {m.client}</span> : null}
+            {/* ---------- Chargement ----------
+                Séparé de la livraison : les deux se produisent à des jours et
+                des lieux différents. Réunis dans une même carte, ils
+                affichaient deux boutons « Confirmer » identiques à quelques
+                centimètres l'un de l'autre. */}
+            <Volet
+              titre="Chargement"
+              ouvert={ouverts.includes("chargement")}
+              indice={`${marchandises.filter((m) => m.quantiteRecue != null).length}/${marchandises.length} constaté${marchandises.length > 1 ? "s" : ""}`}
+            >
+              {marchandises.map((m) => (
+                <div key={m.id} className="ph-marchandise">
+                  <div className="lab">
+                    {m.designation}
+                    {m.client ? <span className="ph-aide"> — {m.client}</span> : null}
+                  </div>
+                  {m.quantiteACharger != null ? (
+                    <p className="ph-aide">
+                      À charger (prévu) : <b>{formatQuantite(m.quantiteACharger, m.symbole)}</b>
+                    </p>
+                  ) : null}
+                  <FormulaireQuantite
+                    voyageId={mission.id}
+                    ligneId={m.id}
+                    designation="Quantité reçue"
+                    symbole={m.symbole}
+                    mode="chargement"
+                    valeurInitiale={m.quantiteRecue}
+                    prevu={m.quantiteACharger}
+                    recue={null}
+                  />
                 </div>
-                {m.quantiteACharger != null ? (
-                  <p className="ph-aide">
-                    À charger (prévu) : <b>{formatQuantite(m.quantiteACharger, m.symbole)}</b>
-                  </p>
-                ) : null}
+              ))}
+            </Volet>
 
-                <FormulaireQuantite
-                  voyageId={mission.id}
-                  ligneId={m.id}
-                  designation="Quantité reçue"
-                  symbole={m.symbole}
-                  mode="chargement"
-                  valeurInitiale={m.quantiteRecue}
-                  prevu={m.quantiteACharger}
-                  recue={null}
-                />
+            {/* ---------- Livraison ---------- */}
+            <Volet
+              titre="Livraison"
+              ouvert={ouverts.includes("livraison")}
+              indice={`${marchandises.filter((m) => m.quantiteLivree != null).length}/${marchandises.length} livré${marchandises.length > 1 ? "s" : ""}`}
+            >
+              {marchandises.map((m) => (
+                <div key={m.id} className="ph-marchandise">
+                  <div className="lab">
+                    {m.designation}
+                    {m.client ? <span className="ph-aide"> — {m.client}</span> : null}
+                  </div>
+                  {m.quantiteRecue != null ? (
+                    <p className="ph-aide">
+                      Reçu au chargement : <b>{formatQuantite(m.quantiteRecue, m.symbole)}</b>
+                    </p>
+                  ) : null}
+                  <FormulaireQuantite
+                    voyageId={mission.id}
+                    ligneId={m.id}
+                    designation="Quantité livrée"
+                    symbole={m.symbole}
+                    mode="livraison"
+                    valeurInitiale={m.quantiteLivree}
+                    prevu={null}
+                    recue={m.quantiteRecue}
+                  />
 
-                <div className="ph-separateur" />
+                  <div className="ph-separateur" />
 
-                <FormulaireQuantite
-                  voyageId={mission.id}
-                  ligneId={m.id}
-                  designation="Quantité livrée"
-                  symbole={m.symbole}
-                  mode="livraison"
-                  valeurInitiale={m.quantiteLivree}
-                  prevu={null}
-                  recue={m.quantiteRecue}
-                />
-
-                <div className="ph-separateur" />
-
-                {/* La quantité seule ne prouve pas la remise : c'est le code
-                    dicté par le client qui l'atteste. */}
-                <FormulaireCodeLivraison
-                  ligneId={m.id}
-                  designation="Code remis par le client"
-                  confirme={m.codeConfirme}
-                  codeEnvoye={m.codeEnvoye}
-                />
-              </div>
-            ))}
+                  {/* La quantité seule ne prouve pas la remise : c'est le code
+                      dicté par le client qui l'atteste. */}
+                  <FormulaireCodeLivraison
+                    ligneId={m.id}
+                    designation="Code remis par le client"
+                    confirme={m.codeConfirme}
+                    codeEnvoye={m.codeEnvoye}
+                  />
+                </div>
+              ))}
+            </Volet>
 
             {/* Prélèvement de douane — à déclarer sur le trajet, pas au retour. */}
-            <div className="ph-card">
-              <div className="lab">Prélèvement de douane</div>
+            <Volet titre="Prélèvement de douane" ouvert={ouverts.includes("douane")}>
               <p className="ph-aide">
                 Si un poste retient une partie de la marchandise, déclare-le ici. Sans cette
                 déclaration, la quantité manquante te serait imputée à l&apos;arrivée.
@@ -365,13 +413,20 @@ export default async function EspaceChauffeurPage() {
                   dejaPreleve: m.prelevementQuantite,
                 }))}
               />
-            </div>
+            </Volet>
 
             {/* ---------- Dépense ---------- */}
-            <div className="ph-card">
-              <div className="lab">Nouvelle dépense</div>
+            <Volet
+              titre="Saisir une dépense"
+              ouvert={ouverts.includes("depense")}
+              indice={
+                mission.depenses.length > 0
+                  ? `${mission.depenses.length} saisie${mission.depenses.length > 1 ? "s" : ""}`
+                  : null
+              }
+            >
               <FormulaireDepense voyageId={mission.id} tauxReferenceXof={tauxReferenceXof} />
-            </div>
+            </Volet>
 
             {mission.depenses.length > 0 ? (
               <div className="ph-card">

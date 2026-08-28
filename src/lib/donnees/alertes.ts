@@ -60,10 +60,23 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
   // Les durées affichées se comptent en jours pleins (voir `debutDeJour`).
   const ceJour = debutDeJour(aujourdhui);
 
+  /*
+   * Fenêtre des alertes portant sur l'historique.
+   *
+   * Trois contrôles balayaient tous les voyages jamais enregistrés : écart de
+   * livraison, recette manquante, facture incohérente. Ils grossissaient donc
+   * sans fin, et un écart vieux de huit mois que personne n'a traité n'est
+   * plus une alerte — c'est de l'historique, consultable sur sa fiche. Quatre
+   * mois couvrent largement le délai de règlement le plus long.
+   */
+
   const parametres = await prisma.parametres.findFirst();
   const toleranceFroid = nOuNull(parametres?.toleranceFroid) ?? 1;
   const seuilConso = nOuNull(parametres?.seuilConsoAnormale);
+  const seuilBas = nOuNull(parametres?.seuilConsoBasse);
   const rappelDefaut = parametres?.rappelEcheanceJours ?? 30;
+  const fenetreJours = parametres?.fenetreAlertesJours ?? 120;
+  const depuis = new Date(ceJour.getTime() - fenetreJours * 86_400_000);
 
   const [
     stockees,
@@ -85,8 +98,36 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
     prisma.echeance.findMany({ include: { camion: true } }),
     prisma.reclamation.findMany({ where: { statut: { in: ["OUVERTE", "EN_COURS"] } }, include: { client: true } }),
     prisma.voyage.findMany({ where: { statut: { notIn: ["TERMINE", "ANNULE"] } }, include: { camion: true } }),
-    prisma.releveTemperature.findMany({ include: { voyage: { include: { camion: true } } } }),
-    prisma.mouvementCaisse.findMany({ include: { chauffeur: true } }),
+    /*
+     * Bornés aux missions en cours, et projetés.
+     *
+     * La requête chargeait TOUS les relevés jamais enregistrés, avec leurs
+     * jointures, à chaque ouverture d'écran — et c'est la table qui grossit le
+     * plus vite d'une flotte frigorifique. Or l'alerte ne porte que sur les
+     * missions en cours : le reste est de l'historique, consultable ailleurs.
+     */
+    prisma.releveTemperature.findMany({
+      where: { voyage: { statut: { notIn: ["TERMINE", "ANNULE"] } } },
+      select: {
+        voyageId: true,
+        consigne: true,
+        temperature: true,
+        conformite: true,
+        voyage: { select: { camion: { select: { id: true, nom: true, refrigere: true } } } },
+      },
+    }),
+    /*
+     * Agrégés en base plutôt que rapatriés ligne à ligne.
+     *
+     * Un solde de caisse est cumulatif : on ne peut pas le borner à une
+     * fenêtre sans le fausser. En revanche il ne dépend que de sommes par
+     * chauffeur, type et devise — trois colonnes qui produisent quelques
+     * dizaines de lignes quel que soit le volume d'écritures.
+     */
+    prisma.mouvementCaisse.groupBy({
+      by: ["chauffeurId", "type", "devise"],
+      _sum: { montant: true, montantGnf: true },
+    }),
     prisma.chauffeur.findMany({ where: { actif: true } }),
     prisma.entretien.findMany({ include: { camion: true } }),
   ]);
@@ -202,7 +243,7 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
       froidParVoyage.set(rel.voyageId, {
         pire: etat,
         camion: rel.voyage.camion.nom,
-        camionId: rel.voyage.camionId,
+        camionId: rel.voyage.camion.id,
       });
     }
   }
@@ -225,23 +266,58 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
     });
   }
 
-  // --- Consommation anormale ---
-  if (seuilConso !== undefined && seuilConso > 0) {
+  /* --- Consommation hors plage ---
+   *
+   * Deux bornes, et non une seule.
+   *
+   * Le contrôle ne portait que sur le haut : il attrapait la surconsommation,
+   * c'est-à-dire l'anomalie de bonne foi. Qui siphonne ne laisse pas la
+   * consommation monter — il ajuste le kilométrage ou le niveau déclaré pour
+   * que le ratio retombe dans la norme, voire passe dessous. Une consommation
+   * nulle ou négative est arithmétiquement impossible sur un tronçon parcouru :
+   * c'est la signature d'un relevé arrangé, et elle ne déclenchait rien.
+   */
+  {
     const enCours = voyages.map((v) => v.id);
     const troncons = await tronconsDesVoyages(enCours);
     const camionParVoyage = new Map(voyages.map((v) => [v.id, v.camion]));
 
-    for (const t of troncons.filter((t) => t.litresPer100km > seuilConso)) {
+    for (const t of troncons) {
+      // Un tronçon sans distance ne dit rien : le ratio y est arbitraire.
+      if (t.distance <= 0) continue;
+
+      const haut = seuilConso !== undefined && seuilConso > 0 && t.litresPer100km > seuilConso;
+      const impossible = t.litresConsommes <= 0;
+      const bas =
+        !impossible &&
+        seuilBas !== undefined &&
+        seuilBas > 0 &&
+        t.litresPer100km < seuilBas;
+
+      if (!haut && !bas && !impossible) continue;
+
       const camion = camionParVoyage.get(t.voyageId);
+      const detail = impossible
+        ? `${formatDecimal(t.litresConsommes)} L consommés sur ${formatDecimal(t.distance)} km — ` +
+          "relevé impossible : compteur ou niveau de réservoir erroné, ou plein non saisi."
+        : haut
+          ? `${formatDecimal(t.litresPer100km)} L/100 km (seuil ${formatDecimal(seuilConso!)}) — ` +
+            "vérifier plein ou siphonnage."
+          : `${formatDecimal(t.litresPer100km)} L/100 km (plancher ${formatDecimal(seuilBas!)}) — ` +
+            "consommation trop basse pour ce trajet : vérifier le kilométrage déclaré.";
+
       liste.push({
         id: `conso-${t.etapeId}`,
         type: "CONSO_ANORMALE",
-        severite: "ATTENTION",
+        // Un relevé arithmétiquement impossible n'est pas une simple vigilance.
+        severite: impossible ? "URGENT" : "ATTENTION",
         categorie: "flotte",
         lien: `/voyages/${t.voyageId}`,
         action: "Analyser",
-        titre: `Consommation anormale — ${camion?.nom ?? "camion"}`,
-        detail: `${formatDecimal(t.litresPer100km)} L/100 km (seuil ${formatDecimal(seuilConso)}) — vérifier plein ou siphonnage.`,
+        titre: impossible
+          ? `Relevé carburant incohérent — ${camion?.nom ?? "camion"}`
+          : `Consommation ${haut ? "anormale" : "suspecte"} — ${camion?.nom ?? "camion"}`,
+        detail,
         meta: [camion?.nom ?? "—", "Carburant", t.libelle],
         camionId: camion?.id,
         persistee: false,
@@ -327,7 +403,10 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
   // mixte, un total en tonnes et en sacs n'aurait aucun sens, et il faut
   // pouvoir dire QUELLE marchandise manque.
   const livraisons = await prisma.voyage.findMany({
-    where: { lignes: { some: { quantiteRecue: { not: null }, quantiteLivree: { not: null } } } },
+    where: {
+      createdAt: { gte: depuis },
+      lignes: { some: { quantiteRecue: { not: null }, quantiteLivree: { not: null } } },
+    },
     include: { camion: true, lignes: INCLURE_LIGNES },
   });
   for (const v of livraisons) {
@@ -390,6 +469,7 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
   // douter des chiffres.
   const sansRecette = await prisma.voyage.findMany({
     where: {
+      createdAt: { gte: depuis },
       statut: { in: ["TERMINE", "EN_DECHARGEMENT", "ARRIVE_DESTINATION"] },
       recetteGnf: { lte: 0 },
       aVide: false,
@@ -422,7 +502,7 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
   // la rentabilité du camion s'effondre sans raison apparente. Le rapprochement
   // est le seul moyen de rattraper l'erreur une fois la saisie oubliée.
   const facturees = await prisma.voyage.findMany({
-    where: { statut: { not: "ANNULE" }, factures: { some: {} } },
+    where: { createdAt: { gte: depuis }, statut: { not: "ANNULE" }, factures: { some: {} } },
     include: { camion: { select: { nom: true } }, factures: true },
   });
   for (const v of facturees) {
@@ -451,7 +531,13 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
 
   // --- Missions terminées jamais facturées ---
   const nonFacturees = await prisma.voyage.findMany({
-    where: { statut: "TERMINE", aVide: false, factures: { none: {} }, recetteGnf: { gt: 0 } },
+    where: {
+      createdAt: { gte: depuis },
+      statut: "TERMINE",
+      aVide: false,
+      factures: { none: {} },
+      recetteGnf: { gt: 0 },
+    },
     include: { camion: { select: { nom: true } } },
   });
   for (const v of nonFacturees) {
@@ -509,10 +595,17 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
 
   // --- Caisses chauffeurs non soldées ---
   for (const c of chauffeurs) {
+    // `soldeCaisse` ne fait que sommer avec un signe : partir des totaux par
+    // type et devise donne exactement le même résultat que ligne à ligne.
     const solde = soldeCaisse(
       mouvements
         .filter((m) => m.chauffeurId === c.id)
-        .map((m) => ({ type: m.type, montant: n(m.montant), devise: m.devise, montantGnf: n(m.montantGnf) })),
+        .map((m) => ({
+          type: m.type,
+          montant: n(m._sum.montant),
+          devise: m.devise,
+          montantGnf: n(m._sum.montantGnf),
+        })),
     );
     if (solde.consolideGnf <= 0) continue;
 

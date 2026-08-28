@@ -37,6 +37,7 @@ export async function vueClients(aujourdhui: Date = new Date()): Promise<LigneCl
     const situation = creances(
       client.factures.map((f) => ({
         montantGnf: n(f.montantGnf),
+        totalTtcGnf: n(f.totalTtcGnf),
         montantPayeGnf: n(f.montantPayeGnf),
         statut: f.statut,
         echeance: f.echeance ?? undefined,
