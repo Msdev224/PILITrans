@@ -6,6 +6,7 @@ import type { Role } from "@prisma/client";
 import type { ReactNode } from "react";
 
 import { seDeconnecter } from "@/actions/auth";
+import { RailRepli } from "@/components/rail-repli";
 import {
   IconeAnalyses,
   IconeCalendrier,
@@ -55,11 +56,14 @@ export function Rail({
   resume,
   role,
   marque,
+  replie,
 }: {
   nbAlertes: number;
   resume: ResumeRail;
   role: Role;
   marque: MarqueEntreprise;
+  /** Préférence de repli, lue côté serveur pour éviter un clignotement. */
+  replie: boolean;
 }) {
   const chemin = usePathname();
 
@@ -196,6 +200,7 @@ export function Rail({
       </nav>
 
       <div className="rail-foot">
+        <RailRepli replieInitial={replie} />
         <div className="rail-stat rail-texte">
           Parc : <b>{resume.enRoute}/{resume.total} en route</b>
           {resume.immobilises > 0 ? (

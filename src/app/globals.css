@@ -270,6 +270,39 @@
     margin-left: auto;
   }
 
+  /* Commande de repli du rail. Discrète : on la cherche une fois, on ne la
+     regarde plus ensuite. */
+  .rail-repli {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: none;
+    border: 0;
+    color: #6f949c;
+    font: inherit;
+    font-size: 12px;
+    padding: 8px 11px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 4px;
+  }
+  .rail-repli:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #c4d9dd;
+  }
+  .rail-repli:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  /* Sous 1180 px, la largeur décide seule : proposer le choix laisserait
+     croire qu'il a un effet. */
+  @media (max-width: 1180px) {
+    .rail-repli {
+      display: none;
+    }
+  }
+
   .rail-foot {
     margin-top: auto;
     padding: 14px 11px 2px;
@@ -3605,6 +3638,111 @@
       background: rgba(255, 255, 255, 0.06);
     }
   }
+
+  /* ----------------------------------------------------------------
+     Rail replié à la demande.
+
+     Mêmes règles que le mode icônes ci-dessus, déclenchées cette fois par un
+     choix du gérant et non par la largeur de l'écran. La duplication est
+     assumée : CSS ne sait pas réunir une classe et une media query dans un
+     même sélecteur. Toute correction portée au bloc précédent doit l'être ici
+     aussi — les deux décrivent le même rail.
+
+     Bornée au-dessus de 1180 px : en dessous, la media query fait déjà le
+     travail et la commande de repli n'est pas proposée.
+     ---------------------------------------------------------------- */
+  @media (min-width: 1181px) {
+    .app.replie {
+      grid-template-columns: var(--rail-etroit) 1fr;
+    }
+    .app.replie .rail {
+      padding: 18px 8px;
+      align-items: center;
+    }
+    /* Tout ce qui est purement textuel disparaît ; les icônes restent. */
+    .app.replie .rail-texte,
+    .app.replie .nav-libelle,
+    .app.replie .nav .bientot {
+      display: none;
+    }
+    .app.replie .brand {
+      justify-content: center;
+      padding: 6px 0 14px;
+    }
+    .app.replie .rail-logo {
+      display: none;
+    }
+    .app.replie .rail-icone {
+      display: block;
+    }
+    /* La pastille revient si aucune icône carrée n'a été téléversée : à cette
+       largeur le logo est masqué, sans elle la marque serait vide.
+       Même forme que la règle générale — une media query n'ajoute pas de
+       spécificité, un sélecteur plus court ne l'emporterait pas. */
+    .app.replie .brand:has(.rail-logo) .dot {
+      display: block;
+    }
+    .app.replie .brand:has(.rail-icone) .dot {
+      display: none;
+    }
+    .app.replie .nav {
+      width: 100%;
+      align-items: center;
+    }
+    /* Le titre de catégorie devient un simple séparateur. */
+    .app.replie .nav-cat {
+      width: 22px;
+      height: 1px;
+      padding: 0;
+      margin: 11px auto 10px;
+      overflow: hidden;
+      text-indent: -999px;
+      background: rgba(255, 255, 255, 0.09);
+    }
+    .app.replie .nav-cat:first-child {
+      margin-top: 0;
+    }
+    .app.replie .nav a,
+    .app.replie .nav .nav-inactif {
+      width: 40px;
+      height: 40px;
+      justify-content: center;
+      gap: 0;
+      padding: 0;
+      border-left: 0;
+      position: relative;
+    }
+    .app.replie .nav a.on {
+      background: rgba(15, 163, 177, 0.22);
+    }
+    /* La pastille de compteur se replie en badge d'angle. */
+    .app.replie .ncount {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      margin-left: 0;
+      font-size: 9px;
+      padding: 0 4px;
+    }
+    .app.replie .rail-foot {
+      padding: 12px 0 2px;
+      align-items: center;
+    }
+    .app.replie .logout {
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: var(--r-sm);
+      gap: 0;
+    }
+    .app.replie .logout:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+  
+  }
+
+
+
   @media (max-width: 560px) {
     .app {
       grid-template-columns: var(--rail-minimal) 1fr;
