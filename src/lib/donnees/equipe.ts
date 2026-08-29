@@ -48,7 +48,19 @@ export async function vueChauffeurs(
 ): Promise<LigneChauffeur[]> {
   const ceJour = debutDeJour(aujourdhui);
 
-  const [chauffeurs, voyages, mouvements] = await Promise.all([
+  /*
+   * Trois lectures, trois portées différentes.
+   *
+   * Le solde d'un chauffeur est cumulatif : il ne se fenêtre pas sans se
+   * fausser, mais il ne dépend que de sommes par type et devise — un agrégat
+   * les donne, quel que soit le volume. L'historique affiché, lui, n'est
+   * qu'une liste : cinquante lignes suffisent à relire et corriger.
+   *
+   * `prisma.mouvementCaisse.findMany()` était appelé sans le moindre argument :
+   * toutes les écritures de caisse jamais saisies, à chaque ouverture de
+   * l'écran Chauffeurs.
+   */
+  const [chauffeurs, voyages, soldes, mouvements] = await Promise.all([
     prisma.chauffeur.findMany({ orderBy: [{ actif: "desc" }, { nom: "asc" }] }),
     prisma.voyage.findMany({
       where: { statut: { not: "ANNULE" } },
@@ -67,7 +79,14 @@ export async function vueChauffeurs(
         kmArrivee: true,
       },
     }),
-    prisma.mouvementCaisse.findMany(),
+    // Soldes : sommes par chauffeur, type et devise. Exact et borné.
+    prisma.mouvementCaisse.groupBy({
+      by: ["chauffeurId", "type", "devise"],
+      _sum: { montant: true, montantGnf: true },
+    }),
+    // Historique affiché : les cinquante dernières écritures, tous chauffeurs
+    // confondus — de quoi remplir largement chaque fiche ouverte.
+    prisma.mouvementCaisse.findMany({ orderBy: { date: "desc" }, take: 50 }),
   ]);
 
   const enRoute = new Set(
@@ -95,14 +114,16 @@ export async function vueChauffeurs(
       );
     }, 0);
 
+    // `soldeCaisse` ne fait que sommer avec un signe : partir des totaux par
+    // type et devise donne exactement le même résultat que ligne à ligne.
     const solde = soldeCaisse(
-      mouvements
+      soldes
         .filter((m) => m.chauffeurId === chauffeur.id)
         .map((m) => ({
           type: m.type,
-          montant: n(m.montant),
+          montant: n(m._sum.montant),
           devise: m.devise,
-          montantGnf: n(m.montantGnf),
+          montantGnf: n(m._sum.montantGnf),
         })),
     );
 

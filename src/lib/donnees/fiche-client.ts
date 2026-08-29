@@ -77,9 +77,30 @@ export async function ficheClient(
       },
       include: { lignes: INCLURE_LIGNES, factures: true },
       orderBy: { dateDepart: "desc" },
+      /*
+       * Les cinquante dernières missions.
+       *
+       * C'est une liste que l'on parcourt, pas un total : rien n'en dépend
+       * qu'un affichage. Un client régulier en accumule des centaines, toutes
+       * relues à chaque ouverture de sa fiche pour n'en montrer qu'un écran.
+       */
+      take: 50,
     }),
+    /*
+     * Toutes les impayées, plus les réglées de l'année.
+     *
+     * Contrairement aux missions, les factures alimentent `creances()` : une
+     * facture impayée de l'an dernier reste due et doit entrer dans l'encours.
+     * Seule l'archive des factures soldées se borne.
+     */
     prisma.facture.findMany({
-      where: { clientId },
+      where: {
+        clientId,
+        OR: [
+          { statut: { not: "PAYEE" } },
+          { dateEmission: { gte: new Date(Date.now() - 365 * 86_400_000) } },
+        ],
+      },
       include: { paiements: true },
       orderBy: { dateEmission: "desc" },
     }),

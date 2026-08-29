@@ -42,7 +42,22 @@ export async function vueReparations(
   const { filtre = "toutes", aujourdhui = new Date() } = options;
   const ceJour = debutDeJour(aujourdhui);
 
+  /*
+   * Toutes les interventions ouvertes, plus les terminées de l'année.
+   *
+   * Une réparation à faire ou en cours n'a pas de borne : elle immobilise un
+   * camion et doit rester visible quelle que soit sa date. L'archive des
+   * terminées, elle, se consulte sur la fiche du véhicule — la ramener
+   * entièrement à chaque ouverture de l'écran faisait grossir la requête sans
+   * rien montrer de plus.
+   */
   const reparations = await prisma.reparation.findMany({
+    where: {
+      OR: [
+        { statut: { not: "TERMINEE" } },
+        { createdAt: { gte: new Date(Date.now() - 365 * 86_400_000) } },
+      ],
+    },
     include: { camion: true },
     orderBy: [{ statut: "asc" }, { createdAt: "desc" }],
   });

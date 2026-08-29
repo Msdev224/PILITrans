@@ -50,8 +50,19 @@ export interface DossierVoyage {
 
 async function vueDossiersBrut(): Promise<DossierVoyage[]> {
   const [voyages, parametres] = await Promise.all([
+    /*
+     * Six mois de dossiers, relevés de température compris.
+     *
+     * L'écran sert à repérer les pièces manquantes sur des missions récentes —
+     * un dossier incomplet se complète dans les jours qui suivent, pas deux ans
+     * après. La requête ramenait pourtant tout l'historique avec ses relevés,
+     * c'est-à-dire la table qui grossit le plus vite d'une flotte frigorifique.
+     */
     prisma.voyage.findMany({
-      where: { statut: { not: "ANNULE" } },
+      where: {
+        statut: { not: "ANNULE" },
+        dateDepart: { gte: new Date(Date.now() - 182 * 86_400_000) },
+      },
       include: {
         camion: { include: { echeances: true } },
         factures: true,

@@ -10,8 +10,18 @@ import { n } from "@/lib/utils";
  * (elle vaut 0 si le chauffeur n'a pas relevé le carburant).
  */
 export async function historiqueTrajets(): Promise<TrajetHistorique[]> {
+  /*
+   * Deux ans d'historique, pas davantage.
+   *
+   * La suggestion propose une distance et une recette d'après les courses
+   * déjà faites. Un trajet vieux de cinq ans ne dit plus rien d'utile — ni sur
+   * l'état de la route, ni sur le prix — et il pesait sur chaque ouverture du
+   * formulaire de voyage, qui est l'écran le plus utilisé du cockpit.
+   */
+  const depuis = new Date(Date.now() - 730 * 86_400_000);
+
   const voyages = await prisma.voyage.findMany({
-    where: { statut: { notIn: ["ANNULE", "PLANIFIE"] } },
+    where: { statut: { notIn: ["ANNULE", "PLANIFIE"] }, dateDepart: { gte: depuis } },
     select: {
       id: true,
       villeDepart: true,

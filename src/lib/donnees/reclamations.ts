@@ -58,7 +58,24 @@ export async function vueReclamations(
 ): Promise<{ lignes: LigneReclamation[]; stats: StatsReclamations; total: number }> {
   const { filtre = "toutes" } = options;
 
+  /*
+   * Toutes les réclamations ouvertes, plus les closes de l'année écoulée.
+   *
+   * La requête ramenait l'intégralité de l'historique : une réclamation
+   * résolue il y a trois ans revenait à chaque ouverture de l'écran. Les
+   * ouvertes n'ont pas de borne — une réclamation qui traîne doit rester sous
+   * les yeux quelle que soit sa date — et les closes gardent douze mois, de
+   * quoi couvrir une contestation qui rebondit.
+   */
+  const depuis = new Date(Date.now() - 365 * 86_400_000);
+
   const reclamations = await prisma.reclamation.findMany({
+    where: {
+      OR: [
+        { statut: { in: ["OUVERTE", "EN_COURS"] } },
+        { dateOuverture: { gte: depuis } },
+      ],
+    },
     include: {
       client: true,
       voyage: true,
