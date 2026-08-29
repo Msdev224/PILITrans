@@ -113,12 +113,21 @@ async function main() {
     // plutôt que d'échouer. C'est le cas d'usage « j'ai perdu le mot de passe ».
     await db.utilisateur.update({
       where: { id: existant.id },
-      data: { nom, role: "GERANT", actif: true, motDePasse: empreinte },
+      data: { nom, telephoneNormalise: telephone, role: "GERANT", actif: true, motDePasse: empreinte },
     });
     console.log(`✔ Compte mis à jour : ${nom} — ${telephone} (gérant, actif)`);
   } else {
     await db.utilisateur.create({
-      data: { nom, telephone, role: "GERANT", actif: true, motDePasse: empreinte },
+      // Même raison que dans `reinitialiser.ts` : hors de l'application, l'extension
+      // qui dérive le numéro normalisé ne s'applique pas.
+      data: {
+        nom,
+        telephone,
+        telephoneNormalise: telephone,
+        role: "GERANT",
+        actif: true,
+        motDePasse: empreinte,
+      },
     });
     console.log(`✔ Compte créé : ${nom} — ${telephone} (gérant)`);
   }

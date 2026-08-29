@@ -90,7 +90,16 @@ async function main() {
     process.exit(1);
   }
 
-  // Ordre imposé par les clés étrangères : les enfants avant les parents.
+  /*
+   * Ordre imposé par les clés étrangères : les enfants avant les parents.
+   *
+   * Cinq tables manquaient à cette liste — trésorerie, moyens de paiement,
+   * opérations chauffeur, journal. Deux conséquences : les opérations de
+   * trésorerie faisaient échouer la suppression des comptes qui cascadent
+   * depuis un chauffeur, et ce qui survivait — comptes du bureau, banque,
+   * moyens de paiement, historique complet du journal — n'était pas un départ
+   * de zéro. Toute table ajoutée au schéma doit être ajoutée ici.
+   */
   console.log("\nEffacement…");
   await db.notificationSms.deleteMany();
   await db.reclamation.deleteMany();
@@ -108,6 +117,14 @@ async function main() {
   await db.entretien.deleteMany();
   await db.reparation.deleteMany();
   await db.client.deleteMany();
+  // Les opérations pointent sur les comptes : elles partent d'abord, sinon la
+  // suppression du compte d'un chauffeur bute sur la contrainte.
+  await db.operationTresorerie.deleteMany();
+  await db.compteTresorerie.deleteMany();
+  await db.operationChauffeur.deleteMany();
+  await db.moyenPaiement.deleteMany();
+  // Le journal se rattache à un utilisateur : il part avant lui.
+  await db.journal.deleteMany();
   await db.utilisateur.deleteMany();
   await db.chauffeur.deleteMany();
   await db.camion.deleteMany();
@@ -119,7 +136,18 @@ async function main() {
   // Le gérant est le seul compte créé : il ajoutera son équipe lui-même depuis
   // l'écran Comptes, avec les droits qu'il jugera utiles.
   await db.utilisateur.create({
-    data: { nom, telephone, role: "GERANT", actif: true, motDePasse: await hacherMotDePasse(motDePasse) },
+    // `telephoneNormalise` est posé explicitement : ce script ouvre son propre client
+    // Prisma, sans l'extension qui le dérive à l'écriture. Sans lui, la connexion —
+    // qui cherche par numéro normalisé — ne trouverait pas le compte, et le gérant
+    // se retrouverait enfermé dehors avec un message d'identifiants invalides.
+    data: {
+      nom,
+      telephone,
+      telephoneNormalise: telephone,
+      role: "GERANT",
+      actif: true,
+      motDePasse: await hacherMotDePasse(motDePasse),
+    },
   });
 
   // Sans paramètres, les factures sortiraient sans identité d'entreprise.

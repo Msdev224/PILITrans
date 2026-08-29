@@ -2,8 +2,9 @@
  * Seed MS Trans — données de démonstration alignées sur la maquette.
  * Lancer sur une base vide :  npm run db:push && npm run db:seed
  */
-import { Devise, PrismaClient } from "@prisma/client";
+import { Devise, Prisma, PrismaClient } from "@prisma/client";
 import { hacherMotDePasse } from "../src/lib/mots-de-passe";
+import { normaliserTelephone } from "../src/lib/telephone";
 import { PAYS_INITIAUX } from "../src/lib/pays-initiaux";
 import { UNITES_INITIALES } from "../src/lib/unites";
 import { synchroniserCamion } from "../src/lib/donnees/synchronisation";
@@ -367,31 +368,48 @@ async function main() {
   // --- Comptes de connexion (Auth.js) ---
   // Mots de passe de démonstration — à changer en production.
   const mdpDemo = await hacherMotDePasse("pilitrans");
-  await db.utilisateur.create({
-    data: { nom: "Mamadou Saïdou Bah", telephone: "+224620000000",
-      email: "gerant@pilitrans.gn", motDePasse: mdpDemo, role: "GERANT" },
+
+  /*
+   * Le numéro normalisé est posé ici, pas dérivé.
+   *
+   * Ce script ouvre son propre client Prisma, sans l'extension qui remplit
+   * `telephoneNormalise` à l'écriture. Sans lui, la connexion — qui cherche
+   * par numéro normalisé — ne trouve aucun de ces comptes : le jeu de
+   * démonstration se charge sans erreur et personne ne peut s'y connecter.
+   */
+  const compte = (
+    donnees: Omit<Prisma.UtilisateurUncheckedCreateInput, "telephoneNormalise" | "motDePasse"> & {
+      telephone: string;
+    },
+  ): Prisma.UtilisateurUncheckedCreateInput => ({
+    ...donnees,
+    telephoneNormalise: normaliserTelephone(donnees.telephone),
+    motDePasse: mdpDemo,
   });
   await db.utilisateur.create({
-    data: { nom: "Mamadou Diallo", telephone: "+224620222222",
-      motDePasse: mdpDemo, role: "CHAUFFEUR", chauffeurId: mamadou.id },
+    data: compte({ nom: "Mamadou Saïdou Bah", telephone: "+224620000000",
+      email: "gerant@pilitrans.gn", role: "GERANT" }),
   });
   await db.utilisateur.create({
-    data: { nom: "Ibrahima Bah", telephone: "+224620333333",
-      motDePasse: mdpDemo, role: "CHAUFFEUR", chauffeurId: ibrahima.id },
+    data: compte({ nom: "Mamadou Diallo", telephone: "+224620222222",
+      role: "CHAUFFEUR", chauffeurId: mamadou.id }),
+  });
+  await db.utilisateur.create({
+    data: compte({ nom: "Ibrahima Bah", telephone: "+224620333333",
+      role: "CHAUFFEUR", chauffeurId: ibrahima.id }),
   });
   // Comptes des profils à accès réduit — de quoi vérifier concrètement ce que
   // chaque rôle voit et ce qu'il ne voit pas.
   await db.utilisateur.create({
-    data: { nom: "Fatoumata Sylla", telephone: "+224620555555",
-      email: "exploitation@pilitrans.gn", motDePasse: mdpDemo, role: "EXPLOITANT" },
+    data: compte({ nom: "Fatoumata Sylla", telephone: "+224620555555",
+      email: "exploitation@pilitrans.gn", role: "EXPLOITANT" }),
   });
   await db.utilisateur.create({
-    data: { nom: "Alpha Condé", telephone: "+224620666666",
-      email: "compta@pilitrans.gn", motDePasse: mdpDemo, role: "COMPTABLE" },
+    data: compte({ nom: "Alpha Condé", telephone: "+224620666666",
+      email: "compta@pilitrans.gn", role: "COMPTABLE" }),
   });
   await db.utilisateur.create({
-    data: { nom: "Aïssatou Barry", telephone: "+224620777777",
-      motDePasse: mdpDemo, role: "LECTEUR" },
+    data: compte({ nom: "Aïssatou Barry", telephone: "+224620777777", role: "LECTEUR" }),
   });
 
   // Le statut et le compteur de chaque camion se déduisent des faits.
