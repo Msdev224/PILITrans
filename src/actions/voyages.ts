@@ -13,10 +13,11 @@ import { suggestionTrajet, type Suggestion } from "@/lib/donnees/trajets";
 import { exigerPermission } from "@/lib/autorisation";
 import { observerTaux } from "@/lib/donnees/taux";
 import { lignesRemise, type LigneRemise } from "@/lib/remise";
-import { LIBELLE_TYPE_DEPENSE, formatNombre } from "@/lib/utils";
+import { LIBELLE_TYPE_DEPENSE, formatNombre, n } from "@/lib/utils";
 import { journaliser } from "@/lib/journal";
 import { prisma, type ClientTransaction } from "@/lib/prisma";
 import { notifierAffectationChauffeur, notifierEtapeVoyage } from "@/lib/sms/declencheurs";
+import { champsFacture } from "@/lib/donnees/facturation-auto";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
 import { caseACocher, dateBornee, distanceKm, erreursFormulaire, nombreOptionnel, texteOptionnel } from "@/lib/validation";
 
@@ -437,6 +438,59 @@ export async function creerVoyage(_etat: EtatFormulaire, donnees: FormData): Pro
     montantGnf: data.recetteGnf || null,
   });
 
+  /*
+   * La facture naît avec la mission, quand la mission est facturable.
+   *
+   * Il fallait auparavant attendre la confirmation de livraison, ou l'émettre
+   * à la main : une course facturable pouvait rouler des jours sans apparaître
+   * dans les factures, et la créance n'existait nulle part.
+   *
+   * Trois conditions, et aucune n'est arbitraire : un client à qui adresser le
+   * document, un montant convenu — sans quoi la facture serait à zéro — et une
+   * mission qui transporte quelque chose. Un repositionnement à vide ne se
+   * facture pas.
+   *
+   * L'échec ne remonte pas : la mission est créée et valide, et perdre une
+   * saisie de voyage parce qu'un numéro de facture s'est heurté à un doublon
+   * serait la pire des réponses. Le journal garde la trace.
+   */
+  if (data.clientId && data.recetteGnf > 0 && !data.aVide) {
+    try {
+      const facture = await prisma.facture.create({
+        data: await champsFacture({
+          clientId: data.clientId,
+          voyageId: cree.id,
+          montant: data.recette,
+          devise: data.devise,
+          recetteGnf: data.recetteGnf,
+        }),
+      });
+
+      await journaliser({
+        action: "facture.emise",
+        objet: "Facture",
+        objetId: facture.id,
+        libelle:
+          `Facture ${facture.numero} émise avec la mission ${cree.reference} — ` +
+          `${formatNombre(data.recetteGnf)} GNF`,
+        montantGnf: data.recetteGnf,
+      });
+
+      revalidatePath("/factures");
+      revalidatePath("/clients");
+    } catch (erreur) {
+      await journaliser({
+        action: "facture.emission.echouee",
+        objet: "Voyage",
+        objetId: cree.id,
+        libelle:
+          `Facture non émise pour ${cree.reference} : ` +
+          (erreur instanceof Error ? erreur.message : "cause inconnue") +
+          ". La mission reste créée ; la facture peut être établie depuis sa fiche.",
+      });
+    }
+  }
+
   rafraichir();
   return { ok: true };
 }
@@ -508,6 +562,64 @@ export async function changerStatutVoyage(id: string, statut: StatutVoyage) {
  * Une mission annulée sort des recettes, des classements et des analyses ;
  * les dépenses engagées restent au compte du camion, où elles ont bien pesé.
  */
+/**
+ * Porte la recette de la mission au montant facturé.
+ *
+ * La marge du camion se calcule sur `recetteGnf`. Quand une facture a été
+ * émise pour un autre montant — un prix renégocié, une erreur de saisie au
+ * moment de planifier — la rentabilité du véhicule s'écarte de l'argent
+ * réellement réclamé au client, et l'alerte le signalait sans permettre d'y
+ * remédier autrement qu'en retapant le chiffre.
+ *
+ * L'alignement reste un geste **délibéré** : la facture n'a pas toujours
+ * raison. C'est parfois elle qu'il faut corriger, et l'automatiser
+ * reviendrait à trancher à la place du gérant.
+ */
+export async function alignerRecetteSurFacture(id: string): Promise<void> {
+  await droitEcriture();
+
+  const voyage = await prisma.voyage.findUnique({
+    where: { id },
+    select: {
+      reference: true,
+      statut: true,
+      recetteGnf: true,
+      camionId: true,
+      factures: { select: { numero: true, montantGnf: true } },
+    },
+  });
+  if (!voyage) throw new Error("Mission introuvable.");
+  if (voyage.statut === "ANNULE") {
+    throw new Error(`La mission ${voyage.reference} est annulée : sa recette ne se modifie plus.`);
+  }
+
+  // Le hors-taxe, et non le TTC : la recette d'une mission est un prix de
+  // transport, la TVA n'est pas un produit de l'exploitation.
+  const factureGnf = voyage.factures.reduce((total, f) => total + n(f.montantGnf), 0);
+  if (factureGnf <= 0) {
+    throw new Error("Aucune facture rattachée à cette mission : rien sur quoi s'aligner.");
+  }
+
+  const avant = n(voyage.recetteGnf);
+  if (avant === factureGnf) return;
+
+  await prisma.voyage.update({ where: { id }, data: { recetteGnf: factureGnf } });
+
+  await journaliser({
+    action: "voyage.recette.alignee",
+    objet: "Voyage",
+    objetId: id,
+    libelle:
+      `Recette de ${voyage.reference} portée de ${formatNombre(avant)} à ` +
+      `${formatNombre(factureGnf)} GNF, d'après ${voyage.factures.map((f) => f.numero).join(", ")}`,
+    montantGnf: factureGnf,
+    avant: { recetteGnf: avant },
+    apres: { recetteGnf: factureGnf },
+  });
+
+  rafraichir(id);
+}
+
 export async function annulerVoyage(id: string, donnees?: FormData): Promise<void> {
   await droitEcriture();
 

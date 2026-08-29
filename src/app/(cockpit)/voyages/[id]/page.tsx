@@ -11,7 +11,7 @@ import {
 } from "@/components/voyages/dialogue-etape";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import { soldeCaisse } from "@/lib/calculs";
-import { retablirVoyage } from "@/actions/voyages";
+import { alignerRecetteSurFacture, retablirVoyage } from "@/actions/voyages";
 import { BoutonConfirme } from "@/components/bouton-confirme";
 import { DialogueCaisse } from "@/components/equipe/dialogue-caisse";
 import { DialogueAnnulation } from "@/components/voyages/dialogue-annulation";
@@ -142,6 +142,20 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
    * alors que l'argent, lui, reste en trésorerie. Le serveur le refuse ; on
    * le dit ici pour ne pas proposer un geste voué à l'échec.
    */
+  /*
+   * Écart entre ce qui est facturé et la recette portée par la mission.
+   *
+   * La marge du camion se calcule sur la mission : tant que les deux diffèrent,
+   * la rentabilité du véhicule s'écarte de l'argent réellement réclamé. Même
+   * tolérance d'un pour cent que l'alerte, pour que les deux écrans disent la
+   * même chose — le hors-taxe, la TVA n'étant pas un produit d'exploitation.
+   */
+  const factureHtGnf = voyage.factures.reduce((total, f) => total + n(f.montantGnf), 0);
+  const ecartRecette =
+    factureHtGnf > 0 &&
+    voyage.statut !== "ANNULE" &&
+    Math.abs(factureHtGnf - fiche.recetteGnf) > factureHtGnf * 0.01;
+
   const facturesReglees = voyage.factures.filter((f) => n(f.montantPayeGnf) > 0);
   const reglementRecu = facturesReglees.length > 0;
   const motifBlocage = reglementRecu
@@ -168,6 +182,30 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
           {/* Le rapport de mission réunit sur une feuille ce que le cockpit
               répartit sur cet écran : quantités, carburant, froid, argent. Il
               s'ouvre dans la coquille d'impression, sans rail ni barre haute. */}
+          {/* Proposé seulement quand l'écart existe, et jamais appliqué seul :
+              la facture n'a pas toujours raison, c'est parfois elle qu'il faut
+              corriger. */}
+          {ecartRecette ? (
+            <SiPeut droit="voyages.ecrire">
+              <BoutonConfirme
+                action={alignerRecetteSurFacture.bind(null, voyage.id)}
+                titre="Aligner la recette sur la facture ?"
+                detail={
+                  `La mission porte ${formatNombre(fiche.recetteGnf)} GNF, la facturation ` +
+                  `${formatNombre(factureHtGnf)} GNF. La recette sera portée au montant facturé, ` +
+                  "et la marge du camion recalculée dessus. Si c'est la facture qui se trompe, " +
+                  "corrigez-la plutôt qu'accepter ici."
+                }
+                confirmer={`Porter la recette à ${formatNombre(factureHtGnf)} GNF`}
+                declencheur={
+                  <button type="button" className="btn ghost sm">
+                    Aligner la recette ({formatNombre(factureHtGnf)} GNF)
+                  </button>
+                }
+              />
+            </SiPeut>
+          ) : null}
+
           <Link
             href={`/voyages/${voyage.id}/rapport`}
             className="btn ghost sm ml-auto mr-2"
