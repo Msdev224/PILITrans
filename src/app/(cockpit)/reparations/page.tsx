@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { sessionRequise } from "@/auth";
 import { BarreHaut } from "@/components/barre-haut";
+import { DialogueReparation } from "@/components/camions/dialogue-reparation";
+import { SiPeut } from "@/components/si-peut";
 import { IconeInfo } from "@/components/icones";
 import { compterParSeverite, alertes as filAlertes } from "@/lib/donnees/alertes";
 import {
@@ -39,11 +41,25 @@ export default async function ReparationsPage({ searchParams }: Props) {
   const filtre: FiltreReparation = estFiltreReparation(params.filtre) ? params.filtre : "toutes";
   const periode = moisCourant();
 
-  const [session, vue, parametres, fil] = await Promise.all([
+  const [session, vue, parametres, fil, camions] = await Promise.all([
     sessionRequise(),
     vueReparations(periode, { filtre }),
     prisma.parametres.findFirst(),
     filAlertes(),
+    /*
+     * Le gérant enregistre une réparation depuis cet écran, sans attendre le
+     * chauffeur ni passer par la fiche du camion.
+     *
+     * Le dialogue prévoyait déjà l'ouverture « transversale », avec choix du
+     * véhicule ; seul le bouton manquait ici. Un atelier appelle le bureau,
+     * une pièce se change au dépôt : la saisie ne doit pas dépendre de qui
+     * conduit.
+     */
+    prisma.camion.findMany({
+      where: { actif: true },
+      select: { id: true, nom: true, refrigere: true },
+      orderBy: { nom: "asc" },
+    }),
   ]);
 
   const lienFiltre = (cle: FiltreReparation) =>
@@ -68,6 +84,18 @@ export default async function ReparationsPage({ searchParams }: Props) {
               </Link>
             ))}
           </div>
+
+          <SiPeut droit="flotte.ecrire">
+            <DialogueReparation
+              camions={camions}
+              tauxReferenceXof={parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null}
+              declencheur={
+                <button type="button" className="btn primary px-3 py-[7px] text-[12.5px]">
+                  + Nouvelle réparation
+                </button>
+              }
+            />
+          </SiPeut>
         </div>
 
         <div className="vstats">
