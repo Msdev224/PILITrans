@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { creerReparation, modifierReparation, type EtatReparation } from "@/actions/reparations";
@@ -32,6 +32,14 @@ export interface ReparationEditable {
   garage: string | null;
   coutPieces: number;
   coutMainOeuvre: number;
+  coutForfait: number;
+  /** Détail des pièces, vide quand l'intervention n'a qu'un montant global. */
+  pieces: {
+    designation: string;
+    coutAchat: number;
+    coutReparation: number;
+    auForfait: boolean;
+  }[];
   devise: "GNF" | "XOF";
   coutTotalGnf: number;
   kilometrage: number | null;
@@ -39,6 +47,15 @@ export interface ReparationEditable {
   immobiliseDu: string | null;
   immobiliseAu: string | null;
   statut: string;
+}
+
+/** Une pièce telle qu'elle se saisit : des chaînes, pas encore des nombres. */
+interface LigneSaisiePiece {
+  cle: string;
+  designation: string;
+  achat: string;
+  reparation: string;
+  auForfait: boolean;
 }
 
 interface Props {
@@ -75,6 +92,30 @@ export function DialogueReparation({
   const [devise, setDevise] = useState<"GNF" | "XOF">(reparation?.devise ?? "GNF");
   const [pieces, setPieces] = useState(reparation ? String(reparation.coutPieces) : "");
   const [mainOeuvre, setMainOeuvre] = useState(reparation ? String(reparation.coutMainOeuvre) : "");
+
+  /**
+   * Détail des pièces.
+   *
+   * Vide par défaut : beaucoup d'interventions se notent d'un seul montant, et
+   * imposer une ligne obligerait à la remplir ou à la retirer à chaque fois.
+   */
+  const [detail, setDetail] = useState<LigneSaisiePiece[]>(
+    reparation?.pieces.map((p, i) => ({
+      cle: `p${i}`,
+      designation: p.designation,
+      achat: p.coutAchat ? String(p.coutAchat) : "",
+      reparation: p.coutReparation ? String(p.coutReparation) : "",
+      auForfait: p.auForfait,
+    })) ?? [],
+  );
+  const compteurPiece = useRef(1000);
+  const majPiece = (i: number, champs: Partial<LigneSaisiePiece>) =>
+    setDetail((l) => l.map((p, j) => (j === i ? { ...p, ...champs } : p)));
+
+  const [forfait, setForfait] = useState(
+    reparation?.coutForfait ? String(reparation.coutForfait) : "",
+  );
+  const auMoinsUnForfait = detail.some((p) => p.auForfait);
   const [coutTotalGnf, setCoutTotalGnf] = useState(reparation ? String(reparation.coutTotalGnf) : "");
 
   useEffect(() => {
@@ -91,7 +132,21 @@ export function DialogueReparation({
     if (v.camionId) setCamionChoisi(v.camionId);
   }, [etat.valeurs]);
 
-  const total = (Number(pieces.replace(",", ".")) || 0) + (Number(mainOeuvre.replace(",", ".")) || 0);
+  const nb = (v: string) => Number(v.replace(/\s/g, "").replace(",", ".")) || 0;
+
+  /**
+   * Total des pièces.
+   *
+   * Dès qu'une pièce est listée, il se déduit du détail — achats, remises en
+   * état chiffrées, forfait — et le champ libre passe en lecture seule : deux
+   * saisies pour un même nombre finiraient par se contredire.
+   */
+  const totalPiecesDetaille =
+    detail.reduce((t, p) => t + nb(p.achat) + (p.auForfait ? 0 : nb(p.reparation)), 0) + nb(forfait);
+  const detailActif = detail.length > 0;
+  const coutPiecesRetenu = detailActif ? totalPiecesDetaille : nb(pieces);
+
+  const total = coutPiecesRetenu + nb(mainOeuvre);
 
   // Pré-remplissage au dernier taux connu ; le taux réel se corrige à la main.
   useEffect(() => {
@@ -185,8 +240,120 @@ export function DialogueReparation({
                 </select>
               </Champ>
 
-              <Champ label="Coût des pièces">
-                <input name="coutPieces" inputMode="decimal" value={pieces} onChange={(e) => setPieces(e.target.value)} />
+              {/* --- Détail des pièces ---
+
+                  Le garage mélange les deux façons de payer dans la même
+                  facture : une pièce chiffrée à part, les autres dans un
+                  montant global. Le formulaire suit ce qu'il fait plutôt que
+                  d'imposer un découpage qui n'existe pas. */}
+              <div className="full mt-1 border-t border-[var(--line-soft)] pt-3">
+                <div className="lignes-tete">
+                  <span>Pièces réparées ou remplacées</span>
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    onClick={() =>
+                      setDetail((l) => [
+                        ...l,
+                        { cle: `p${compteurPiece.current++}`, designation: "", achat: "", reparation: "", auForfait: false },
+                      ])
+                    }
+                  >
+                    + Ajouter une pièce
+                  </button>
+                </div>
+
+                {detail.length === 0 ? (
+                  <p className="text-[11.5px] text-[var(--muted-2)]">
+                    Facultatif. Sans détail, la réparation se note d&apos;un seul montant, comme avant.
+                  </p>
+                ) : null}
+
+                {detail.map((p, i) => (
+                  <div key={p.cle} className="piece-ligne">
+                    {/* La case cochée voyage en champ caché : une case décochée
+                        n'est pas envoyée, et la colonne se décalerait — le
+                        forfait tomberait sur la mauvaise pièce. */}
+                    <input type="hidden" name="pieceAuForfait" value={p.auForfait ? "1" : "0"} />
+
+                    <Champ label="Pièce">
+                      <input
+                        name="pieceDesignation"
+                        value={p.designation}
+                        onChange={(e) => majPiece(i, { designation: e.target.value })}
+                        placeholder="Alternateur"
+                      />
+                    </Champ>
+
+                    <Champ label="Achat">
+                      <input
+                        name="pieceAchat"
+                        inputMode="decimal"
+                        value={p.achat}
+                        onChange={(e) => majPiece(i, { achat: e.target.value })}
+                        placeholder="0"
+                      />
+                    </Champ>
+
+                    <Champ label="Réparation">
+                      <input
+                        name="pieceReparation"
+                        inputMode="decimal"
+                        value={p.auForfait ? "" : p.reparation}
+                        disabled={p.auForfait}
+                        onChange={(e) => majPiece(i, { reparation: e.target.value })}
+                        placeholder={p.auForfait ? "au forfait" : "0"}
+                      />
+                    </Champ>
+
+                    <div className="piece-actions">
+                      <label className="case-forfait">
+                        <input
+                          type="checkbox"
+                          checked={p.auForfait}
+                          onChange={(e) => majPiece(i, { auForfait: e.target.checked })}
+                        />
+                        <span>Au forfait</span>
+                      </label>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        onClick={() => setDetail((l) => l.filter((_, j) => j !== i))}
+                      >
+                        Retirer
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {auMoinsUnForfait ? (
+                  <div className="mt-2">
+                    <Champ
+                      label="Forfait pour les pièces cochées"
+                      aide="Le montant payé d'un bloc, sans détail par pièce — il reste tel quel, il n'est pas réparti."
+                    >
+                      <input
+                        name="coutForfait"
+                        inputMode="decimal"
+                        value={forfait}
+                        onChange={(e) => setForfait(e.target.value)}
+                      />
+                    </Champ>
+                  </div>
+                ) : (
+                  <input type="hidden" name="coutForfait" value="0" />
+                )}
+              </div>
+
+              <Champ
+                label="Coût des pièces"
+                aide={detailActif ? "Déduit du détail ci-dessus." : undefined}
+              >
+                {detailActif ? (
+                  <input value={formatNombre(totalPiecesDetaille)} readOnly className="champ-deduit" />
+                ) : (
+                  <input name="coutPieces" inputMode="decimal" value={pieces} onChange={(e) => setPieces(e.target.value)} />
+                )}
               </Champ>
 
               <Champ label="Main d'œuvre">

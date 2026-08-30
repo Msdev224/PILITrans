@@ -8,6 +8,7 @@ import { exigerPermission } from "@/lib/autorisation";
 import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { synchroniserCamion } from "@/lib/donnees/synchronisation";
+import { type LignePiece, lirePieces, totalPieces } from "@/lib/pieces-reparation";
 import { dateBorneeOptionnelle, erreursFormulaire, nombreOptionnel } from "@/lib/validation";
 
 /** Garde d'écriture du module — voir la matrice dans `src/lib/permissions.ts`. */
@@ -23,6 +24,8 @@ const schemaReparation = z
     garage: z.string().trim().optional(),
     coutPieces: nombreOptionnel,
     coutMainOeuvre: nombreOptionnel,
+    /** Somme payée d'un bloc pour les pièces qui ne sont pas chiffrées à part. */
+    coutForfait: nombreOptionnel,
     devise: z.nativeEnum(Devise),
     /** Équivalent GNF saisi au taux réel — obligatoire hors GNF. */
     coutTotalGnf: nombreOptionnel,
@@ -35,7 +38,7 @@ const schemaReparation = z
   .refine(
     (r) =>
       r.devise === "GNF" ||
-      !((r.coutPieces ?? 0) + (r.coutMainOeuvre ?? 0) > 0) ||
+      !((r.coutPieces ?? 0) + (r.coutMainOeuvre ?? 0) + (r.coutForfait ?? 0) > 0) ||
       (r.coutTotalGnf ?? 0) > 0,
     { message: "Saisir l'équivalent en GNF du coût en CFA", path: ["coutTotalGnf"] },
   )
@@ -57,8 +60,16 @@ export interface EtatReparation {
 }
 
 
-function donneesReparation(saisie: z.infer<typeof schemaReparation>) {
-  const pieces = saisie.coutPieces ?? 0;
+/**
+ * @param lignes Détail des pièces. Vide quand l'intervention se saisit d'un
+ *   seul montant, comme elle l'a toujours fait — `coutPieces` est alors le
+ *   nombre entré à la main.
+ */
+function donneesReparation(saisie: z.infer<typeof schemaReparation>, lignes: LignePiece[]) {
+  const forfait = saisie.coutForfait ?? 0;
+  // Dès qu'une pièce est détaillée, le total des pièces se déduit : le laisser
+  // saisissable en même temps ouvrirait deux vérités pour un seul nombre.
+  const pieces = lignes.length > 0 ? totalPieces(lignes, forfait) : (saisie.coutPieces ?? 0);
   const mainOeuvre = saisie.coutMainOeuvre ?? 0;
   // En GNF, le total se déduit ; en devise, c'est l'équivalent réel saisi.
   const coutTotalGnf = saisie.devise === "GNF" ? pieces + mainOeuvre : (saisie.coutTotalGnf ?? 0);
@@ -69,6 +80,7 @@ function donneesReparation(saisie: z.infer<typeof schemaReparation>) {
     garage: saisie.garage || null,
     coutPieces: pieces,
     coutMainOeuvre: mainOeuvre,
+    coutForfait: forfait,
     devise: saisie.devise,
     coutTotalGnf,
     kilometrage: saisie.kilometrage != null ? Math.round(saisie.kilometrage) : null,
@@ -99,8 +111,14 @@ export async function creerReparation(
   const saisie = schemaReparation.safeParse(Object.fromEntries(donnees));
   if (!saisie.success) return erreursFormulaire<EtatReparation>(saisie.error, donnees);
 
+  const lignes = lirePieces(donnees);
+
   await prisma.reparation.create({
-    data: { ...donneesReparation(saisie.data), camionId: saisie.data.camionId },
+    data: {
+      ...donneesReparation(saisie.data, lignes),
+      camionId: saisie.data.camionId,
+      pieces: { create: lignes.map((p, i) => ({ ...p, ordre: i })) },
+    },
   });
 
   await rafraichirEtSynchroniser(saisie.data.camionId);
@@ -117,7 +135,24 @@ export async function modifierReparation(
   const saisie = schemaReparation.safeParse(Object.fromEntries(donnees));
   if (!saisie.success) return erreursFormulaire<EtatReparation>(saisie.error, donnees);
 
-  await prisma.reparation.update({ where: { id }, data: donneesReparation(saisie.data) });
+  const lignes = lirePieces(donnees);
+
+  // Les lignes sont réécrites en bloc plutôt que rapprochées une à une : le
+  // formulaire renvoie l'état complet du détail, et un rapprochement par
+  // identifiant n'apporterait rien qu'un risque de doublon. La suppression et
+  // la réécriture tiennent dans la même transaction — jamais de réparation
+  // laissée sans son détail.
+  await prisma.$transaction([
+    prisma.pieceReparation.deleteMany({ where: { reparationId: id } }),
+    prisma.reparation.update({
+      where: { id },
+      data: {
+        ...donneesReparation(saisie.data, lignes),
+        pieces: { create: lignes.map((p, i) => ({ ...p, ordre: i })) },
+      },
+    }),
+  ]);
+
   await rafraichirEtSynchroniser(saisie.data.camionId);
   return { ok: true };
 }

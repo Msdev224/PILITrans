@@ -1,4 +1,4 @@
-import type { Camion, Chauffeur, Depense, Echeance, Entretien, Reparation, Voyage } from "@prisma/client";
+import type { Camion, Chauffeur, Depense, Echeance, Entretien, PieceReparation, Reparation, Voyage } from "@prisma/client";
 
 import {
   amortissementMensuel,
@@ -98,6 +98,9 @@ export function perDiemDuVoyage(voyage: VoyageAvecChauffeur, aujourdhui: Date = 
 //  P&L d'un camion sur une période
 // ------------------------------------------------------------
 
+/** Une réparation avec le détail de ses pièces, tel que la fiche l'affiche. */
+export type ReparationDetaillee = Reparation & { pieces: PieceReparation[] };
+
 export interface PosteDepense {
   type: string;
   montantGnf: number;
@@ -149,7 +152,7 @@ export interface PnlCamion {
 interface MouvementsCamion {
   voyages: VoyageAvecChauffeur[];
   depenses: Depense[];
-  reparations: Reparation[];
+  reparations: ReparationDetaillee[];
   entretiens: Entretien[];
 }
 
@@ -253,7 +256,13 @@ async function chargerMouvements(camionIds: string[]) {
       include: { voyage: { select: { camionId: true } } },
       orderBy: { date: "desc" },
     }),
-    prisma.reparation.findMany({ where: { camionId: { in: camionIds } }, orderBy: { createdAt: "desc" } }),
+    // Le détail des pièces suit la réparation : la fiche du camion l'affiche
+    // et le dialogue de modification le rouvre tel qu'il a été saisi.
+    prisma.reparation.findMany({
+      where: { camionId: { in: camionIds } },
+      include: { pieces: { orderBy: { ordre: "asc" } } },
+      orderBy: { createdAt: "desc" },
+    }),
     prisma.entretien.findMany({ where: { camionId: { in: camionIds } }, orderBy: { createdAt: "desc" } }),
   ]);
 
@@ -487,7 +496,7 @@ export async function serieMensuelle(nbMois: number, aujourdhui: Date = new Date
 
 export interface FicheCamion extends PnlCamion {
   /** Toutes les réparations du camion, pas seulement celles de la période. */
-  reparations: Reparation[];
+  reparations: ReparationDetaillee[];
   entretiens: Entretien[];
   /**
    * Papiers du véhicule : assurance, visite technique, carte brune…

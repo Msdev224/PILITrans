@@ -396,6 +396,37 @@ export default async function FicheCamionPage({ params }: { params: Promise<{ id
                           {r.immobiliseDu && !r.immobiliseAu ? (
                             <div className="t-sub">Camion immobilisé depuis le {r.immobiliseDu.getDate()}</div>
                           ) : null}
+                          {/* Le détail des pièces, quand il a été saisi. Il répond à la
+                              question que pose un total : ce qui a été acheté, ce qui a
+                              été remis en état, et ce qui est parti au forfait. */}
+                          {r.pieces.length > 0 ? (
+                            <ul className="pieces-detail">
+                              {r.pieces.map((p) => {
+                                const achat = n(p.coutAchat);
+                                const remise = n(p.coutReparation);
+                                return (
+                                  <li key={p.id}>
+                                    <span>{p.designation}</span>
+                                    <span className="pieces-chiffres">
+                                      {achat > 0 ? `achat ${formatNombre(achat)}` : null}
+                                      {achat > 0 && (remise > 0 || p.auForfait) ? " · " : null}
+                                      {p.auForfait
+                                        ? "réparation au forfait"
+                                        : remise > 0
+                                          ? `réparation ${formatNombre(remise)}`
+                                          : null}
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                              {n(r.coutForfait) > 0 ? (
+                                <li className="pieces-forfait">
+                                  <span>Forfait</span>
+                                  <span className="pieces-chiffres">{formatNombre(n(r.coutForfait))}</span>
+                                </li>
+                              ) : null}
+                            </ul>
+                          ) : null}
                         </td>
                         <td className={r.garage ? undefined : "text-[var(--muted-2)]"}>{r.garage ?? "—"}</td>
                         <td className={`num ${cout > 0 ? "" : "vide"}`}>
@@ -419,6 +450,13 @@ export default async function FicheCamionPage({ params }: { params: Promise<{ id
                               garage: r.garage,
                               coutPieces: n(r.coutPieces),
                               coutMainOeuvre: n(r.coutMainOeuvre),
+                              coutForfait: n(r.coutForfait),
+                              pieces: r.pieces.map((p) => ({
+                                designation: p.designation,
+                                coutAchat: n(p.coutAchat),
+                                coutReparation: n(p.coutReparation),
+                                auForfait: p.auForfait,
+                              })),
                               devise: r.devise,
                               coutTotalGnf: cout,
                               kilometrage: r.kilometrage,

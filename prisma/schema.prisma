@@ -172,23 +172,23 @@ enum Role {
 }
 
 model Utilisateur {
-  id         String   @id @default(cuid())
-  nom        String
-  telephone  String?  @unique
-  email      String?  @unique
+  id                 String   @id @default(cuid())
+  nom                String
+  telephone          String?  @unique
+  email              String?  @unique
   // Empreinte du mot de passe (scrypt) — jamais le mot de passe en clair.
   // Requis par le provider « identifiants » d'Auth.js (connexion téléphone + mot de passe).
-  motDePasse String?
+  motDePasse         String?
   /// Numéro en E.164, sans espace ni ponctuation — « +224620000000 ».
   ///
   /// Le numéro affichable garde son formatage ; celui-ci sert à la connexion.
   /// Sans lui, il fallait charger TOUS les utilisateurs, empreinte comprise, et
   /// les comparer un à un à chaque tentative — un balayage complet de la table
   /// déclenché par une requête anonyme.
-  telephoneNormalise String? @unique
-  role       Role     @default(CHAUFFEUR)
-  actif      Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  telephoneNormalise String?  @unique
+  role               Role     @default(CHAUFFEUR)
+  actif              Boolean  @default(true)
+  createdAt          DateTime @default(now())
 
   /// Verrou anti-force-brute, en base et non en mémoire.
   ///
@@ -625,16 +625,58 @@ model Reparation {
   categorie      CategorieReparation
   description    String
   garage         String? // garage ou mécanicien (peut être au Sénégal)
+  /// Total des pièces. Déduit du détail dès qu'une pièce est saisie.
   coutPieces     Decimal             @default(0) @db.Decimal(14, 2)
   coutMainOeuvre Decimal             @default(0) @db.Decimal(14, 2)
-  devise         Devise              @default(GNF)
-  coutTotalGnf   Decimal             @default(0) @db.Decimal(16, 2) // (pièces + main d'œuvre) en GNF
-  kilometrage    Int?
-  heuresGroupe   Int? // relevé horaire si panne groupe froid
-  immobiliseDu   DateTime? // début d'immobilisation
-  immobiliseAu   DateTime? // fin — sert à calculer les jours d'arrêt (coût caché)
-  statut         StatutReparation    @default(EN_COURS)
-  createdAt      DateTime            @default(now())
+
+  /// Somme payée d'un bloc pour toutes les pièces marquées « au forfait ».
+  ///
+  /// Une même intervention mêle les deux façons de payer : une pièce est
+  /// chiffrée à part parce qu'on en a discuté le prix, les autres partent
+  /// dans un montant global que le garage ne détaille pas. Le forfait ne se
+  /// répartit pas entre les pièces — le garage ne l'a pas fait non plus.
+  coutForfait  Decimal          @default(0) @db.Decimal(14, 2)
+  devise       Devise           @default(GNF)
+  coutTotalGnf Decimal          @default(0) @db.Decimal(16, 2) // (pièces + main d'œuvre) en GNF
+  kilometrage  Int?
+  heuresGroupe Int? // relevé horaire si panne groupe froid
+  immobiliseDu DateTime? // début d'immobilisation
+  immobiliseAu DateTime? // fin — sert à calculer les jours d'arrêt (coût caché)
+  statut       StatutReparation @default(EN_COURS)
+  createdAt    DateTime         @default(now())
+
+  pieces PieceReparation[]
+}
+
+/// Une pièce touchée pendant une réparation.
+///
+/// Le détail est facultatif : une intervention peut se saisir d'un seul
+/// montant, comme avant. Dès qu'une pièce est listée, `Reparation.coutPieces`
+/// n'est plus saisi à la main mais déduit de ces lignes et du forfait, pour
+/// que la fiche du camion et la marge continuent de lire un seul nombre.
+model PieceReparation {
+  id           String     @id @default(cuid())
+  reparation   Reparation @relation(fields: [reparationId], references: [id], onDelete: Cascade)
+  reparationId String
+
+  /// Ce qui a été touché : « alternateur », « plaquettes avant »…
+  designation String
+
+  /// Prix d'achat de la pièce. Zéro quand elle a été réparée, pas rachetée.
+  coutAchat Decimal @default(0) @db.Decimal(14, 2)
+
+  /// Prix de sa remise en état, quand il est chiffré pour cette pièce seule.
+  /// Reste à zéro si la ligne part au forfait : le montant est alors porté
+  /// par `Reparation.coutForfait`, sans clé de répartition inventée.
+  coutReparation Decimal @default(0) @db.Decimal(14, 2)
+
+  /// Vrai quand la remise en état entre dans le forfait de la réparation.
+  auForfait Boolean @default(false)
+
+  /// Ordre de saisie — l'affichage suit celui du garage, pas l'alphabet.
+  ordre Int @default(0)
+
+  @@index([reparationId, ordre])
 }
 
 enum TypeEntretien {
@@ -919,33 +961,31 @@ enum StatutFacture {
 }
 
 model Facture {
-  id                    String        @id @default(cuid())
-  numero                String        @unique
-  client                Client        @relation(fields: [clientId], references: [id])
-  clientId              String
-  voyage                Voyage?       @relation(fields: [voyageId], references: [id])
-  voyageId              String?
-  montant               Decimal       @db.Decimal(14, 2)
-  devise                Devise        @default(GNF)
-  montantGnf            Decimal       @default(0) @db.Decimal(16, 2)
+  id            String  @id @default(cuid())
+  numero        String  @unique
+  client        Client  @relation(fields: [clientId], references: [id])
+  clientId      String
+  voyage        Voyage? @relation(fields: [voyageId], references: [id])
+  voyageId      String?
+  montant       Decimal @db.Decimal(14, 2)
+  devise        Devise  @default(GNF)
+  montantGnf    Decimal @default(0) @db.Decimal(16, 2)
   /**
    * TVA figée à l'émission — taux ET montant.
-   *
    * Le taux était lu dans les Paramètres au moment d'imprimer : le document
    * s'affichait TTC alors que les créances et le passage à « payée » ne
    * portaient que sur le hors-taxe. Une facture n'était donc jamais soldée du
    * montant réellement dû, et une réimpression après changement de taux ne
    * reproduisait pas l'original.
    */
-  tauxTva               Decimal       @default(0) @db.Decimal(5, 2)
-  montantTvaGnf         Decimal       @default(0) @db.Decimal(16, 2)
+  tauxTva       Decimal @default(0) @db.Decimal(5, 2)
+  montantTvaGnf Decimal @default(0) @db.Decimal(16, 2)
   /// Ce que le client doit réellement : hors-taxe + TVA. Sert de référence aux
   /// créances comme au statut.
-  totalTtcGnf           Decimal       @default(0) @db.Decimal(16, 2)
+  totalTtcGnf   Decimal @default(0) @db.Decimal(16, 2)
 
   /**
    * Identité de l'émetteur, recopiée à l'émission.
-   *
    * Une pièce comptable est opposable parce qu'elle ne bouge plus. Ces champs
    * étaient lus dans les Paramètres à l'impression : changer d'adresse ou de
    * numéro de compte réécrivait toutes les factures passées, et un duplicata
@@ -1029,30 +1069,28 @@ model Parametres {
   rappelEcheanceJours Int      @default(30)
   /**
    * Règles de sécurité et d'affichage, réglables sans toucher au code.
-   *
    * Elles étaient écrites en dur : le nombre d'essais avant blocage, la durée
    * du blocage, et la profondeur d'historique balayée par les alertes. Ce sont
    * des arbitrages d'exploitation — ils dépendent du nombre de chauffeurs, de
    * la patience du gérant et du volume de voyages, pas du code.
    */
-  maxEchecsConnexion    Int @default(5)
-  blocageConnexionMin   Int @default(15)
+  maxEchecsConnexion  Int      @default(5)
+  blocageConnexionMin Int      @default(15)
   /// Profondeur d'historique balayée par les alertes, en jours.
-  fenetreAlertesJours   Int @default(120)
+  fenetreAlertesJours Int      @default(120)
   /// Durée de validité d'une session, en jours.
-  dureeSessionJours     Int @default(7)
+  dureeSessionJours   Int      @default(7)
 
   /// L/100 km au-delà = alerte. Valeur par défaut posée : laissé vide, le
   /// contrôle ne s'exécutait pas du tout et aucune alerte carburant n'existait.
-  seuilConsoAnormale  Decimal? @default(55) @db.Decimal(5, 1)
+  seuilConsoAnormale Decimal? @default(55) @db.Decimal(5, 1)
   /**
    * L/100 km en deçà = alerte.
-   *
    * La borne haute n'attrape que l'erreur de bonne foi. Qui siphonne ne laisse
    * pas la consommation monter : il ajuste le compteur ou le niveau déclaré
    * pour que le ratio retombe dans la norme — ou passe dessous.
    */
-  seuilConsoBasse     Decimal? @default(15) @db.Decimal(5, 1)
+  seuilConsoBasse    Decimal? @default(15) @db.Decimal(5, 1)
 
   // --- Notifications SMS (Nimba SMS) ---
   /// Interrupteur général. Tant qu'il est faux, rien ne part : les messages
@@ -1087,6 +1125,7 @@ model Parametres {
 
   // --- Caisse de l'entreprise ---
   /**
+   * /**
    * /**
    * /**
    * /**

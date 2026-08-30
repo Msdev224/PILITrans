@@ -2942,6 +2942,86 @@
     }
   }
 
+  /* --- Détail des pièces d'une réparation ---
+
+     Le champ caché `pieceAuForfait` compte comme enfant de la grille : il est
+     sorti du flux, sinon il occuperait une colonne et décalerait la ligne. */
+  .piece-ligne {
+    display: grid;
+    grid-template-columns: 1.8fr 110px 110px auto;
+    gap: 8px;
+    align-items: end;
+    margin-bottom: 8px;
+  }
+  .piece-ligne > input[type="hidden"] {
+    display: none;
+  }
+  .piece-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 4px;
+    white-space: nowrap;
+  }
+  .case-forfait {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .case-forfait input {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+  }
+  /* Un total déduit se lit, il ne se corrige pas : le fond le dit avant que
+     l'utilisateur n'ait essayé de cliquer dedans. */
+  .champ-deduit {
+    background: var(--line-soft);
+    color: var(--muted);
+    cursor: default;
+  }
+  @media (max-width: 620px) {
+    .piece-ligne {
+      grid-template-columns: 1fr 1fr;
+    }
+    .piece-ligne > :nth-child(2) {
+      grid-column: 1 / -1;
+    }
+    .piece-actions {
+      grid-column: 1 / -1;
+      justify-content: space-between;
+    }
+  }
+
+  /* Détail des pièces sous la ligne de réparation, sur la fiche du camion. */
+  .pieces-detail {
+    margin: 5px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 11.5px;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+  .pieces-detail li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 1px 0;
+  }
+  .pieces-chiffres {
+    color: var(--muted-2);
+    white-space: nowrap;
+  }
+  .pieces-forfait {
+    margin-top: 2px;
+    padding-top: 3px;
+    border-top: 1px dashed var(--line-soft);
+    font-weight: 600;
+  }
+
   /* --- Rentabilité par véhicule --- */
   .note-methode {
     margin: -2px 0 12px;
