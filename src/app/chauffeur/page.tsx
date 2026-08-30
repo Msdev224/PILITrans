@@ -18,6 +18,7 @@ import {
   FormulaireReleve,
 } from "@/components/chauffeur/formulaires";
 import { espaceChauffeur } from "@/lib/donnees/chauffeur";
+import { espaceChauffeurActif } from "@/lib/donnees/espace-chauffeur";
 import {
   LIBELLE_STATUT_VOYAGE,
   LIBELLE_TYPE_DEPENSE,
@@ -72,6 +73,43 @@ function dernierCompteur(v: {
 
 export default async function EspaceChauffeurPage() {
   const session = await sessionRequise();
+
+  /*
+   * Porte fermée tant que l'exploitation n'a pas ouvert l'espace.
+   *
+   * Le contrôle est ici, et non dans le middleware : celui-ci tourne en edge,
+   * sans accès à la base, et ne peut pas lire un réglage. Il est également
+   * répété côté API — un écran installé en application garde ses boutons, et
+   * une requête peut partir sans que cette page ait été rendue.
+   *
+   * L'écran explique au lieu de renvoyer une erreur : le chauffeur qui a
+   * l'application sur son téléphone n'a rien fait de mal, et « page
+   * introuvable » ne lui apprendrait pas quoi faire.
+   */
+  if (!(await espaceChauffeurActif())) {
+    return (
+      <FournisseurFile>
+        <div className="ph-app">
+          <div className="ph-top">
+            <div className="hi">Bonjour {session.user.name}</div>
+            <div className="tk">Espace chauffeur pas encore ouvert</div>
+          </div>
+          <div className="ph-body">
+            <div className="ph-card">
+              <p className="text-[12.5px] text-[var(--muted)]">
+                La saisie depuis le téléphone de bord n&apos;est pas encore en service. Rien n&apos;est à
+                enregistrer ici pour le moment : les missions et les dépenses sont tenues au bureau.
+              </p>
+              <p className="mt-2 text-[12.5px] text-[var(--muted)]">
+                Le gérant t&apos;avertira le jour où cet écran s&apos;ouvrira.
+              </p>
+            </div>
+            <BoutonDeconnexion />
+          </div>
+        </div>
+      </FournisseurFile>
+    );
+  }
 
   // Le gérant peut ouvrir l'écran, mais il n'a pas de fiche chauffeur.
   const espace = session.user.chauffeurId ? await espaceChauffeur(session.user.chauffeurId) : null;

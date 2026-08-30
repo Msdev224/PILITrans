@@ -60,6 +60,10 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
   if (!fiche) notFound();
   const { voyage } = fiche;
 
+  // `parametres` est déjà chargé : on lit le réglage dessus plutôt que de
+  // repartir en base pour un booléen qu'on tient en main.
+  const espaceOuvert = parametres?.espaceChauffeurActif ?? false;
+
   /*
    * Une mission annulée se consulte, mais n'accepte plus rien.
    *
@@ -454,26 +458,40 @@ export default async function FicheVoyagePage({ params }: { params: Promise<{ id
         </div>
 
         <div className="card panel mb-5">
-          <div className="grid grid-cols-3 gap-4 text-xs">
-            <div>
+          {/* Tant que l'espace chauffeur est fermé, la somme remise est un
+              forfait de voyage : le chauffeur n'en rend pas compte. Afficher
+              un « reste à justifier » qui ne sera jamais soldé installerait
+              une dette imaginaire sur chaque mission. */}
+          {espaceOuvert ? (
+            <div className="grid grid-cols-3 gap-4 text-xs">
+              <div>
+                Remis en tout
+                <b className="mono mt-0.5 block text-[13px]">{formatNombre(fiche.remisGnf)} GNF</b>
+              </div>
+              <div>
+                Justifié ou rendu
+                <b className="mono mt-0.5 block text-[13px]">{formatNombre(fiche.justifieGnf)} GNF</b>
+              </div>
+              <div>
+                Reste à justifier
+                <b
+                  className={`mono mt-0.5 block text-[13px] ${
+                    fiche.resteAJustifierGnf > 0 ? "text-[var(--warn-ink,#8a5d06)]" : "text-[var(--pos)]"
+                  }`}
+                >
+                  {formatNombre(fiche.resteAJustifierGnf)} GNF
+                </b>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs">
               Remis en tout
               <b className="mono mt-0.5 block text-[13px]">{formatNombre(fiche.remisGnf)} GNF</b>
+              <span className="mt-1 block text-[11.5px] text-[var(--muted-2)]">
+                Forfait de voyage — le chauffeur n&apos;a rien à justifier dessus.
+              </span>
             </div>
-            <div>
-              Justifié ou rendu
-              <b className="mono mt-0.5 block text-[13px]">{formatNombre(fiche.justifieGnf)} GNF</b>
-            </div>
-            <div>
-              Reste à justifier
-              <b
-                className={`mono mt-0.5 block text-[13px] ${
-                  fiche.resteAJustifierGnf > 0 ? "text-[var(--warn-ink,#8a5d06)]" : "text-[var(--pos)]"
-                }`}
-              >
-                {formatNombre(fiche.resteAJustifierGnf)} GNF
-              </b>
-            </div>
-          </div>
+          )}
 
           {fiche.avances.length > 0 ? (
             <div className="mt-3 border-t border-[var(--line-soft)] pt-2">

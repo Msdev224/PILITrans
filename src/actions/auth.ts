@@ -45,12 +45,18 @@ export async function seConnecter(_etat: EtatConnexion, donnees: FormData): Prom
   } catch (erreur) {
     // `signIn` lève une redirection en cas de succès : il faut la laisser remonter.
     if (erreur instanceof AuthError) {
-      // `code` distingue un mot de passe faux d'un compte temporairement verrouillé.
-      const bloque = (erreur as { code?: string }).code === "trop_de_tentatives";
+      // `code` distingue un mot de passe faux d'un compte verrouillé, et le
+      // chauffeur dont l'espace n'est pas encore ouvert des deux autres : lui
+      // n'a rien à corriger, et le renvoyer sur « identifiants incorrects » le
+      // ferait recommencer indéfiniment.
+      const code = (erreur as { code?: string }).code;
+      const messages: Record<string, string> = {
+        trop_de_tentatives: "Trop de tentatives. Réessaie dans une quinzaine de minutes.",
+        espace_chauffeur_ferme:
+          "L'espace chauffeur n'est pas encore ouvert. Ton compte fonctionne, il n'y a rien à saisir pour l'instant.",
+      };
       return {
-        erreur: bloque
-          ? "Trop de tentatives. Réessaie dans une quinzaine de minutes."
-          : "Numéro de téléphone ou mot de passe incorrect.",
+        erreur: (code && messages[code]) || "Numéro de téléphone ou mot de passe incorrect.",
       };
     }
     throw erreur;

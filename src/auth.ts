@@ -13,6 +13,7 @@ import {
   reinitialiserLimitation,
   verifierLimitation,
 } from "@/lib/limitation";
+import { espaceChauffeurActif } from "@/lib/donnees/espace-chauffeur";
 import { verifierMotDePasse } from "@/lib/mots-de-passe";
 
 class IdentifiantsInvalides extends CredentialsSignin {
@@ -21,6 +22,10 @@ class IdentifiantsInvalides extends CredentialsSignin {
 
 class TropDeTentatives extends CredentialsSignin {
   code = "trop_de_tentatives";
+}
+
+class EspaceChauffeurFerme extends CredentialsSignin {
+  code = "espace_chauffeur_ferme";
 }
 
 /**
@@ -103,6 +108,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!valide) {
           await enregistrerEchec(utilisateur.id);
           throw new IdentifiantsInvalides();
+        }
+
+        /*
+         * Un chauffeur n'entre pas tant que son espace est fermé.
+         *
+         * Le contrôle vient après le mot de passe, volontairement : le placer
+         * avant dirait à qui essaie un numéro au hasard qu'il correspond à un
+         * compte chauffeur. Ici, seul quelqu'un qui connaît déjà le mot de
+         * passe apprend quelque chose — et ce quelqu'un, c'est le chauffeur.
+         *
+         * Le message est distinct d'un refus d'identifiants : le chauffeur ne
+         * doit pas passer sa soirée à croire qu'il a mal tapé.
+         */
+        if (utilisateur.role === "CHAUFFEUR" && !(await espaceChauffeurActif())) {
+          await reinitialiserLimitation(utilisateur.id);
+          throw new EspaceChauffeurFerme();
         }
 
         await reinitialiserLimitation(utilisateur.id);

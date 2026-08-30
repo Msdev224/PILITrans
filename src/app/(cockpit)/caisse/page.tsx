@@ -16,6 +16,8 @@ export default async function CaissePage() {
     filAlertes(),
   ]);
 
+  const espaceOuvert = parametres?.espaceChauffeurActif ?? false;
+
   return (
     <>
       <BarreHaut
@@ -63,7 +65,9 @@ export default async function CaissePage() {
               {formatNombre(tresor.detenuParChauffeursGnf)}
               <span className="unit">GNF</span>
             </div>
-            <div className="delta flat">Sorti de caisse, pas encore justifié</div>
+            <div className="delta flat">
+              {espaceOuvert ? "Sorti de caisse, pas encore justifié" : "Sorti de caisse, remis en forfait"}
+            </div>
           </div>
         </div>
 

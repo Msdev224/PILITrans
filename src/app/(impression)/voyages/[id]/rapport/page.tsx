@@ -69,6 +69,7 @@ export default async function RapportMissionPage({
   ]);
 
   const tolerance = nOuNull(parametres?.toleranceFroid) ?? 1;
+  const espaceOuvert = parametres?.espaceChauffeurActif ?? false;
   const etatReleve = (r: (typeof releves)[number]) => {
     const consigne = nOuNull(r.consigne);
     return consigne !== undefined
@@ -373,20 +374,27 @@ export default async function RapportMissionPage({
                     </td>
                   </tr>
                 ))}
-                <tr>
+                {/* Espace chauffeur fermé : la somme est un forfait de voyage.
+                    Un rapport imprimé qui réclamerait des justificatifs jamais
+                    demandés circulerait, lui, sans qu'on puisse le rattraper. */}
+                <tr className="rm-total">
                   <td>Total remis</td>
                   <td className="num">{formatNombre(fiche.remisGnf)} GNF</td>
                 </tr>
-                <tr>
-                  <td>Justifié ou rendu</td>
-                  <td className="num">{formatNombre(fiche.justifieGnf)} GNF</td>
-                </tr>
-                <tr className="rm-total">
-                  <td>Reste à justifier</td>
-                  <td className={`num${fiche.resteAJustifierGnf > 0 ? " rm-alerte" : ""}`}>
-                    {formatNombre(fiche.resteAJustifierGnf)} GNF
-                  </td>
-                </tr>
+                {espaceOuvert ? (
+                  <>
+                    <tr>
+                      <td>Justifié ou rendu</td>
+                      <td className="num">{formatNombre(fiche.justifieGnf)} GNF</td>
+                    </tr>
+                    <tr className="rm-total">
+                      <td>Reste à justifier</td>
+                      <td className={`num${fiche.resteAJustifierGnf > 0 ? " rm-alerte" : ""}`}>
+                        {formatNombre(fiche.resteAJustifierGnf)} GNF
+                      </td>
+                    </tr>
+                  </>
+                ) : null}
               </tbody>
             </table>
           )}

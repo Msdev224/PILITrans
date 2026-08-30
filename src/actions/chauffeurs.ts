@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { exigerPermission } from "@/lib/autorisation";
 import { hacherMotDePasse } from "@/lib/mots-de-passe";
+import { espaceChauffeurActif } from "@/lib/donnees/espace-chauffeur";
 import { journaliser } from "@/lib/journal";
 import { prisma } from "@/lib/prisma";
 import { caseACocher, dateExpirationOptionnelle, erreursFormulaire, nombreOptionnel, telephoneOptionnel, texteOptionnel } from "@/lib/validation";
@@ -70,6 +71,8 @@ export interface EtatChauffeurFiche {
    * l'écran Comptes.
    */
   compte?: { telephone: string; motDePasse: string };
+  /** Numéro fourni, mais aucun accès créé : l'espace chauffeur est fermé. */
+  sansCompte?: boolean;
 }
 
 function donnees(saisie: z.infer<typeof schemaChauffeur>) {
@@ -126,7 +129,20 @@ export async function creerChauffeur(
     }
   }
 
-  const motDePasse = telephone ? motDePasseProvisoire() : null;
+  /*
+   * Pas de compte de connexion tant que l'espace chauffeur est fermé.
+   *
+   * En créer un serait créer un accès qui ne s'ouvre pas, et surtout dicter
+   * aujourd'hui un mot de passe provisoire montré une seule fois — oublié
+   * bien avant le jour où l'espace s'ouvrira. Les comptes se créeront depuis
+   * l'écran Comptes à ce moment-là, quand les mots de passe se distribuent
+   * pour de bon.
+   *
+   * L'emplacement de trésorerie, lui, naît dans tous les cas : l'argent remis
+   * au chauffeur doit arriver quelque part, ouvert ou fermé.
+   */
+  const espaceOuvert = await espaceChauffeurActif();
+  const motDePasse = telephone && espaceOuvert ? motDePasseProvisoire() : null;
 
   await prisma.$transaction(async (tx) => {
     const cree = await tx.chauffeur.create({ data: valeurs });
@@ -158,12 +174,14 @@ export async function creerChauffeur(
   });
 
   await journaliser({
-    action: telephone ? "chauffeur.cree.avec-compte" : "chauffeur.cree",
+    action: motDePasse ? "chauffeur.cree.avec-compte" : "chauffeur.cree",
     objet: "Chauffeur",
     objetId: null,
-    libelle: telephone
+    libelle: motDePasse
       ? `${valeurs.nom} enregistré, compte de connexion créé sur ${telephone}`
-      : `${valeurs.nom} enregistré (sans compte : aucun numéro renseigné)`,
+      : telephone
+        ? `${valeurs.nom} enregistré (sans compte : espace chauffeur fermé)`
+        : `${valeurs.nom} enregistré (sans compte : aucun numéro renseigné)`,
   });
 
   rafraichir();
@@ -172,6 +190,7 @@ export async function creerChauffeur(
   return {
     ok: true,
     ...(telephone && motDePasse ? { compte: { telephone, motDePasse } } : {}),
+    ...(telephone && !espaceOuvert ? { sansCompte: true } : {}),
   };
 }
 

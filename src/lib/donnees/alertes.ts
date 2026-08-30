@@ -76,6 +76,7 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
   const seuilBas = nOuNull(parametres?.seuilConsoBasse);
   const rappelDefaut = parametres?.rappelEcheanceJours ?? 30;
   const fenetreJours = parametres?.fenetreAlertesJours ?? 120;
+  const espaceChauffeurOuvert = parametres?.espaceChauffeurActif ?? false;
   const depuis = new Date(ceJour.getTime() - fenetreJours * 86_400_000);
 
   const [
@@ -594,7 +595,12 @@ async function alertesBrut(aujourdhui: Date = new Date()): Promise<AlerteVue[]> 
   }
 
   // --- Caisses chauffeurs non soldées ---
-  for (const c of chauffeurs) {
+  //
+  // Muettes tant que l'espace chauffeur est fermé. La somme remise est alors
+  // un forfait de voyage dont personne n'attend le solde : l'alerte se
+  // lèverait sur chaque chauffeur, en permanence, et ne redescendrait jamais
+  // — de quoi apprendre au gérant à ne plus lire ses alertes.
+  for (const c of espaceChauffeurOuvert ? chauffeurs : []) {
     // `soldeCaisse` ne fait que sommer avec un signe : partir des totaux par
     // type et devise donne exactement le même résultat que ligne à ligne.
     const solde = soldeCaisse(

@@ -33,6 +33,7 @@ export default async function ChauffeursPage() {
   const actifs = lignes.filter((l) => l.chauffeur.actif).length;
 
   const tauxReferenceXof = parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null;
+  const espaceOuvert = parametres?.espaceChauffeurActif ?? false;
 
   return (
     <>
@@ -89,6 +90,7 @@ export default async function ChauffeursPage() {
                     indicatifs={indicatifs}
                     moyens={moyens}
                     tauxReferenceXof={tauxReferenceXof}
+                    espaceOuvert={espaceOuvert}
                   />
               ))}
             </tbody>
@@ -104,11 +106,13 @@ function LigneTableau({
   indicatifs,
   moyens,
   tauxReferenceXof,
+  espaceOuvert,
 }: {
   ligne: LigneChauffeur;
   indicatifs: { code: string; libelle: string; longueur: number | null }[];
   moyens: { id: string; nom: string }[];
   tauxReferenceXof: number | null;
+  espaceOuvert: boolean;
 }) {
   const { chauffeur } = ligne;
   const taux = chauffeur.tauxRemuneration != null ? n(chauffeur.tauxRemuneration) : null;
@@ -174,8 +178,11 @@ function LigneTableau({
         {ligne.remunerationMoisGnf > 0 ? formatNombre(ligne.remunerationMoisGnf) : "—"}
       </td>
 
-      {/* Un solde non nul est de l'argent à justifier. */}
-      <td className={`num ${ligne.consolideGnf > 0 ? "neg" : "vide"}`}>
+      {/* Un solde non nul est de l'argent à justifier — mais seulement quand
+          l'espace chauffeur est ouvert. Fermé, la somme a été remise en
+          forfait : la teinter en rouge signalerait une dette qui n'existe
+          pas, sur chaque chauffeur et en permanence. */}
+      <td className={`num ${ligne.consolideGnf > 0 && espaceOuvert ? "neg" : "vide"}`}>
         {ligne.consolideGnf !== 0 || ligne.soldeXof !== 0 ? formatNombre(ligne.soldeGnf) : "0"}
         {ligne.soldeXof !== 0 ? (
           <div className="t-sub text-[var(--intl)]">+ {formatNombre(ligne.soldeXof)} CFA</div>

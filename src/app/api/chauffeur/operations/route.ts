@@ -13,6 +13,7 @@
 import { NextResponse } from "next/server";
 
 import { sessionRequise } from "@/auth";
+import { espaceChauffeurActif } from "@/lib/donnees/espace-chauffeur";
 import {
   ajouterRotation,
   avancerMission,
@@ -61,6 +62,20 @@ export async function POST(requete: Request) {
   const chauffeurId = session.user.chauffeurId;
   if (session.user.role !== "CHAUFFEUR" || !chauffeurId) {
     return NextResponse.json({ ok: false, definitif: true, erreur: "Réservé au chauffeur." }, { status: 403 });
+  }
+
+  /*
+   * Espace fermé : la saisie est refusée définitivement.
+   *
+   * `definitif` compte ici. Un téléphone garde ses saisies hors réseau et les
+   * rejoue jusqu'à ce qu'elles passent ; sans ce drapeau, une file constituée
+   * avant la fermeture tournerait indéfiniment.
+   */
+  if (!(await espaceChauffeurActif())) {
+    return NextResponse.json(
+      { ok: false, definitif: true, erreur: "L'espace chauffeur n'est pas ouvert." },
+      { status: 403 },
+    );
   }
 
   let corps: Corps;

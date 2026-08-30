@@ -46,6 +46,7 @@ export interface ParametresEditables {
   accueilMention: string | null;
   connexionSousTitre: string | null;
   accueilAfficherDemo: boolean;
+  espaceChauffeurActif: boolean;
   afficherCodeLivraison: boolean;
   smsExpediteur: string | null;
   urlApplication: string | null;
@@ -434,6 +435,29 @@ export function FormulaireParametres({ indicatifs, parametres, identifiantsPrese
             <p className="aide-role">
               À laisser décoché en exploitation réelle : cette page est accessible sans être
               connecté, et y publier des identifiants valides revient à laisser la porte ouverte.
+            </p>
+          </div>
+
+          <div className="full">
+            <label className="case">
+              <input
+                type="checkbox"
+                name="espaceChauffeurActif"
+                value="true"
+                defaultChecked={
+                  etat.valeurs
+                    ? etat.valeurs.espaceChauffeurActif === "true"
+                    : parametres.espaceChauffeurActif
+                }
+              />
+              <span>Ouvrir l&apos;espace chauffeur — saisie depuis le téléphone de bord</span>
+            </label>
+            <p className="aide-role">
+              Décoché, le chauffeur ne se connecte pas et l&apos;argent qu&apos;on lui remet est un
+              forfait de voyage : il n&apos;en rend pas compte, et les écrans du bureau n&apos;affichent
+              aucun reste à justifier. En cochant, deux choses changent ensemble — l&apos;application
+              mobile s&apos;ouvre, et chaque somme remise devient une avance dont le chauffeur doit
+              justifier l&apos;emploi.
             </p>
           </div>
 

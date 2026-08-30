@@ -102,6 +102,7 @@ const schemaParametres = z.object({
   accueilMention: texteOptionnel,
   connexionSousTitre: texteOptionnel,
   accueilAfficherDemo: caseACocher,
+  espaceChauffeurActif: caseACocher,
   afficherCodeLivraison: caseACocher,
 });
 
@@ -149,6 +150,7 @@ export async function enregistrerParametres(
     accueilMention: d.accueilMention ?? null,
     connexionSousTitre: d.connexionSousTitre ?? null,
     accueilAfficherDemo: d.accueilAfficherDemo,
+    espaceChauffeurActif: d.espaceChauffeurActif,
     afficherCodeLivraison: d.afficherCodeLivraison,
     whatsappActif: d.whatsappActif,
     consigneFroidDefaut: d.consigneFroidDefaut ?? null,

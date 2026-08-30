@@ -75,6 +75,7 @@ export default async function ParametresPage() {
     accueilMention: parametres?.accueilMention ?? null,
     connexionSousTitre: parametres?.connexionSousTitre ?? null,
     accueilAfficherDemo: parametres?.accueilAfficherDemo ?? false,
+    espaceChauffeurActif: parametres?.espaceChauffeurActif ?? false,
     afficherCodeLivraison: parametres?.afficherCodeLivraison ?? false,
   };
 

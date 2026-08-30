@@ -1165,6 +1165,23 @@ model Parametres {
   accueilAfficherDemo Boolean @default(false)
 
   /**
+   * Ouvre l'espace chauffeur — l'application mobile de bord.
+   *
+   * Fermé par défaut, et c'est un choix d'exploitation, pas une précaution
+   * technique : tant qu'il l'est, l'argent remis au chauffeur est un forfait
+   * de voyage qu'il ne justifie pas, et personne ne se connecte depuis le
+   * terrain. L'ouvrir change la règle du jour au lendemain — chaque somme
+   * remise devient une avance à justifier, et les comptes chauffeur
+   * deviennent utilisables.
+   *
+   * Un seul réglage porte les deux conséquences, parce qu'elles n'ont pas de
+   * sens l'une sans l'autre : réclamer des justificatifs à un chauffeur qui
+   * n'a pas d'écran pour les saisir, ou lui ouvrir un écran sans rien lui
+   * demander, seraient deux façons d'être à moitié en service.
+   */
+  espaceChauffeurActif Boolean @default(false)
+
+  /**
    * Montre le code de retrait à l'écran, au gérant.
    * Le code protège la livraison : il ne doit circuler qu'entre le client et
    * le chauffeur. L'afficher permet de dérouler une démonstration sans SMS
