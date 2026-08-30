@@ -185,6 +185,47 @@
     outline-offset: 2px;
   }
 
+  /* Qui a payé le carburant : une case, pas un formulaire de plus. */
+  .case-payeur {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--line-soft);
+    border-radius: 9px;
+    padding: 11px 13px;
+  }
+  .case-payeur input {
+    margin-top: 2px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  /* Proposition de créer la fiche en même temps que le compte. */
+  .bloc-fiche {
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-2, #67C4CD);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .case-fiche {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .case-fiche input {
+    margin-top: 2px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
   /* --- Sortie d'une session révoquée --- */
   .ar-page {
     min-height: 100dvh;

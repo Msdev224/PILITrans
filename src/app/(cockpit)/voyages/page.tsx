@@ -25,6 +25,7 @@ import {
   type LigneVoyage,
 } from "@/lib/donnees/voyages";
 import { moisCourant } from "@/lib/periode";
+import { moyensActifs } from "@/lib/donnees/moyens-paiement";
 import { paysActifs } from "@/lib/donnees/pays";
 import { unitesActives } from "@/lib/donnees/unites";
 import { prisma } from "@/lib/prisma";
@@ -62,7 +63,8 @@ export default async function VoyagesPage({ searchParams }: Props) {
   const recherche = params.q ?? "";
   const periode = moisCourant();
 
-  const [session, vue, parametres, fil, camions, chauffeurs, unites, pays, clients] = await Promise.all([
+  const [session, vue, parametres, fil, camions, chauffeurs, unites, pays, clients, moyens] =
+    await Promise.all([
     sessionRequise(),
     vueVoyages(periode, { filtre, recherche }),
     prisma.parametres.findFirst(),
@@ -83,6 +85,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
       select: { id: true, nom: true, ville: true, telephone: true, telephoneContact: true },
       orderBy: { nom: "asc" },
     }),
+    moyensActifs(),
   ]);
 
   const tauxReferenceXof = parametres?.tauxReferenceXof ? n(parametres.tauxReferenceXof) : null;
@@ -178,6 +181,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
               unites={unites}
               pays={pays}
               clients={clients}
+              moyens={moyens}
               tauxReferenceXof={tauxReferenceXof}
               declencheur={
                 <button type="button" className="btn-add">
@@ -223,6 +227,7 @@ export default async function VoyagesPage({ searchParams }: Props) {
                     chauffeurs={chauffeurs}
                     tauxReferenceXof={tauxReferenceXof}
                     clients={clients}
+                    moyens={moyens}
                     voyagesFacturables={voyagesFacturables}
                     delaiPaiementJours={delaiPaiementJours}
                   />
@@ -252,6 +257,7 @@ function LigneTableau({
   pays,
   clients,
   chauffeurs,
+  moyens,
   tauxReferenceXof,
   voyagesFacturables,
   delaiPaiementJours,
@@ -263,6 +269,7 @@ function LigneTableau({
   /** Même forme pour les deux dialogues : { id, nom }. */
   clients: OptionClient[];
   chauffeurs: OptionChauffeur[];
+  moyens: { id: string; nom: string }[];
   tauxReferenceXof: number | null;
   voyagesFacturables: OptionVoyageFacturable[];
   delaiPaiementJours: number;
@@ -367,6 +374,7 @@ function LigneTableau({
           unites={unites}
           pays={pays}
           clients={clients}
+          moyens={moyens}
           tauxReferenceXof={tauxReferenceXof}
             aDesEcritures={ligne.postes.length > 0 || ligne.facture}
           />

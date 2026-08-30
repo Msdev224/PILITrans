@@ -132,21 +132,32 @@ export function DialogueUtilisateur({ indicatifs, utilisateur, chauffeurs, decle
               </div>
 
               {/* Un compte chauffeur est l'accès d'une personne à SA fiche :
-                  celle qui porte son permis, son mode de rémunération et ses
-                  missions. La fiche existe donc d'abord, le compte ensuite. */}
+                  celle qui porte son permis, sa rémunération et ses missions.
+                  Quand aucune fiche libre n'existe, on la crée ici plutôt que
+                  de renvoyer le gérant sur un autre écran — il faudrait sortir,
+                  créer, revenir, et retaper ce qu'il avait déjà saisi. */}
               {role === "CHAUFFEUR" ? (
                 <div className="full">
                   {chauffeurs.length === 0 ? (
-                    <div className="lg-error">
-                      Aucune fiche chauffeur disponible. Créez d&apos;abord la fiche depuis{" "}
-                      <Link href="/chauffeurs" className="lien-fiche">
-                        <b>Chauffeurs</b>
-                      </Link>{" "}
-                      — elle porte le permis, la rémunération et les missions. Vous pourrez
-                      ensuite lui ouvrir un compte ici.
-                      <div className="t-sub mt-1">
-                        Cette liste ne montre que les fiches qui n&apos;ont pas encore de compte.
-                      </div>
+                    <div className="bloc-fiche">
+                      <label className="case-fiche">
+                        <input type="checkbox" name="creerFiche" defaultChecked />
+                        <span>
+                          <b>Créer aussi sa fiche chauffeur</b>
+                          <span className="t-sub block">
+                            Aucune fiche libre n&apos;existe. Elle sera créée à son nom et à son
+                            numéro, avec son emplacement de caisse. Le permis et le mode de
+                            rémunération se complètent ensuite depuis{" "}
+                            <Link href="/chauffeurs" className="lien-fiche">
+                              Chauffeurs
+                            </Link>
+                            .
+                          </span>
+                        </span>
+                      </label>
+                      {err("chauffeurId") ? (
+                        <div className="t-sub mt-1 text-[var(--neg)]">{err("chauffeurId")}</div>
+                      ) : null}
                     </div>
                   ) : (
                     <Champ
@@ -206,9 +217,7 @@ export function DialogueUtilisateur({ indicatifs, utilisateur, chauffeurs, decle
             <button type="button" className="btn ghost" onClick={() => setOuvert(false)}>
               Annuler
             </button>
-            {/* Sans fiche à rattacher, l'envoi ne peut que rater : mieux vaut
-                bloquer le bouton que laisser buter sur un message d'erreur. */}
-            <BoutonEnvoyer edition={edition} bloque={role === "CHAUFFEUR" && chauffeurs.length === 0} />
+                        <BoutonEnvoyer edition={edition} />
           </footer>
         </form>
       </DialogContent>
@@ -237,15 +246,18 @@ function Champ({
   );
 }
 
-function BoutonEnvoyer({ edition, bloque }: { edition: boolean; bloque: boolean }) {
+/*
+ * Le bouton n'est plus bloqué faute de fiche chauffeur.
+ *
+ * Il l'était dès qu'aucune fiche libre n'existait : le dialogue affichait un
+ * message rouge ET refusait d'enregistrer, sans autre issue que de tout
+ * abandonner pour aller créer la fiche ailleurs. La case « créer aussi sa
+ * fiche » rend ce blocage sans objet.
+ */
+function BoutonEnvoyer({ edition }: { edition: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      className="btn primary"
-      disabled={pending || bloque}
-      title={bloque ? "Créez d'abord la fiche chauffeur" : undefined}
-    >
+    <button type="submit" className="btn primary" disabled={pending}>
       {pending ? "Enregistrement…" : edition ? "Enregistrer" : "Créer le compte"}
     </button>
   );

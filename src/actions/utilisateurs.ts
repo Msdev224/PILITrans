@@ -10,7 +10,7 @@ import { hacherMotDePasse } from "@/lib/mots-de-passe";
 import { LIBELLE_ROLE } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { normaliserTelephone } from "@/lib/telephone";
-import { erreursFormulaire, telephoneRequis, texteOptionnel } from "@/lib/validation";
+import { caseACocher, erreursFormulaire, telephoneRequis, texteOptionnel } from "@/lib/validation";
 
 /** Créer ou modifier un compte relève de la gestion d'équipe. */
 async function droitEcriture() {
@@ -32,13 +32,23 @@ const schemaUtilisateur = z
     email: texteOptionnel,
     role: z.nativeEnum(Role),
     chauffeurId: texteOptionnel,
+    /** Crée la fiche chauffeur en même temps que le compte. */
+    creerFiche: caseACocher,
     motDePasse: texteOptionnel,
     actif: z
       .preprocess((v) => v === "on" || v === "true" || v === true, z.boolean())
       .optional(),
   })
-  .refine((d) => d.role !== "CHAUFFEUR" || !!d.chauffeurId, {
-    message: "Rattachez le compte à une fiche chauffeur",
+  /*
+   * Un compte chauffeur suppose une fiche — mais elle peut naître ici.
+   *
+   * Le dialogue renvoyait vers l'écran Chauffeurs quand aucune fiche libre
+   * n'existait : il fallait sortir, créer la fiche, revenir. Désormais la
+   * case « créer aussi sa fiche » suffit, et le refus ne subsiste que si l'on
+   * n'a ni fiche à rattacher ni intention d'en créer une.
+   */
+  .refine((d) => d.role !== "CHAUFFEUR" || !!d.chauffeurId || d.creerFiche, {
+    message: "Rattachez une fiche, ou cochez « créer aussi sa fiche »",
     path: ["chauffeurId"],
   })
   .refine((d) => !d.motDePasse || d.motDePasse.length >= 8, {
@@ -93,16 +103,50 @@ export async function creerUtilisateur(
     return { erreur: "Un compte utilise déjà ce numéro.", valeurs: Object.fromEntries(donnees) as Record<string, string> };
   }
 
-  const cree = await prisma.utilisateur.create({
-    data: {
-      nom: d.nom,
-      telephone,
-      email: d.email ?? null,
-      role: d.role,
-      actif: d.actif ?? true,
-      motDePasse: await hacherMotDePasse(d.motDePasse),
-      chauffeurId: d.role === "CHAUFFEUR" ? (d.chauffeurId ?? null) : null,
-    },
+  /*
+   * L'empreinte se calcule AVANT d'ouvrir la transaction.
+   *
+   * scrypt est volontairement lent — c'est ce qui le rend résistant. Le faire
+   * à l'intérieur maintiendrait la transaction ouverte pendant tout le calcul,
+   * pour rien.
+   */
+  const empreinte = await hacherMotDePasse(d.motDePasse);
+
+  /*
+   * La fiche et le compte naissent ensemble.
+   *
+   * Deux écritures qui doivent tenir ou tomber d'un bloc : une fiche sans
+   * compte se rattrape, un compte de chauffeur sans fiche est un cul-de-sac —
+   * il ouvre l'espace mobile sur une page de repli, sans mission ni caisse.
+   *
+   * L'emplacement de trésorerie suit, comme à la création depuis l'écran
+   * Chauffeurs : l'argent remis au chauffeur est quelque part, et ce
+   * quelque part, c'est lui.
+   */
+  const cree = await prisma.$transaction(async (tx) => {
+    let chauffeurId = d.role === "CHAUFFEUR" ? (d.chauffeurId ?? null) : null;
+
+    if (d.role === "CHAUFFEUR" && !chauffeurId && d.creerFiche) {
+      const fiche = await tx.chauffeur.create({
+        data: { nom: d.nom, telephone, actif: true },
+      });
+      await tx.compteTresorerie.create({
+        data: { nom: fiche.nom, type: "CHAUFFEUR", chauffeurId: fiche.id, ordre: 50 },
+      });
+      chauffeurId = fiche.id;
+    }
+
+    return tx.utilisateur.create({
+      data: {
+        nom: d.nom,
+        telephone,
+        email: d.email ?? null,
+        role: d.role,
+        actif: d.actif ?? true,
+        motDePasse: empreinte,
+        chauffeurId,
+      },
+    });
   });
 
   // Un accès accordé se trace : c'est la première chose qu'on cherche quand

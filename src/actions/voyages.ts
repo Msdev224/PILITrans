@@ -284,6 +284,16 @@ const schemaRemise = z.object({
   carburantMontantGnf: nombreOptionnel,
   /** Aller, retour, ou les deux : sur un aller-retour, la question se pose. */
   carburantSegment: texteOptionnel,
+  /**
+   * Qui a payé le gasoil.
+   *
+   * Coché : l'argent a été remis au chauffeur, il sort donc de la caisse pour
+   * entrer dans la sienne, et la dépense s'y rattache. Décoché : le bureau a
+   * carburé lui-même, c'est une dépense directe et rien ne transite par le
+   * chauffeur. Le montant du camion est le même dans les deux cas ; ce qui
+   * change, c'est où l'argent se trouve entre-temps.
+   */
+  carburantParChauffeur: caseACocher,
 });
 
 type Remise = z.infer<typeof schemaRemise>;
@@ -352,6 +362,24 @@ async function appliquerRemise(
   r: Remise,
   lignes: LigneRemise[],
 ): Promise<void> {
+  /**
+   * Le moyen de paiement est vérifié avant d'être écrit.
+   *
+   * `moyenId` est une clé étrangère : une valeur inconnue ne produit pas un
+   * message de saisie, mais une exception Prisma qui remonte jusqu'à la page
+   * d'erreur — et la mission entière est perdue avec la transaction. Le cas
+   * s'est produit tant que ce menu proposait les codes de l'ancienne
+   * énumération ; il se reproduirait si le gérant supprimait un moyen pendant
+   * qu'un formulaire est ouvert. Un moyen introuvable est simplement oublié :
+   * il documente comment l'argent est sorti, il ne conditionne pas la sortie.
+   */
+  const moyenId = r.avanceMoyen
+    ? ((await tx.moyenPaiement.findUnique({
+        where: { id: r.avanceMoyen },
+        select: { id: true },
+      })) ?? null)?.id ?? null
+    : null;
+
   // --- Argent remis, ventilé par objet ---
   for (const [index, ligne] of lignes.entries()) {
     await tx.mouvementCaisse.create({
@@ -363,7 +391,7 @@ async function appliquerRemise(
         montant: ligne.montant,
         devise: ligne.devise,
         montantGnf: ligne.montantGnf,
-        moyenId: r.avanceMoyen || null,
+        moyenId,
         reference: r.avanceReference ?? null,
         // La commission ne se paie qu'une fois pour l'ensemble du transfert :
         // la répéter sur chaque ligne la compterait autant de fois.
@@ -379,21 +407,54 @@ async function appliquerRemise(
   // consommé par le véhicule, le chauffeur n'a pas à le justifier. La
   // rattacher à la mission la fait entrer dans la marge du bon camion.
   if ((r.carburantMontantGnf ?? 0) > 0 || (r.carburantLitres ?? 0) > 0) {
-    await tx.depense.create({
+    const montant = r.carburantMontantGnf ?? 0;
+
+    const depense = await tx.depense.create({
       data: {
         type: "GASOIL_TRACTEUR",
-        montant: r.carburantMontantGnf ?? 0,
+        montant,
         devise: "GNF",
-        montantGnf: r.carburantMontantGnf ?? 0,
+        montantGnf: montant,
         litres: r.carburantLitres ?? null,
         // Sur un aller-retour, c'est ce qui permettra de dire après coup si le
         // retour a coûté plus cher que l'aller.
         segment: segmentValide(r.carburantSegment),
-        description: "Carburant remis au départ",
+        description: r.carburantParChauffeur
+          ? "Carburant — argent remis au chauffeur"
+          : "Carburant — payé par le bureau",
         voyageId: voyage.id,
         camionId: voyage.camionId,
       },
     });
+
+    /*
+     * Argent remis au chauffeur : il transite par sa caisse.
+     *
+     * Le mouvement sort la somme de la trésorerie et la place chez lui ; la
+     * dépense y est rattachée, ce qui l'exclut d'un second décompte au moment
+     * où elle est consommée. Le coût imputé au camion est identique — seul
+     * l'endroit où l'argent se trouve entre les deux change.
+     *
+     * Sans cette ligne, la caisse du chauffeur ignorerait une somme qu'il
+     * détient réellement, et son « reste à justifier » serait faux d'autant.
+     */
+    if (r.carburantParChauffeur && montant > 0) {
+      await tx.mouvementCaisse.create({
+        data: {
+          chauffeurId: voyage.chauffeurId,
+          voyageId: voyage.id,
+          depenseId: depense.id,
+          type: "AVANCE",
+          objet: "GASOIL_TRACTEUR",
+          montant,
+          devise: "GNF",
+          montantGnf: montant,
+          moyenId,
+          reference: r.avanceReference ?? null,
+          motif: "Carburant",
+        },
+      });
+    }
   }
 }
 
@@ -505,9 +566,63 @@ export async function modifierVoyage(
   const saisie = schemaVoyage.safeParse(Object.fromEntries(donnees));
   if (!saisie.success) return erreursFormulaire<EtatFormulaire>(saisie.error, donnees);
 
+  /*
+   * L'édition peut remettre de l'argent, elle n'en corrige jamais.
+   *
+   * Le bloc « argent remis » n'apparaissait qu'à la création : une somme
+   * donnée en route — un poste plus cher que prévu, une panne — n'avait aucun
+   * endroit où être saisie. Il s'ouvre désormais aussi à l'édition, toujours
+   * vide, et ce qu'on y met s'AJOUTE aux remises précédentes.
+   *
+   * C'est la seule sémantique juste : une avance déjà remise est un fait, pas
+   * une valeur à corriger. La rejouer à chaque enregistrement doublerait la
+   * somme sortie de la caisse ; l'écraser ferait disparaître de l'argent que
+   * le chauffeur détient réellement.
+   */
+  const remise = validerRemise(donnees);
+  if ("erreur" in remise) return { erreur: remise.erreur };
+
   const valeurs = donneesVoyage(saisie.data);
-  const avant = await prisma.voyage.findUnique({ where: { id }, select: { camionId: true } });
-  await prisma.voyage.update({ where: { id }, data: valeurs });
+  const avant = await prisma.voyage.findUnique({
+    where: { id },
+    select: { camionId: true, chauffeurId: true, reference: true },
+  });
+  if (!avant) throw new Error("Mission introuvable.");
+
+  const aRemettre =
+    remise.lignes.length > 0 ||
+    (remise.remise.carburantMontantGnf ?? 0) > 0 ||
+    (remise.remise.carburantLitres ?? 0) > 0;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.voyage.update({ where: { id }, data: valeurs });
+    if (aRemettre) {
+      await appliquerRemise(
+        tx,
+        { id, camionId: valeurs.camionId, chauffeurId: valeurs.chauffeurId },
+        remise.remise,
+        remise.lignes,
+      );
+    }
+  });
+
+  if (aRemettre) {
+    const total =
+      remise.lignes.reduce((t, l) => t + l.montantGnf, 0) +
+      (remise.remise.carburantMontantGnf ?? 0);
+    await journaliser({
+      action: "voyage.remise.ajoutee",
+      objet: "Voyage",
+      objetId: id,
+      libelle: `${formatNombre(total)} GNF remis en plus sur ${avant.reference}`,
+      montantGnf: total,
+    });
+  }
+
+  for (const ligne of remise.lignes) {
+    if (ligne.devise !== "GNF") await observerTaux(ligne.montant, ligne.montantGnf);
+  }
+
   await synchroniserLignes(id, lignesDepuisFormulaire(donnees));
 
   // Réaffecter la mission à un autre camion libère le précédent.

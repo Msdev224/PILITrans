@@ -27,7 +27,6 @@ import { ChampRecherche } from "@/components/champ-recherche";
 import { formatTelephone } from "@/lib/telephone";
 import {
   LIBELLE_MOTIF_VOYAGE,
-  LIBELLE_MOYEN_PAIEMENT,
   LIBELLE_TYPE_DEPENSE,
   MOTIFS_SANS_MARCHANDISE,
   OBJETS_REMISE,
@@ -121,6 +120,16 @@ interface Props {
   clients: OptionClientVoyage[];
   /** Pays proposés, tenus par l'exploitation. Le premier sert de défaut. */
   pays: { id: string; nom: string }[];
+  /**
+   * Moyens de paiement actifs, tels que le gérant les tient.
+   *
+   * Ils viennent de la base, et non d'une liste figée : `MouvementCaisse.moyenId`
+   * est une clé étrangère sur `MoyenPaiement.id`. Ce menu proposait encore les
+   * **codes** hérités de l'ancienne énumération (`ESPECES`…), que l'action
+   * écrivait tels quels dans la colonne — d'où un échec de contrainte à chaque
+   * voyage saisi avec de l'argent remis au chauffeur.
+   */
+  moyens: { id: string; nom: string }[];
   voyage?: VoyageEditable | null;
   declencheur: React.ReactNode;
 }
@@ -140,7 +149,7 @@ interface LigneRemiseSaisie {
   parJour: string;
 }
 
-export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tauxReferenceXof, voyage, declencheur }: Props) {
+export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, moyens, tauxReferenceXof, voyage, declencheur }: Props) {
   // Le pays du siège est en tête de liste : c'est le cas courant.
   const paysDefaut = pays[0]?.id ?? "";
 
@@ -201,11 +210,28 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [chargement, demarrer] = useTransition();
 
+  /**
+   * Remise à zéro du bloc « argent remis » après un enregistrement réussi.
+   *
+   * Ce bloc s'AJOUTE à ce qui a déjà été donné. Or le dialogue n'est pas
+   * démonté quand on le referme : sans ce nettoyage, il se rouvrait sur la
+   * somme précédente, et le simple fait de réenregistrer la reversait —
+   * un per diem donné une fois se retrouvait compté deux fois dans la caisse
+   * du chauffeur et dans la marge du camion.
+   *
+   * Les lignes sont un état React, on les réinitialise. Le carburant, les
+   * frais et la référence sont des champs non contrôlés : seul un remontage
+   * les vide, d'où la clé qui change à chaque succès.
+   */
+  const [versionRemise, setVersionRemise] = useState(0);
+
   // Le formulaire se referme dès que l'action a réussi.
   useEffect(() => {
     if (etat.ok) {
       setOuvert(false);
       setSuggestion(null);
+      setRemises([{ cle: `r${compteurRemise.current++}`, objet: "PER_DIEM", montant: "", devise: "GNF", montantGnf: "", parJour: "" }]);
+      setVersionRemise((v) => v + 1);
     }
   }, [etat.ok]);
 
@@ -547,17 +573,17 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
                     ) : null}
                   </div>
 
-                  {/* Ce que le gérant remet de la main à la main en lançant
-                      la mission, ventilé par objet. Saisi ici parce que c'est
-                      là que ça se passe : renvoyé à plus tard, cet argent
-                      n'était jamais enregistré et la trésorerie affichait un
-                      solde trop élevé.
-                      À la création seulement — les compléments en cours de
-                      route se corrigent depuis l'écran Caisse. */}
-                  {!edition ? (
-                    <div className="full mt-1 border-t border-[var(--line-soft)] pt-3">
+                  {/* Ouvert aussi à l'édition : une somme remise en route — un poste plus
+                      cher que prévu, une panne — doit pouvoir être saisie après coup. Les
+                      champs restent vides à l'ouverture, et ce qu'on y met s'AJOUTE aux
+                      remises précédentes : une avance déjà donnée est un fait, pas une
+                      valeur à corriger.
+
+                      Seule une mission annulée n'y a pas droit : elle n'accepte plus rien. */}
+                  {voyage?.statut !== "ANNULE" ? (
+                    <div key={versionRemise} className="full mt-1 border-t border-[var(--line-soft)] pt-3">
                       <div className="lignes-tete">
-                        <span>Remis au chauffeur au départ</span>
+                        <span>{edition ? "Remettre de l'argent en plus" : "Remis au chauffeur au départ"}</span>
                         <button
                           type="button"
                           className="btn ghost sm"
@@ -661,10 +687,11 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
 
                       <div className="form-grid mt-2">
                         <Champ label="Comment l'argent a été remis">
-                          <select name="avanceMoyen" defaultValue="ESPECES">
-                            {Object.keys(LIBELLE_MOYEN_PAIEMENT).map((m) => (
-                              <option key={m} value={m}>
-                                {LIBELLE_MOYEN_PAIEMENT[m]}
+                          <select name="avanceMoyen" defaultValue="">
+                            <option value="">— à préciser —</option>
+                            {moyens.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.nom}
                               </option>
                             ))}
                           </select>
@@ -687,10 +714,26 @@ export function DialogueVoyage({ pays, unites, clients, camions, chauffeurs, tau
 
                         <Champ
                           label="Valeur du carburant (GNF)"
-                          aide="Enregistré comme dépense de gasoil sur cette mission, pas comme argent à justifier."
+                          aide="Comptée comme dépense de gasoil de cette mission, quel que soit le payeur."
                         >
                           <input name="carburantMontantGnf" inputMode="numeric" />
                         </Champ>
+
+                        {/* Le coût du camion est le même dans les deux cas. Ce
+                            qui change, c'est où l'argent se trouve : dans la
+                            caisse du chauffeur, ou déjà sorti du bureau. */}
+                        <div className="full">
+                          <label className="case-payeur">
+                            <input type="checkbox" name="carburantParChauffeur" />
+                            <span>
+                              <b>L&apos;argent du carburant a été remis au chauffeur</b>
+                              <span className="t-sub block">
+                                Coché, la somme entre dans sa caisse et il devra la justifier.
+                                Décoché, c&apos;est le bureau qui a carburé : rien ne passe par lui.
+                              </span>
+                            </span>
+                          </label>
+                        </div>
 
                         {/* Sur un aller-retour, savoir si le plein couvre
                             l'aller seul ou les deux sens est ce qui permet de

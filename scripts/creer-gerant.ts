@@ -157,6 +157,14 @@ async function main() {
     console.log(`✔ ${PAYS_INITIAUX.length} pays créés — ajustez la liste dans l'application.`);
   }
 
+  // Même raison qu'au-dessus : sans moyen de paiement, la caisse est bloquée.
+  const nbMoyens = await db.moyenPaiement.count();
+  if (nbMoyens === 0) {
+    const { MOYENS_INITIAUX } = await import("../src/lib/moyens-initiaux");
+    await db.moyenPaiement.createMany({ data: [...MOYENS_INITIAUX] });
+    console.log(`✔ ${MOYENS_INITIAUX.length} moyens de paiement créés.`);
+  }
+
   console.log("\nConnectez-vous avec ce numéro et ce mot de passe.");
 }
 

@@ -16,6 +16,7 @@ import { PrismaClient } from "@prisma/client";
 
 import { hacherMotDePasse } from "../src/lib/mots-de-passe";
 import { normaliserTelephone, telephoneValide } from "../src/lib/telephone";
+import { MOYENS_INITIAUX } from "../src/lib/moyens-initiaux";
 import { PAYS_INITIAUX } from "../src/lib/pays-initiaux";
 import { UNITES_INITIALES } from "../src/lib/unites";
 
@@ -160,10 +161,17 @@ async function main() {
   // Sans pays, ni trajet ni numéro de téléphone ne peuvent être saisis.
   await db.pays.createMany({ data: [...PAYS_INITIAUX] });
 
+  // Sans moyens de paiement, aucune écriture de caisse ne passe : le champ
+  // `moyenId` bute sur sa clé étrangère. Ces lignes n'étaient posées que par
+  // une migration, qui ne rejoue jamais — d'où leur disparition silencieuse
+  // après une réinitialisation.
+  await db.moyenPaiement.createMany({ data: [...MOYENS_INITIAUX] });
+
   console.log("\n✔ Base réinitialisée.");
   console.log(`✔ Gérant : ${nom} — ${telephone}`);
   console.log(`✔ ${UNITES_INITIALES.length} unités de mesure créées.`);
   console.log(`✔ ${PAYS_INITIAUX.length} pays créés.`);
+  console.log(`✔ ${MOYENS_INITIAUX.length} moyens de paiement créés.`);
   console.log("✔ Paramètres initialisés — complétez-les dans l'application.");
   console.log("\nConnectez-vous, puis créez votre équipe depuis Paramètres → Comptes.");
 }
